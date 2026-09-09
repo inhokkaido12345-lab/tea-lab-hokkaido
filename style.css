@@ -218,6 +218,7 @@ a:focus-visible {
 .activity-card__code,
 .field-label__code,
 .field-label dt,
+.contact-list dt,
 .site-footer {
   font-family: var(--font-sans);
   font-size: 0.76rem;
@@ -494,15 +495,53 @@ h1 {
   letter-spacing: 0;
 }
 
-/* 【Contactのplaceholder】現在は未設定であることを静かに示します。mailtoやフォームに変える場合はHTML側も編集します。 */
-.contact-placeholder {
-  display: inline-block;
-  border-bottom: 1px solid var(--color-line);
-  padding-bottom: 0.35rem;
-  color: var(--color-muted);
+/*
+  【Updates / Third-party Embedの外枠】
+  X公式Widgetのiframe内部は外部文書なので、このCSSが管理するのは配置用の親幅までです。
+  min()で親より広がらず最大520pxに抑え、補助的な更新ログが本文全体を支配しないようにします。
+  min-inline-size:0はGrid item内で必要に応じて縮む許可です。高さはHTMLの公式data-heightで指定します。
+*/
+.updates-embed {
+  inline-size: min(100%, 520px);
+  min-inline-size: 0;
 }
 
-.text-link {
+.twitter-timeline {
+  display: inline-block;
+  color: var(--color-brand);
+  font-weight: 700;
+}
+
+/*
+  【Contact / Description List】
+  contact-listはEMAIL/Xという項目名と値を、標本ラベルに近い2列で揃えるComponentです。
+  各ddをminmax(0, 1fr)にして長いメールアドレスへ縮める場所を渡し、overflow-wrapで最後の保険を掛けます。
+  Contactをカード化せず、既存の線・文字・余白Tokenだけで情報の階層を作ります。
+*/
+.contact-list {
+  max-inline-size: 620px;
+  margin: 0;
+}
+
+.contact-list > div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.28fr) minmax(0, 1fr);
+  gap: var(--space-md);
+  border-top: 1px solid var(--color-line);
+  padding: 1rem 0;
+}
+
+.contact-list dt {
+  color: var(--color-steel);
+}
+
+.contact-list dd {
+  min-inline-size: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.contact-link {
   color: var(--color-brand);
   font-weight: 700;
 }
@@ -634,6 +673,12 @@ h1 {
 
   .section {
     padding: 4.5rem 0;
+  }
+
+  /* 狭い画面では項目名と値を縦積みにし、メールアドレスが横幅を奪うのを避けます。 */
+  .contact-list > div {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
   }
 }
 

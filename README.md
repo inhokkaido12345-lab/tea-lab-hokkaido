@@ -2,13 +2,13 @@
 
 `tealabhokkaido.com` で公開するための、最小構成の静的サイトです。GitHub Pagesでそのまま配信できるよう、HTML、CSS、ドメイン設定用の `CNAME` を中心に構成しています。
 
-React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。JavaScriptも現時点では不要なため、`script.js` は作成していません。
+React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。X公式タイムラインの表示に限って外部の`widgets.js`を読み込みます。自作の`script.js`はありません。
 
 このREADMEはサイトの設計図と改造時の診断書です。コードにはその場所の設計理由を、ここには概念のつながり・公開までの流れ・故障の調べ方をまとめます。ロゴ原本の扱いは [ブランドアセットの説明](assets/brand/README.md) を参照してください。
 
 ## 1. 作成・変更したファイル
 
-- `index.html`: 1ページサイト本体。SEO、OGP、Hero、About、Activities、Information、Contactを含みます。
+- `index.html`: 1ページサイト本体。SEO、OGP、Hero、About、Activities、Information、Updates、Contactを含みます。
 - `style.css`: レスポンシブ対応のスタイル。配色、フォント、余白はCSS Custom Propertiesで管理しています。
 - `CNAME`: GitHub Pagesで `tealabhokkaido.com` を独自ドメインとして使うためのファイルです。
 - `README.md`: サイト構造、公開方法、DNS設定、設計思想、魔改造MAPをまとめた説明です。
@@ -25,7 +25,8 @@ v1.1は1ページ構成のブランド公式サイトです。
 - About: 活動概要
 - Activities: 現在の主な活動領域6項目
 - Information: 2026年8月以降、The TEAとは独立した活動であることの明示
-- Contact: 連絡先を後から設定するための枠
+- Updates: X公式タイムラインによる活動更新。読み込めない場合はプロフィールリンクを表示
+- Contact: 正式なEmailとXプロフィール
 - Footer: サイト名と著作権表記
 
 ## 学習用：このサイトの設計思想
@@ -42,13 +43,13 @@ v1.1は1ページ構成のブランド公式サイトです。
 
 | 種類 | 役割 | このサイトでの使い方 |
 | --- | --- | --- |
-| HTML | 情報と構造 | 見出し、本文、セクション、ナビゲーション、活動項目、Contact枠を定義しています。 |
+| HTML | 情報と構造 | 見出し、本文、セクション、ナビゲーション、活動項目、Updatesのフォールバック、Contactを定義しています。 |
 | CSS | 視覚表現とレイアウト | 色、余白、文字サイズ、Header/Hero/Grid、レスポンシブ表示を定義しています。 |
-| JavaScript | 動作・状態変化・インタラクション | 現在は必要ないため使用していません。 |
+| JavaScript | 動作・状態変化・インタラクション | X公式タイムラインを描画する外部`widgets.js`だけを使用しています。 |
 
 HTMLは「何が書かれているか」、CSSは「どう見せるか」、JavaScriptは「ユーザー操作や状態変化に応じて何を動かすか」を担当します。
 
-現在のサイトは、ページ内リンクとレスポンシブ表示だけで目的を満たせるため、JavaScriptを追加していません。
+ページ本体はJavaScriptなしでも読めます。XウィジェットだけがProgressive Enhancementとして加わり、動かなければ通常リンクへGraceful Degradationします。サイト独自の動作・状態管理はないため、自作JavaScriptやFrameworkは追加していません。
 
 ### 現在の設計
 
@@ -60,8 +61,8 @@ HTMLは「何が書かれているか」、CSSは「どう見せるか」、Java
 ブラウザ
 ↓
 index.htmlを読む
-↓
-style.cssを読む
+├─ style.cssとロゴSVGを読む
+└─ widgets.jsを非同期に読む（成功時だけXタイムラインを強化）
 ↓
 画面へ描画する
 ```
@@ -74,9 +75,25 @@ style.cssを読む
 | --- | --- |
 | 情報掲載、ロゴ、静的画像、ページ内リンク、レスポンシブ表示 | 問い合わせ内容の受信・保存、Login、database、管理画面、EC、会員機能 |
 
-HTMLの`form`は入力欄や送信先を定義できますが、送られた情報を受け取り保存する処理は別です。現在のContactはplaceholderであり、受信処理はありません。GitHub Pagesは任意のサーバー処理をこのHTML内で実行する場所ではないため、フォームを作る段階でBackendや外部サービスを選びます。
+HTMLの`form`は入力欄や送信先を定義できますが、送られた情報を受け取り保存する処理は別です。現在のContactは`mailto:`とXへのリンクであり、Webサイト内に受信・保存処理はありません。GitHub Pagesは任意のサーバー処理をこのHTML内で実行する場所ではないため、フォームを作る段階でBackendや外部サービスを選びます。
 
-Dynamic SearchもHTML/CSSだけでは実現しません。小さな静的データをブラウザ内で検索するならJavaScriptで対応でき、常に変わる大きなデータを検索するならAPI等が候補です。Static SiteだからJavaScriptが禁止なのではなく、今は必要な機能がないため使っていません。
+Dynamic SearchもHTML/CSSだけでは実現しません。小さな静的データをブラウザ内で検索するならJavaScriptで対応でき、常に変わる大きなデータを検索するならAPI等が候補です。Static SiteだからJavaScriptが禁止なのではなく、必要な部分だけ追加できます。現在の例がX公式ウィジェットです。
+
+### 外部サービス埋め込み
+
+UpdatesはX公式のEmbedded Timelineです。`<a class="twitter-timeline">`という通常リンクをHTMLへ置き、`https://platform.x.com/widgets.js`を`async`で1回読み込みます。スクリプトが動くと、Xの公開プロフィールタイムラインが外部コンテンツとして表示されます。X公式は公開ポストを持つプロフィールの埋め込みに対応し、高さとLight / Dark Themeを設定できると案内しています。[Xヘルプ: タイムラインを埋め込む方法](https://help.x.com/ja/using-x/embed-x-feed)
+
+この追加により、以前の純粋なローカルHTML/CSS/SVGだけの構成から、XというExternal Dependencyが1つ増えました。閲覧時にブラウザはXの外部リソースへ通信します。Xは、埋め込みを含むX for WebsitesでページURL、IPアドレス、ブラウザ・OS・Cookie情報等を受け取る場合があると説明しています。具体的な扱いはXの現行ポリシーを確認します。[Xヘルプ: X for Websites](https://help.x.com/en/x-for-websites-ads-info-and-privacy)
+
+| 概念 | このサイトでの実例 | 壊れ方・判断点 |
+| --- | --- | --- |
+| Third-party Embed | 自サイトのHTMLからXのJavaScriptを読み、Xのコンテンツを描画 | X側の仕様変更・障害・サービス終了で、自サイトを変更していなくても表示が変わり得ます。 |
+| Progressive Enhancement | 通常リンクへJavaScriptでタイムライン機能を加える | ウィジェットを前提にContactや重要情報を置かないこと。 |
+| Graceful Degradation / Fallback | JavaScript無効・遮断・通信失敗時もプロフィールリンクが残る | anchorを消すとフォールバックも失われます。 |
+| `async` | 外部scriptの取得完了を待たず、HTML解析を進められる | 実行時刻や成功順を前提にした自作処理は置いていません。 |
+| `iframe` | 外部コンテンツを分離された文書としてページ内へ表示する仕組み | 自サイトCSSから内部pathやポストの見た目を自由に変更できません。公式data属性を使います。 |
+
+`data-height="560"`はタイムラインの高さ、`data-theme="light"`は公式Light Themeです。外枠の最大幅は`.updates-embed`の520pxで管理します。X以外にYouTube、Google Maps、Instagram、Google Forms等を追加するときも、外部通信、表示速度、障害時の代替リンク、サービス側の仕様・プライバシー情報を確認します。必要な法的対応はサイトの運営条件や利用サービスで変わるため、このREADMEでは技術構造までを説明します。
 
 ### GitHub Pages
 
@@ -145,7 +162,7 @@ GitHub Pages
 
 ### Information Architecture
 
-Information Architectureは、読む人が知りたいことへ順番にたどり着けるよう情報を配置する設計です。今は「誰か」「何をするか」「The TEAとの関係」「どう連絡するか」という最小構造です。
+Information Architectureは、読む人が知りたいことへ順番にたどり着けるよう情報を配置する設計です。今は「誰か」「何をするか」「The TEAとの関係」「現在の活動」「どう連絡するか」という構造です。
 
 | 現在の位置 | 読む人の疑問に対する役割 |
 | --- | --- |
@@ -153,9 +170,10 @@ Information Architectureは、読む人が知りたいことへ順番にたど�
 | About | 何をする活動で、どう取り組むか。 |
 | Activities | どの領域を扱うか。能力・活動範囲を具体化します。 |
 | Information | The TEAとの関係は何か。誤認防止のため本文中に明示します。 |
-| Contact | どう連絡するか。現在は連絡先準備中です。 |
+| Updates | 現在も活動しているか。Xを更新ログとして補助的に表示します。 |
+| Contact | どう連絡するか。EmailとXプロフィールを示します。 |
 
-将来Works / Projectsを追加すると、`Identity → Capability → Evidence → Contact`、つまり「誰か → 何ができるか → それを裏付ける実例 → 連絡先」へ発展できます。Informationの独立表記は引き続き見つけやすい位置に残し、Evidenceには実際に公開できる成果だけを載せます。
+現在の流れは`Identity → Capability → Relationship / Context → Current Activity → Contact`です。将来Works / Projectsを追加すると、`Identity → Capability → Evidence → Current Activity → Contact`へ発展できます。Informationの独立表記は引き続き見つけやすい位置に残し、Evidenceには実際に公開できる成果だけを載せます。
 
 ### Class / id / BEM風命名
 
@@ -360,7 +378,7 @@ Activitiesは `div.activity-list` の中に `article.activity-card` を並べる
 | OGP画像を追加する | `index.html` の `head` | OGP / Twitter Card / Social Metadata |
 | 実績セクションを追加する | `index.html` のセクション追加位置 | Semantic HTML / Information Architecture |
 | 別ページ化する | 新規HTMLファイルとナビゲーション | Multi-page Static Site |
-| 動きを追加する | `style.css` または将来の `script.js` | Animation / Interaction / prefers-reduced-motion |
+| サイト独自の動きを追加する | `style.css` または将来の自作`script.js` | Animation / Interaction / prefers-reduced-motion |
 | 問い合わせフォームを作る | `index.html` の `#contact` | Form / Backend / Privacy |
 | ダークモードを作る | `style.css` の `:root` とMedia Query等 | Theme / CSS variables / color-scheme |
 | ゲーム事業を将来追加する | Activitiesまたは新規section | Information Architecture / Content Strategy |
@@ -368,6 +386,12 @@ Activitiesは `div.activity-list` の中に `article.activity-card` を並べる
 | フォントを変える | `style.css` の `--font-serif` / `--font-sans` | Font Stack / CSS Inheritance |
 | 見出し階層を整理する | `index.html` の `h1` / `h2` / `h3` | Semantic HTML / Accessibility |
 | ナビ項目を増やす | `index.html` の `nav` と対応する `section id` | Fragment Link / id / href |
+| メールアドレスを変更する | `index.html` の`#contact`にある表示文字と`mailto:` | URI Scheme / Contact Information |
+| Xアカウントを変更する | `#updates`のhref・表示名と`#contact`のXリンク | External Link / Third-party Embed |
+| Xタイムラインの高さを変える | `.twitter-timeline`の`data-height` | Embedded Widget / Data Attribute |
+| X埋め込みを削除する | `#updates`と末尾の`widgets.js`読み込み | External Dependency / Information Architecture |
+| X以外のSNSを追加する | Contactまたは新しいsection | External Link / Information Architecture |
+| 外部scriptを確認する | `index.html`末尾の`script` | Third-party JavaScript / async |
 | 深い階層へページを増やす | 新規HTMLの`src` / `href`とCSSの`url()` | Relative URL / Multi-page Static Site |
 | 縦書き・RTLへ対応する | Logical Propertiesと残っている物理方向の指定 | writing-mode / direction / Internationalization |
 | CSSが効かない理由を調べる | DevToolsのStyles / Computed | Cascade / Specificity / Source Order |
@@ -414,15 +438,20 @@ Networkの`Disable cache`は通常DevToolsを開いている間の診断に使�
 | h1の文字設定を変えてもロゴが変わらない | `h1.visually-hidden` / SVG | 見出しは意味、ロゴは視覚表現を担当。SVGの文字はカーブ化済みです。 |
 | h1が見えない | `.visually-hidden` | 現在は意図した動作。削除やdisplay:noneにせず、支援技術に残る見出しかを確認。 |
 | フォームの内容が届かない | Contact / formの送信先 | 入力画面と受信・保存処理は別。現在はフォーム自体を実装していません。 |
+| メールリンクで何も起きない | `mailto:` / OS・ブラウザの既定メールアプリ | Webサイトが直接送信する機能ではありません。hrefの綴りと端末設定を切り分けます。 |
+| Xリンク先が違う | `#updates`と`#contact`のhref | 同じアカウント情報が2箇所にあるため、表示名も含めて照合します。 |
+| Xタイムラインが出ない | `twitter-timeline` / `widgets.js` / Network | 通常リンクが残るかを確認し、外部scriptの遮断・失敗やX側の状態を調べます。サイト本体の故障とは限りません。 |
+| Xタイムラインが大きすぎる | `data-height` / `.updates-embed` | 高さは公式data属性、外側の最大幅はCSSで管理します。iframe内部へCSS hackを加えません。 |
 
 ## 教材として学ぶ順序
 
-1. `index.html`のmainを読み、Hero → About → Activities → Information → Contactの情報順と見出し階層を追う。
+1. `index.html`のmainを読み、Hero → About → Activities → Information → Updates → Contactの情報順と見出し階層を追う。
 2. classとidを手がかりに`style.css`を検索し、`:root`から部品へのvar()参照を追う。
 3. DevToolsで1つの値を試し、min() / clamp() / Grid / min-sizeが実サイズにどう効くかを見る。
 4. 820px / 460pxの前後を試し、StylesとComputedで上書きを確かめる。
-5. ブランドアセットの説明を読み、SVG原本とCSSの表示サイズ、h1と画像の意味分担を理解する。
-6. ファイル保存 → commit → GitHubへの反映 → Pages deploy → cacheの順を確認し、小さな変更を1つずつ履歴に残す。
+5. UpdatesをJavaScript無効または通信遮断の条件でも確認し、FallbackとExternal Dependencyの境界を見る。
+6. ブランドアセットの説明を読み、SVG原本とCSSの表示サイズ、h1と画像の意味分担を理解する。
+7. ファイル保存 → commit → GitHubへの反映 → Pages deploy → cacheの順を確認し、小さな変更を1つずつ履歴に残す。
 
 ## 3. 公開方法
 
@@ -507,7 +536,15 @@ IPv6も使う場合:
 
 ### Contact
 
-`index.html` の `id="contact"` セクション内にある `contact-placeholder` を、メールアドレス決定後に `mailto:` リンクへ差し替えてください。
+`index.html`の`id="contact"`にある`contact-list`を編集します。メールアドレスは画面上の文字と`href="mailto:..."`をセットで変更し、Xは`href`と表示中のハンドルをセットで変更します。Xアカウントを変える場合は`id="updates"`のタイムラインリンクも同時に更新してください。
+
+`mailto:`はメール作成を要求するURI Schemeです。端末の既定メールアプリに依存し、サイトから直接送信する処理ではありません。問い合わせフォームに変える場合は、HTMLの入力欄とは別に受信・保存先を用意します。
+
+### Updates / X埋め込み
+
+`index.html`の`id="updates"`にある`.twitter-timeline`がプロフィールURL、表示名、`data-height`、`data-theme`を持ちます。外枠幅は`style.css`の`.updates-embed`です。
+
+X埋め込みを完全に削除する場合は、`#updates`セクション、Headerの`href="#updates"`、body末尾にある`https://platform.x.com/widgets.js`のscriptをセットで整理します。Contactの通常Xリンクを残すかはInformation Architectureとして別に判断できます。scriptは現在1回だけ読み込みます。
 
 ### 配色・フォント・余白
 

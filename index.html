@@ -115,6 +115,7 @@
         <a href="#about">About</a>
         <a href="#activities">Activities</a>
         <a href="#information">Information</a>
+        <a href="#updates">Updates</a>
         <a href="#contact">Contact</a>
       </nav>
     </div>
@@ -286,27 +287,80 @@
       </div>
     </section>
 
-    <!-- セクション追加位置: 将来の事業領域、研究内容、制作活動はこの下に section 要素として追加できます。 -->
+    <!--
+      【Updates / Third-party Embed / External Dependency】
+      Xの公開プロフィールを「現在の活動が動いていることを示す更新ログ」として置くsectionです。
+      twitter-timelineリンクは、外部のwidgets.jsが動くとタイムラインへ強化されます。X側の仕様変更・障害・終了により、
+      自サイトを変えていなくても表示が変わるExternal Dependencyです。最終的な表示には外部文書を隔離するiframeが使われることがあり、
+      自サイトのCSSから内部を自由に変更できません。外枠の幅は.updates-embed、内容のテーマと高さは公式data属性で調整します。
+
+      【Progressive Enhancement / Graceful Degradation】
+      JavaScriptが動けば公開タイムライン、無効・遮断・失敗時は通常のXプロフィールリンク、という二段階です。
+      リンクを残したままscriptだけを外すとフォールバックだけに戻せます。アカウント変更時はhref・表示名・Contact側を一緒に更新します。
+    -->
+    <section class="section section--ruled" id="updates" aria-labelledby="updates-title">
+      <div class="container section__grid">
+        <div class="section__meta">
+          <p class="section-kicker">05 / UPDATES</p>
+          <h2 id="updates-title">活動記録</h2>
+        </div>
+        <div class="section__body">
+          <div class="updates-embed">
+            <a
+              class="twitter-timeline"
+              href="https://x.com/InHokkaido12345"
+              aria-label="Posts by @InHokkaido12345 on X（新しいタブで開く）"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-height="560"
+              data-theme="light"
+            >Posts by @InHokkaido12345</a>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!--
-      【Contact / 将来拡張】
-      現在は連絡先未設定のplaceholderです。メールアドレスを推測して作らず、確定後に差し替えます。
-      将来は mailto:、問い合わせフォーム、SNS、Googleフォーム等に発展できますが、外部サービスを入れる場合はプライバシー表示も検討します。
-      HTMLのformは入力欄と送信先を表せますが、受信・保存の処理は別途必要です。GitHub Pagesだけで問い合わせを保存する機能はありません。
+      【Contact / Description List / URI Scheme】
+      EMAILとXは「連絡手段の種類 → 連絡先」という対応なので、段落の羅列ではなくdl / dt / ddで構造化します。
+      mailto:はWebページを開くHTTP URLではなく、メール作成を要求するURI Schemeです。クリック時の動作はOS・ブラウザ・
+      既定メールアプリの設定に依存し、Webサイト自体がメールを送信するわけではありません。
+
+      【External Link / target / rel】
+      Xリンクはtarget="_blank"で新しいタブを要求します。noopenerは遷移先から元ページのwindow.openerへ不要にアクセスさせないための防御、
+      noreferrerは遷移先へRefererを送らない指定です。外部リンクの表示先を同じタブへ変えるならtargetとrelをセットで見直します。
+      将来フォームへ発展させる場合、入力欄のHTMLと受信・保存処理は別に設計します。
     -->
     <section class="section section--contact" id="contact" aria-labelledby="contact-title">
       <div class="container section__grid">
         <div class="section__meta">
-          <p class="section-kicker">05 / CONTACT</p>
+          <p class="section-kicker">06 / CONTACT</p>
           <h2 id="contact-title">CONTACT</h2>
         </div>
         <div class="section__body">
-          <!-- Contact: メールアドレス決定後、下の placeholder を mailto リンクに差し替えてください。 -->
-          <p class="contact-placeholder">連絡先は準備中です。</p>
-          <!-- 例: <p><a class="text-link" href="mailto:contact@example.com">contact@example.com</a></p> -->
+          <dl class="contact-list">
+            <div>
+              <dt>EMAIL</dt>
+              <dd><a class="contact-link" href="mailto:hoshina@tealabhokkaido.com">hoshina@tealabhokkaido.com</a></dd>
+            </div>
+            <div>
+              <dt>X</dt>
+              <dd>
+                <a
+                  class="contact-link"
+                  href="https://x.com/InHokkaido12345"
+                  aria-label="@InHokkaido12345 on X（新しいタブで開く）"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >@InHokkaido12345</a>
+              </dd>
+            </div>
+          </dl>
         </div>
       </div>
     </section>
+
+    <!-- セクション追加位置: 将来の事業領域、研究内容、制作活動はこの下に section 要素として追加できます。 -->
   </main>
 
   <!--
@@ -321,5 +375,13 @@
       <small>&copy; 2026 Tea Laboratory Hokkaido</small>
     </div>
   </footer>
+
+  <!--
+    【Third-party JavaScript / async】
+    X公式ウィジェットをページ全体で1回だけ読み込みます。asyncは外部ファイルの取得完了を待たずHTML解析を進め、
+    読み込みによる描画停止を減らします。ただし実行完了時刻やX側の応答は保証しないため、上の通常リンクを残します。
+    削除する場合はこのscriptだけでなく#updatesの目的も見直します。外部通信の説明はREADMEに記載しています。
+  -->
+  <script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>
 </body>
 </html>
