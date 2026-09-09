@@ -2,17 +2,15 @@
 <html lang="ja">
 <head>
   <!--
-    【headの役割】
-    headは画面に直接表示される本文ではなく、ブラウザ・検索エンジン・SNSに渡す設定を書く場所です。
-    ここを魔改造するきっかけ: 検索結果の表示文言を変えたい、SNS共有時の見え方を整えたい、faviconやOGP画像を追加したい場合。
-    注意: titleやdescriptionは、ページ本文のブランド名・説明文と大きく食い違わないようにセットで更新します。
+    【このファイル / Semantic HTML】情報と構造を担当し、見た目はstyle.cssへ分担します。
+    headはブラウザ・検索エンジン・SNS向け設定、bodyは本文です。改造の診断手順はREADMEにまとめています。
   -->
 
   <!--
     【ブラウザ向け】
-    charsetは文字コード指定です。UTF-8にしておくと日本語・英語・記号を安全に扱えます。
-    viewportはResponsive Designの基本設定で、スマートフォン幅を実際の画面幅として扱うようブラウザへ伝えます。
-    ここを壊すと、日本語が文字化けしたり、スマホでPC版を縮小したような表示になることがあります。
+    charsetは文字コード。文字化けを避けるためUTF-8で保存し、宣言全体を先頭1024バイト以内に収めます。
+    viewportはResponsive Designの基礎。スマホでPC幅を縮小表示せず、端末幅をCSSの表示領域に使います。
+    注意: この宣言より前に長い学習コメントを足さないでください。
   -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,7 +24,7 @@
     サイト名を変更する場合は title / description / og:title / twitter:title / h1 / footer も合わせて変更してください。
   -->
   <title>ティーラボラトリー北海道 | Tea Laboratory Hokkaido</title>
-  <meta name="description" content="ティーラボラトリー北海道は、北海道を基盤に茶・食品・地域資源を対象とした調査、試作、商品開発、実験を行う独立した研究・制作活動です。食品科学、文化、デザイン、技術を横断し、調べ、作り、検証することを重視しています。">
+  <meta name="description" content="ティーラボラトリー北海道は、北海道を基盤に、食品・飲料の商品開発、機器開発、飲食店向けソフトウェア開発、地域資源の調査を行う独立した研究・制作活動です。">
   <link rel="canonical" href="https://tealabhokkaido.com/">
   <meta name="robots" content="index, follow">
 
@@ -35,19 +33,20 @@
     theme-colorは一部ブラウザのアドレスバーや周辺UIの色に使われます。
     このサイトでは背景色に近い色を指定し、ページ全体の印象とブラウザUIが大きくずれないようにしています。
   -->
-  <meta name="theme-color" content="#f7f4ed">
+  <meta name="theme-color" content="#F3EFE7">
 
   <!--
     【SNS共有向け / OGP】
     OGP(Open Graph Protocol)は、SNSやチャットでURLを共有したときのカード表示用メタ情報です。
     検索エンジン向けのtitle/descriptionとは用途が違い、「共有されたときにどう見えるか」を主に担当します。
     SNSで共有したとき画像を出したい場合は、og:image と twitter:image を追加します。
+    注意: 今回のロゴSVGはOGP画像に直接使いません。将来 assets/og/ に1200x630程度のPNG/JPEGを用意する方針です。
   -->
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:site_name" content="TEA LABORATORY HOKKAIDO">
   <meta property="og:title" content="ティーラボラトリー北海道 | Tea Laboratory Hokkaido">
-  <meta property="og:description" content="北海道を基盤に、茶・食品・地域資源を対象とした調査、試作、商品開発、実験を行う独立した研究・制作活動です。">
+  <meta property="og:description" content="北海道を基盤に、食品・飲料の商品開発、機器開発、飲食店向けソフトウェア開発、地域資源の調査を行う独立した研究・制作活動です。">
   <meta property="og:url" content="https://tealabhokkaido.com/">
 
   <!--
@@ -57,20 +56,22 @@
   -->
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="ティーラボラトリー北海道 | Tea Laboratory Hokkaido">
-  <meta name="twitter:description" content="北海道を基盤に、茶・食品・地域資源を対象とした調査、試作、商品開発、実験を行う独立した研究・制作活動です。">
+  <meta name="twitter:description" content="北海道を基盤に、食品・飲料の商品開発、機器開発、飲食店向けソフトウェア開発、地域資源の調査を行う独立した研究・制作活動です。">
 
   <!--
     【ブラウザ向け / favicon】
     faviconはブラウザタブやブックマークに出る小さなアイコンです。
-    favicon.ico やSVGアイコンを追加したら、下のコメントを link 要素に差し替えてください。
+    ここでは正式なAsset Variantのうち、シンボル単体の logo-mark.svg を使っています。
+    将来、タブ表示で細部が潰れる場合は、assets/brand/ または assets/favicon/ にfavicon専用の簡略版を追加します。
   -->
-  <!-- <link rel="icon" href="/favicon.ico" sizes="any"> -->
+  <link rel="icon" href="assets/brand/logo-mark.svg" type="image/svg+xml">
 
   <!--
     【CSS読み込み】
     stylesheetはHTMLにCSSを接続します。
     HTML = 情報と構造、CSS = 見た目とレイアウト、という役割分担です。
     この行を消すと内容は残りますが、現在のデザインは適用されません。
+    hrefはRelative URL(相対パス)です。別階層にHTMLを増やすと基準位置が変わるため、READMEの相対パスの説明を確認します。
   -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -86,14 +87,23 @@
     【Semantic HTML / header】
     headerはページ上部の導入・ナビゲーション領域を表す意味付きタグです。
     全部divでも見た目は作れますが、header/nav/main/section/footerを使うと、ブラウザや支援技術にも構造が伝わります。
-    class名はBEM風です。site-headerがBlock、site-header__innerがその中のElement、という関係を名前で示しています。
+    classは再利用する部品名です。BEMの考え方を部分的に借り、brand / hero / activity-cardをBlock、
+    brand__logo / hero__layout / activity-card__codeをElement、section--ruledをModifier(派生)として区別します。
+    名前だけで親子関係や見た目は生まれません。class変更時はCSS側のSelectorも合わせて確認します。
   -->
   <header class="site-header">
     <div class="container site-header__inner">
-      <!-- サイト名変更箇所: ヘッダーの表示名です。 -->
+      <!-- サイト名変更箇所: リンクの読み上げ名はaria-label、視覚上の表記は正式SVGが担当します。 -->
       <a class="brand" href="#" aria-label="ティーラボラトリー北海道 ホーム">
-        <span class="brand__jp">ティーラボラトリー北海道</span>
-        <span class="brand__en">TEA LABORATORY HOKKAIDO</span>
+        <!--
+          【Asset Variant / Responsive SVG / Decorative Image】
+          Headerは横長スペースなので logo-horizontal.svg を使います。logo-mark.svgを重ねず、横ロゴ1つに役割を絞ります。
+          外部SVGをimgで読むことで、Affinityの正式データを独立管理し、HTMLへpathを大量に埋め込まずに済みます。
+          brandリンクのAccessible Nameはaria-labelが担当し、画像はalt="" aria-hidden="true"で装飾扱いにして二重読み上げを避けます。
+          注意: 画像のaltを空にしたまま親のaria-labelまで消すと、リンク先の意味が支援技術へ伝わらなくなります。
+          魔改造するきっかけ: Headerだけマーク単体にしたい、monochrome版やdark background用ロゴにしたい場合はsrcとCSSの.brand__logoを確認します。
+        -->
+        <img class="brand__logo" src="assets/brand/logo-horizontal.svg" alt="" aria-hidden="true">
       </a>
 
       <!--
@@ -118,22 +128,34 @@
   <main id="main">
     <!--
       【Hero / First View / Above the Fold】
-      Heroはページを開いて最初に目に入る領域です。First View / Above the Foldとも呼ばれます。
+      Heroは主役となる導入セクション。First View / Above the Foldはスクロール前に見える範囲で、端末の高さによりHero全体とは一致しません。
       このサイトでは「活動主体名」と「何をする活動か」を30秒以内に伝える場所です。
+      v1.1では正式な縦ロゴを視覚上の主役にし、HTML上のページ主題はh1として別に保持しています。
       写真・動画・CTAボタン・新しい肩書きを足す場合は、このsection内と .hero 系CSSを編集します。
     -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="container hero__layout">
         <div class="hero__content">
-          <p class="eyebrow"><span>01</span> Independent Laboratory / Research Studio</p>
-          <!-- サイト名変更箇所: ファーストビューの正式名称です。 -->
-          <h1 id="hero-title">
-            <span class="hero__title-jp">ティーラボラトリー北海道</span>
-            <span class="hero__title-en">TEA LABORATORY HOKKAIDO</span>
-          </h1>
+          <p class="eyebrow"><span>01</span> INDEPENDENT LABORATORY / RESEARCH STUDIO</p>
+          <!--
+            【Semantic HTMLとVisual Identityの分離 / Visually Hidden】
+            視覚上の社名は下のlogo-vertical.svgが担当しますが、HTML上のページ主題としてh1は残します。
+            visually-hiddenは現在このh1で使用中です。視覚上だけ隠して、見出し構造を支援技術に残すAccessibilityパターンです。
+            画像側はalt="" aria-hidden="true"なので、スクリーンリーダーに「ティーラボラトリー北海道」を二重読み上げさせません。
+            注意: h1を削除したりdisplay:noneへ変えたりせず、hero-titleとsectionのaria-labelledbyの対応を保ちます。
+          -->
+          <h1 id="hero-title" class="visually-hidden">ティーラボラトリー北海道</h1>
+          <!--
+            【Asset Variant / Responsive SVG / Intrinsic Aspect Ratio】
+            Heroは主ブランド表示なので、縦組みvariantの logo-vertical.svg を使います。
+            viewBoxは絵の内部座標、CSSのinline-sizeはブラウザ上の表示幅です。block-size:autoが固有の縦横比を保ちます。
+            表示を小さくしたいだけならCSSを調整します。viewBoxやpathを編集すると、絵の余白・形状まで変わってしまいます。
+            魔改造するきっかけ: Heroだけ横ロゴへ変えたい、ロゴサイズを変えたい、新しいdark背景用variantを使いたい場合は、このsrcと.hero-brand__logoを編集します。
+          -->
+          <img class="hero-brand__logo" src="assets/brand/logo-vertical.svg" alt="" aria-hidden="true">
           <p class="hero__lead">
-            北海道の素材、茶、食品を、<br>
-            実験と実装の対象として考える。
+            北海道を基盤に、<br>
+            食・技術・実装を横断する。
           </p>
         </div>
 
@@ -142,6 +164,7 @@
           asideは本文を補足する関連情報です。ここでは標本ラベルのような識別情報として使っています。
           dl(description list)は用語と説明のリスト、dtは項目名、ddは内容です。BASE=Hokkaidoのような対応関係に向いています。
           aria-labelは見出しがないasideに「活動の識別情報」という名前を与えます。
+          事業領域が増えたら、FIELDSやMETHODのddを更新します。項目を増やす場合はdt/ddのセットを追加します。
         -->
         <aside class="field-label" aria-label="活動の識別情報">
           <p class="field-label__code">TLH / 2026</p>
@@ -152,7 +175,11 @@
             </div>
             <div>
               <dt>FIELDS</dt>
-              <dd>Tea, Food, Research, Prototype</dd>
+              <dd>Food, Equipment, Software, Research</dd>
+            </div>
+            <div>
+              <dt>METHOD</dt>
+              <dd>Research, Prototype, Implementation</dd>
             </div>
             <div>
               <dt>STATUS</dt>
@@ -165,8 +192,9 @@
 
     <!--
       【section / aria-labelledby】
-      sectionは章や区切りを表すSemantic HTMLです。aria-labelledbyで、このsectionの名前がh2であることを明示しています。
-      セクションを増やすときも、id・aria-labelledby・h2 idを対応させると構造が保ちやすくなります。
+      sectionは主題のある章を表すSemantic HTMLです。class="section"は共通スタイル、id="about"はページ内固有の住所です。
+      href="#about"はsectionへ移動し、aria-labelledby="about-title"はh2のidを参照して章のAccessible Nameを決めます。
+      idはページ内で一意にします。章をコピーするときはsectionとh2のidをそれぞれ更新し、リンクとARIAの参照も合わせます。
     -->
     <section class="section" id="about" aria-labelledby="about-title">
       <div class="container section__grid">
@@ -177,7 +205,7 @@
         <div class="section__body">
           <!-- About文章: 活動内容が変わったら、この段落を中心に更新してください。 -->
           <p>
-            ティーラボラトリー北海道は、北海道を基盤に、茶・食品・地域資源を対象とした調査、試作、商品開発、実験を行う活動です。食品科学、文化、デザイン、技術など複数の領域を横断しながら、調べ、作り、検証することを重視しています。
+            ティーラボラトリー北海道は、北海道を基盤に、食品・飲料の商品開発、機器開発、飲食店向けソフトウェア開発、地域資源の調査などを行う独立した研究・制作活動です。食品科学、工学、デザイン、ソフトウェアなど複数の領域を横断し、現場の問題を調べ、試作し、実装し、検証することを重視しています。
           </p>
         </div>
       </div>
@@ -186,8 +214,10 @@
     <!--
       【Activities / Component】
       activity-listはカード全体の並び、article.activity-cardは1つの活動項目です。
-      HTMLは「活動項目が4つある」という内容と構造を担当し、CSSは「2列カードに見せる」という見た目を担当します。
-      活動を増やす場合は article.activity-card をコピーし、A-05、見出し、説明文を変更します。
+      HTMLは「活動項目が6つある」という内容と構造を担当し、CSSは「2列カードに見せる」という見た目を担当します。
+      活動を8項目へ増やす場合は article.activity-card をコピーし、番号、見出し、説明文を変更します。
+      Componentとして同じclassを再利用するため、カードごとのCSSは不要です。820px以下ではCSSが1列へ上書きします。
+      注意: articleをactivity-listの外へ置くとGridの対象から外れます。長い名称を追加したら狭い幅で折返しも確認します。
     -->
     <section class="section section--ruled" id="activities" aria-labelledby="activities-title">
       <div class="container section__grid">
@@ -200,23 +230,33 @@
           <div class="activity-list">
             <article class="activity-card">
               <p class="activity-card__code">A-01</p>
-              <h3>TEA &amp; FOOD SCIENCE</h3>
-              <p>茶・食品に関する調査と実験</p>
+              <h3>FOOD &amp; BEVERAGE R&amp;D</h3>
+              <p>茶、食品、飲料に関する調査、処方設計、試作、官能評価。</p>
             </article>
             <article class="activity-card">
               <p class="activity-card__code">A-02</p>
               <h3>PRODUCT DEVELOPMENT</h3>
-              <p>飲料・食品の商品企画と試作</p>
+              <p>飲料・食品の商品企画、レシピ開発、店舗への実装。</p>
             </article>
             <article class="activity-card">
               <p class="activity-card__code">A-03</p>
-              <h3>HOKKAIDO RESEARCH</h3>
-              <p>北海道の食・地域資源・文化の調査</p>
+              <h3>EQUIPMENT DEVELOPMENT</h3>
+              <p>飲食店向け機器、治具、工程改善、プロトタイプの設計・開発。</p>
             </article>
             <article class="activity-card">
               <p class="activity-card__code">A-04</p>
-              <h3>PROTOTYPING</h3>
-              <p>アイデアを実際に制作し検証するプロトタイピング</p>
+              <h3>SOFTWARE DEVELOPMENT</h3>
+              <p>飲食店向け業務ソフトウェア、店舗オペレーション支援ツール、UIの開発。</p>
+            </article>
+            <article class="activity-card">
+              <p class="activity-card__code">A-05</p>
+              <h3>HOKKAIDO RESEARCH</h3>
+              <p>北海道の食品、地域資源、文化、産業に関する調査。</p>
+            </article>
+            <article class="activity-card">
+              <p class="activity-card__code">A-06</p>
+              <h3>DESIGN &amp; PROTOTYPING</h3>
+              <p>グラフィック、UI/UX、試作、検証を通じた実装。</p>
             </article>
           </div>
         </div>
@@ -252,6 +292,7 @@
       【Contact / 将来拡張】
       現在は連絡先未設定のplaceholderです。メールアドレスを推測して作らず、確定後に差し替えます。
       将来は mailto:、問い合わせフォーム、SNS、Googleフォーム等に発展できますが、外部サービスを入れる場合はプライバシー表示も検討します。
+      HTMLのformは入力欄と送信先を表せますが、受信・保存の処理は別途必要です。GitHub Pagesだけで問い合わせを保存する機能はありません。
     -->
     <section class="section section--contact" id="contact" aria-labelledby="contact-title">
       <div class="container section__grid">
