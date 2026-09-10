@@ -496,18 +496,57 @@ h1 {
 }
 
 /*
-  【Updates / Third-party Embedの外枠】
-  X公式Widgetのiframe内部は外部文書なので、このCSSが管理するのは配置用の親幅までです。
-  min()で親より広がらず最大520pxに抑え、補助的な更新ログが本文全体を支配しないようにします。
-  min-inline-size:0はGrid item内で必要に応じて縮む許可です。高さはHTMLの公式data-heightで指定します。
+  【Updates / Static Content / Component】
+  updates-listは自サイトで管理する時系列ログの親、update-entryは単独でも意味が成立する1件の活動記録です。
+  外部Widgetと違い、本文は同じHTMLにあるため、Xが利用できなくても記録自体は表示されます。
+  区切り線だけで静かなログを作り、個別カードの面や新色は増やしません。
 */
-.updates-embed {
-  inline-size: min(100%, 520px);
+.updates-list {
+  border-bottom: 1px solid var(--color-line);
+}
+
+.updates-placeholder {
+  margin: 0;
+  border-top: 1px solid var(--color-line);
+  padding: var(--space-lg) 0;
+  color: var(--color-muted);
+}
+
+/*
+  【Grid / 日付列と本文列】
+  日付と本文という2つの役割を列として揃えるため、二次元配置を扱うGridを使います。
+  左列は7rem以上、右列は残りの1frです。右列の最小値0は、長い見出しやURLでGrid全体が横へ広がるのを抑えます。
+  活動記録の並びはHTMLのarticle順で決まり、460px以下では1列へ上書きします。
+*/
+.update-entry {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.28fr) minmax(0, 1fr);
+  gap: var(--space-lg);
+  border-top: 1px solid var(--color-line);
+  padding: var(--space-lg) 0;
+}
+
+.update-entry__date {
+  color: var(--color-point);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.update-entry__content {
   min-inline-size: 0;
 }
 
-.twitter-timeline {
-  display: inline-block;
+.update-entry__content h3 {
+  margin-bottom: var(--space-sm);
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.update-entry__content p {
+  color: var(--color-muted);
+}
+
+.update-entry__link {
   color: var(--color-brand);
   font-weight: 700;
 }
@@ -679,6 +718,12 @@ h1 {
   .contact-list > div {
     grid-template-columns: 1fr;
     gap: var(--space-xs);
+  }
+
+  /* 日付と本文を縦積みにし、長いタイトルや任意の外部リンクが横にはみ出す余地を減らします。 */
+  .update-entry {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
   }
 }
 

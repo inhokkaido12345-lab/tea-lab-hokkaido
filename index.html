@@ -288,15 +288,15 @@
     </section>
 
     <!--
-      【Updates / Third-party Embed / External Dependency】
-      Xの公開プロフィールを「現在の活動が動いていることを示す更新ログ」として置くsectionです。
-      twitter-timelineリンクは、外部のwidgets.jsが動くとタイムラインへ強化されます。X側の仕様変更・障害・終了により、
-      自サイトを変えていなくても表示が変わるExternal Dependencyです。最終的な表示には外部文書を隔離するiframeが使われることがあり、
-      自サイトのCSSから内部を自由に変更できません。外枠の幅は.updates-embed、内容のテーマと高さは公式data属性で調整します。
+      【Updates / Static Content / Source of Truth】
+      活動記録の本文を自サイトのHTMLで保持し、TEA LABORATORY HOKKAIDO公式サイトを一次情報源(Source of Truth)にします。
+      Xは任意の補助参照先です。Xリンクがない、またはリンク先が利用できない場合も、日付・タイトル・説明だけで記録が成立します。
+      これは外部プラットフォームをページ描画のDependency Graphから外し、障害のFailure Domainをリンク先へ限定する設計です。
 
-      【Progressive Enhancement / Graceful Degradation】
-      JavaScriptが動けば公開タイムライン、無効・遮断・失敗時は通常のXプロフィールリンク、という二段階です。
-      リンクを残したままscriptだけを外すとフォールバックだけに戻せます。アカウント変更時はhref・表示名・Contact側を一緒に更新します。
+      【Semantic HTML / ComponentとData】
+      実記録はarticle.update-entryを1件のComponentとし、time / h3 / pへ日付・タイトル・説明というDataを書きます。
+      timeのdatetimeは機械向けのYYYY-MM-DD、要素内は人間向けのYYYY.MM.DDです。表示だけ変えて両者を食い違わせないでください。
+      活動記録を追加するときは下のコメント内テンプレートをコピーし、最初の1件を公開する時点でupdates-placeholderを削除します。
     -->
     <section class="section section--ruled" id="updates" aria-labelledby="updates-title">
       <div class="container section__grid">
@@ -305,16 +305,23 @@
           <h2 id="updates-title">活動記録</h2>
         </div>
         <div class="section__body">
-          <div class="updates-embed">
-            <a
-              class="twitter-timeline"
-              href="https://x.com/InHokkaido12345"
-              aria-label="Posts by @InHokkaido12345 on X（新しいタブで開く）"
-              target="_blank"
-              rel="noopener noreferrer"
-              data-height="560"
-              data-theme="light"
-            >Posts by @InHokkaido12345</a>
+          <div class="updates-list">
+            <p class="updates-placeholder">活動記録は順次掲載します。</p>
+
+            <!--
+              活動記録追加テンプレート:
+              下のarticle全体をこのコメントの外へコピーし、実際の情報へ置き換えてください。
+              X投稿リンクはOptional Dataです。投稿がない記録ではa要素の行を追加しません。
+
+              <article class="update-entry">
+                <time class="update-entry__date" datetime="YYYY-MM-DD">YYYY.MM.DD</time>
+                <div class="update-entry__content">
+                  <h3>活動タイトル</h3>
+                  <p>活動の短い説明。</p>
+                  <a class="update-entry__link" href="X投稿URL" target="_blank" rel="noopener noreferrer">Xで記録を見る</a>
+                </div>
+              </article>
+            -->
           </div>
         </div>
       </div>
@@ -376,12 +383,5 @@
     </div>
   </footer>
 
-  <!--
-    【Third-party JavaScript / async】
-    X公式ウィジェットをページ全体で1回だけ読み込みます。asyncは外部ファイルの取得完了を待たずHTML解析を進め、
-    読み込みによる描画停止を減らします。ただし実行完了時刻やX側の応答は保証しないため、上の通常リンクを残します。
-    削除する場合はこのscriptだけでなく#updatesの目的も見直します。外部通信の説明はREADMEに記載しています。
-  -->
-  <script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>
 </body>
 </html>

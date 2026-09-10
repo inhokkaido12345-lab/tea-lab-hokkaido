@@ -2,7 +2,7 @@
 
 `tealabhokkaido.com` で公開するための、最小構成の静的サイトです。GitHub Pagesでそのまま配信できるよう、HTML、CSS、ドメイン設定用の `CNAME` を中心に構成しています。
 
-React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。X公式タイムラインの表示に限って外部の`widgets.js`を読み込みます。自作の`script.js`はありません。
+React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。現在はJavaScriptも使用しておらず、HTML、CSS、SVGだけで主要機能が成立します。`script.js`もありません。
 
 このREADMEはサイトの設計図と改造時の診断書です。コードにはその場所の設計理由を、ここには概念のつながり・公開までの流れ・故障の調べ方をまとめます。ロゴ原本の扱いは [ブランドアセットの説明](assets/brand/README.md) を参照してください。
 
@@ -25,7 +25,7 @@ v1.1は1ページ構成のブランド公式サイトです。
 - About: 活動概要
 - Activities: 現在の主な活動領域6項目
 - Information: 2026年8月以降、The TEAとは独立した活動であることの明示
-- Updates: X公式タイムラインによる活動更新。読み込めない場合はプロフィールリンクを表示
+- Updates: 公式サイト自身が管理する静的な活動記録。現在は掲載準備中のplaceholderを表示
 - Contact: 正式なEmailとXプロフィール
 - Footer: サイト名と著作権表記
 
@@ -43,13 +43,13 @@ v1.1は1ページ構成のブランド公式サイトです。
 
 | 種類 | 役割 | このサイトでの使い方 |
 | --- | --- | --- |
-| HTML | 情報と構造 | 見出し、本文、セクション、ナビゲーション、活動項目、Updatesのフォールバック、Contactを定義しています。 |
+| HTML | 情報と構造 | 見出し、本文、セクション、ナビゲーション、活動項目、静的なUpdates、Contactを定義しています。 |
 | CSS | 視覚表現とレイアウト | 色、余白、文字サイズ、Header/Hero/Grid、レスポンシブ表示を定義しています。 |
-| JavaScript | 動作・状態変化・インタラクション | X公式タイムラインを描画する外部`widgets.js`だけを使用しています。 |
+| JavaScript | 動作・状態変化・インタラクション | 現在は使用していません。将来、HTML/CSSだけでは表現できない明確な動作が必要になった時点で検討します。 |
 
 HTMLは「何が書かれているか」、CSSは「どう見せるか」、JavaScriptは「ユーザー操作や状態変化に応じて何を動かすか」を担当します。
 
-ページ本体はJavaScriptなしでも読めます。XウィジェットだけがProgressive Enhancementとして加わり、動かなければ通常リンクへGraceful Degradationします。サイト独自の動作・状態管理はないため、自作JavaScriptやFrameworkは追加していません。
+現在はサイト独自の動作・状態管理も外部Widgetもないため、JavaScriptやFrameworkを追加していません。機能が不要な段階で依存を増やさないことは、読み込み・故障診断・将来の編集を単純に保つ設計判断です。
 
 ### 現在の設計
 
@@ -61,8 +61,7 @@ HTMLは「何が書かれているか」、CSSは「どう見せるか」、Java
 ブラウザ
 ↓
 index.htmlを読む
-├─ style.cssとロゴSVGを読む
-└─ widgets.jsを非同期に読む（成功時だけXタイムラインを強化）
+└─ style.cssとロゴSVGを読む
 ↓
 画面へ描画する
 ```
@@ -77,23 +76,64 @@ index.htmlを読む
 
 HTMLの`form`は入力欄や送信先を定義できますが、送られた情報を受け取り保存する処理は別です。現在のContactは`mailto:`とXへのリンクであり、Webサイト内に受信・保存処理はありません。GitHub Pagesは任意のサーバー処理をこのHTML内で実行する場所ではないため、フォームを作る段階でBackendや外部サービスを選びます。
 
-Dynamic SearchもHTML/CSSだけでは実現しません。小さな静的データをブラウザ内で検索するならJavaScriptで対応でき、常に変わる大きなデータを検索するならAPI等が候補です。Static SiteだからJavaScriptが禁止なのではなく、必要な部分だけ追加できます。現在の例がX公式ウィジェットです。
+Dynamic SearchもHTML/CSSだけでは実現しません。小さな静的データをブラウザ内で検索するならJavaScriptで対応でき、常に変わる大きなデータを検索するならAPI等が候補です。Static SiteだからJavaScriptが禁止なのではなく、必要性が生じた部分だけ追加する方針です。
 
-### 外部サービス埋め込み
+### Updatesの設計
 
-UpdatesはX公式のEmbedded Timelineです。`<a class="twitter-timeline">`という通常リンクをHTMLへ置き、`https://platform.x.com/widgets.js`を`async`で1回読み込みます。スクリプトが動くと、Xの公開プロフィールタイムラインが外部コンテンツとして表示されます。X公式は公開ポストを持つプロフィールの埋め込みに対応し、高さとLight / Dark Themeを設定できると案内しています。[Xヘルプ: タイムラインを埋め込む方法](https://help.x.com/ja/using-x/embed-x-feed)
+当初はXのEmbedded Timelineを利用しましたが、外部サービスの応答不安定やHTTP 429が観測されたため、活動記録を自サイト管理のStatic Contentへ変更しました。これは「埋め込みを消した」だけではなく、外部依存を減らし、公式記録の所有場所を明確にした設計判断です。
 
-この追加により、以前の純粋なローカルHTML/CSS/SVGだけの構成から、XというExternal Dependencyが1つ増えました。閲覧時にブラウザはXの外部リソースへ通信します。Xは、埋め込みを含むX for WebsitesでページURL、IPアドレス、ブラウザ・OS・Cookie情報等を受け取る場合があると説明しています。具体的な扱いはXの現行ポリシーを確認します。[Xヘルプ: X for Websites](https://help.x.com/en/x-for-websites-ads-info-and-privacy)
+#### Source of TruthとContent Ownership
 
-| 概念 | このサイトでの実例 | 壊れ方・判断点 |
-| --- | --- | --- |
-| Third-party Embed | 自サイトのHTMLからXのJavaScriptを読み、Xのコンテンツを描画 | X側の仕様変更・障害・サービス終了で、自サイトを変更していなくても表示が変わり得ます。 |
-| Progressive Enhancement | 通常リンクへJavaScriptでタイムライン機能を加える | ウィジェットを前提にContactや重要情報を置かないこと。 |
-| Graceful Degradation / Fallback | JavaScript無効・遮断・通信失敗時もプロフィールリンクが残る | anchorを消すとフォールバックも失われます。 |
-| `async` | 外部scriptの取得完了を待たず、HTML解析を進められる | 実行時刻や成功順を前提にした自作処理は置いていません。 |
-| `iframe` | 外部コンテンツを分離された文書としてページ内へ表示する仕組み | 自サイトCSSから内部pathやポストの見た目を自由に変更できません。公式data属性を使います。 |
+Source of Truth / Single Source of Truthは、「どの情報を正として扱うか」を定める考え方です。このサイトでは活動記録の本文をTEA LABORATORY HOKKAIDO公式サイトのHTMLへ置き、ここを一次情報源とします。Xは告知、拡散、短文投稿、補足記録の場であり、個別投稿へのリンクはOptional Dataです。
 
-`data-height="560"`はタイムラインの高さ、`data-theme="light"`は公式Light Themeです。外枠の最大幅は`.updates-embed`の520pxで管理します。X以外にYouTube、Google Maps、Instagram、Google Forms等を追加するときも、外部通信、表示速度、障害時の代替リンク、サービス側の仕様・プライバシー情報を確認します。必要な法的対応はサイトの運営条件や利用サービスで変わるため、このREADMEでは技術構造までを説明します。
+Content Ownershipの観点では、自サイトに置くことでURL、HTML、情報構造、見せ方を自分で管理できます。外部SNSだけに記録を置くと、サービス障害、API・埋め込み仕様の変更、アカウント制限、サービス終了の影響を直接受けます。Xが利用できない場合でも、公式サイト内の日付・タイトル・説明は残る設計です。
+
+#### Platform DependencyとPOSSE
+
+Vendor Lock-in / Platform Dependencyは、特定事業者のWidgetやAPIに依存し、その仕様変更が自サイトの機能変更になってしまう状態です。プロフィール埋め込みからStatic Updatesへ変えたことで、ページ表示時のExternal Dependencyを減らしました。
+
+POSSEは`Publish (on your) Own Site, Syndicate Elsewhere`の略で、まず自分のサイトへ公開し、その内容をSNSなどへ展開するWeb Publishingの考え方です。現在は自動投稿やAPI連携を実装していませんが、`TLH公式サイト = Own Site`、`X = Elsewhere`という役割分担はこの思想に近いものです。
+
+```text
+旧Dependency Graph
+Browser
+├─ TLH HTML/CSS
+└─ Xの外部Widget
+   └─ X servers
+
+新Dependency Graph
+Browser
+└─ TLH HTML/CSS/SVG
+
+必要なときだけ
+User clicks X link
+└─ X
+```
+
+Reliabilityは期待どおり動き続ける度合い、Availabilityは利用可能な時間・状態の度合いです。旧構成ではXが429、500、timeout等を返すとUpdates表示へ影響しました。新構成はGitHub PagesがHTMLを配信できる限り活動記録も同じページ内へ表示されます。依存先が増えるほど故障点も増えるため、主要情報を同じFailure Domainへまとめ、X障害の影響をリンク先だけへ局所化しています。
+
+#### Static ContentとComponent / Data
+
+Static ContentとしてHTMLへ直接記録する長所は、外部APIとJavaScriptが不要、読み込みが安定、Gitで履歴管理できる、GitHub Pagesと相性がよい、検索・保存しやすいことです。短所は、追加のたびにHTML編集が必要で、投稿管理画面がなく、大量になると管理負荷が増えることです。
+
+`article.update-entry`は活動記録1件のComponentです。構造と見た目がComponent、日付・タイトル・説明・URLがDataです。現在は両方をHTML内に持つ最小構成ですが、件数が増えたらDataだけをJSONやMarkdownへ分離し、Templateから生成するStatic Site GeneratorまたはCMSへ発展できます。XリンクはOptional Dataなので、投稿がない記録では`a`を省略しても記事が成立します。
+
+`<time datetime="2026-09-10">2026.09.10</time>`はHTML time elementの例です。画面には人が読みやすい表記を出し、`datetime`には機械が解釈しやすいISO形式を置けます。存在しない日付をtemplateのまま公開せず、実際の日付へ両方を更新します。
+
+件数に応じた発展の目安は次のとおりです。現時点ではPhase 1を維持し、過剰設計しません。
+
+| 段階 | 管理方法 |
+| --- | --- |
+| Phase 1 | HTMLへ`article.update-entry`を直接追加 |
+| Phase 2 | 年ごとのarchive HTMLへ分割 |
+| Phase 3 | Markdown / JSONへDataを分離 |
+| Phase 4 | Static Site GeneratorまたはCMSを導入 |
+
+将来はRSS / Atom Feedも候補です。SNSのアルゴリズムに依存せず、サイト側から更新情報を配信できますが、今回は`feed.xml`や自動生成処理を実装していません。
+
+#### Progressive Enhancementとの違い
+
+Progressive Enhancementは最低限のHTMLを基礎にCSSやJavaScriptで体験を強化する考え方、Graceful Degradationは高機能版が失敗しても最低限利用可能な状態へ劣化させる考え方です。現在のUpdatesはさらに依存を減らし、主要情報を最初から静的HTMLに置いています。Xへの任意リンクが利用不能でも本文は読めるため、外部リンクに依存しない情報設計です。
 
 ### GitHub Pages
 
@@ -170,10 +210,14 @@ Information Architectureは、読む人が知りたいことへ順番にたど�
 | About | 何をする活動で、どう取り組むか。 |
 | Activities | どの領域を扱うか。能力・活動範囲を具体化します。 |
 | Information | The TEAとの関係は何か。誤認防止のため本文中に明示します。 |
-| Updates | 現在も活動しているか。Xを更新ログとして補助的に表示します。 |
+| Updates | 実際に何をしているか。公式サイトが保有する時系列の活動記録です。 |
 | Contact | どう連絡するか。EmailとXプロフィールを示します。 |
 
-現在の流れは`Identity → Capability → Relationship / Context → Current Activity → Contact`です。将来Works / Projectsを追加すると、`Identity → Capability → Evidence → Current Activity → Contact`へ発展できます。Informationの独立表記は引き続き見つけやすい位置に残し、Evidenceには実際に公開できる成果だけを載せます。
+現在の流れは`Identity → Capability → Context → Evidence → Contact`です。Hero/AboutがIdentity、ActivitiesがCapability、InformationがContext、UpdatesがEvidence、Contactが接点を担当します。Informationの独立表記は引き続き見つけやすい位置に残し、Evidenceには実際に公開できる活動だけを載せます。
+
+Activitiesは「こういう領域を扱う」というCapability、Updatesは「実際にこれを行った」というEvidenceです。Capabilityだけでは自己申告に留まるため、今後、検証可能なEvidenceを少しずつ蓄積することに価値があります。ただし、公開できない活動や架空の実績を数合わせで追加しません。
+
+将来Worksを設ける場合、Updatesは小さな活動・進捗・ニュースを時系列で並べる日誌、Worksは選別した代表実績・完成物・ケーススタディを見せるポートフォリオとして分けます。現在はUpdatesだけを実装し、Worksは将来候補です。
 
 ### Class / id / BEM風命名
 
@@ -387,11 +431,19 @@ Activitiesは `div.activity-list` の中に `article.activity-card` を並べる
 | 見出し階層を整理する | `index.html` の `h1` / `h2` / `h3` | Semantic HTML / Accessibility |
 | ナビ項目を増やす | `index.html` の `nav` と対応する `section id` | Fragment Link / id / href |
 | メールアドレスを変更する | `index.html` の`#contact`にある表示文字と`mailto:` | URI Scheme / Contact Information |
-| Xアカウントを変更する | `#updates`のhref・表示名と`#contact`のXリンク | External Link / Third-party Embed |
-| Xタイムラインの高さを変える | `.twitter-timeline`の`data-height` | Embedded Widget / Data Attribute |
-| X埋め込みを削除する | `#updates`と末尾の`widgets.js`読み込み | External Dependency / Information Architecture |
+| Xアカウントを変更する | `#contact`のXリンクと、該当する活動記録の任意リンク | External Link / Content Audit |
+| 活動記録を1件追加する | `#updates`の`.updates-list` | `article` / Component / Static Content |
+| 活動日を変更する | `.update-entry__date`の表示と`datetime` | Semantic HTML / HTML time element |
+| X投稿リンクを追加する | 該当`.update-entry`内の`a` | External Link / Optional Data |
+| X投稿リンクを削除する | 該当`.update-entry`内の`a`だけ | Optional Data / Content Ownership |
+| 活動記録の並びを変更する | `.updates-list`内の`article`順 | Source Order / Chronological Log |
+| 日付列の幅を変更する | `style.css`の`.update-entry` | CSS Grid / `minmax()` / `fr` |
+| スマホのUpdatesを変更する | 460px以下の`.update-entry` | Responsive Design / Breakpoint |
+| UpdatesをWorksへ分離する | 新しいsectionまたは新規HTML | Information Architecture / Evidence |
+| 100件以上を管理する | UpdatesのData管理方式 | JSON / Markdown / SSG / CMS |
+| X埋め込みを再導入する | 原則非推奨。目的と障害時の影響から再検討 | External Dependency / Vendor Lock-in |
 | X以外のSNSを追加する | Contactまたは新しいsection | External Link / Information Architecture |
-| 外部scriptを確認する | `index.html`末尾の`script` | Third-party JavaScript / async |
+| RSSを将来追加する | `feed.xml`または将来の生成処理 | RSS / Atom / Syndication |
 | 深い階層へページを増やす | 新規HTMLの`src` / `href`とCSSの`url()` | Relative URL / Multi-page Static Site |
 | 縦書き・RTLへ対応する | Logical Propertiesと残っている物理方向の指定 | writing-mode / direction / Internationalization |
 | CSSが効かない理由を調べる | DevToolsのStyles / Computed | Cascade / Specificity / Source Order |
@@ -439,9 +491,12 @@ Networkの`Disable cache`は通常DevToolsを開いている間の診断に使�
 | h1が見えない | `.visually-hidden` | 現在は意図した動作。削除やdisplay:noneにせず、支援技術に残る見出しかを確認。 |
 | フォームの内容が届かない | Contact / formの送信先 | 入力画面と受信・保存処理は別。現在はフォーム自体を実装していません。 |
 | メールリンクで何も起きない | `mailto:` / OS・ブラウザの既定メールアプリ | Webサイトが直接送信する機能ではありません。hrefの綴りと端末設定を切り分けます。 |
-| Xリンク先が違う | `#updates`と`#contact`のhref | 同じアカウント情報が2箇所にあるため、表示名も含めて照合します。 |
-| Xタイムラインが出ない | `twitter-timeline` / `widgets.js` / Network | 通常リンクが残るかを確認し、外部scriptの遮断・失敗やX側の状態を調べます。サイト本体の故障とは限りません。 |
-| Xタイムラインが大きすぎる | `data-height` / `.updates-embed` | 高さは公式data属性、外側の最大幅はCSSで管理します。iframe内部へCSS hackを加えません。 |
+| Xリンク先が違う | `#contact`または該当`.update-entry`の`href` | プロフィールリンクと個別投稿リンクを区別し、実URLと表示名を照合します。 |
+| 活動記録が出ない | `index.html`の`#updates` / `.update-entry` | templateがHTMLコメント内のままでは表示されません。実データを入れたarticleがコメント外にあるか確認します。 |
+| 活動記録のXリンクだけ開かない | 該当`a`の`href` | placeholder URLのままではないか、実際の投稿URLかを確認します。本文表示とは別の故障です。 |
+| 日付と本文がずれる | `style.css`の`.update-entry` | Gridの列定義、gap、子要素のclassを確認します。 |
+| スマホでUpdatesが横にはみ出す | 460px以下の`@media` / `min-inline-size` / Grid | 1列への上書きが効くか、長いURLや固定幅が追加されていないかを確認します。 |
+| 削除したX Widgetの空白が残る | 旧埋め込み用wrapperやCSS | 現在のコードには専用wrapperを置きません。公開先が古い場合はPages deployとcacheも確認します。 |
 
 ## 教材として学ぶ順序
 
@@ -449,7 +504,7 @@ Networkの`Disable cache`は通常DevToolsを開いている間の診断に使�
 2. classとidを手がかりに`style.css`を検索し、`:root`から部品へのvar()参照を追う。
 3. DevToolsで1つの値を試し、min() / clamp() / Grid / min-sizeが実サイズにどう効くかを見る。
 4. 820px / 460pxの前後を試し、StylesとComputedで上書きを確かめる。
-5. UpdatesをJavaScript無効または通信遮断の条件でも確認し、FallbackとExternal Dependencyの境界を見る。
+5. Updatesのコメント内templateを読み、ComponentとData、必須項目とOptional Dataの境界を見る。
 6. ブランドアセットの説明を読み、SVG原本とCSSの表示サイズ、h1と画像の意味分担を理解する。
 7. ファイル保存 → commit → GitHubへの反映 → Pages deploy → cacheの順を確認し、小さな変更を1つずつ履歴に残す。
 
@@ -536,15 +591,25 @@ IPv6も使う場合:
 
 ### Contact
 
-`index.html`の`id="contact"`にある`contact-list`を編集します。メールアドレスは画面上の文字と`href="mailto:..."`をセットで変更し、Xは`href`と表示中のハンドルをセットで変更します。Xアカウントを変える場合は`id="updates"`のタイムラインリンクも同時に更新してください。
+`index.html`の`id="contact"`にある`contact-list`を編集します。メールアドレスは画面上の文字と`href="mailto:..."`をセットで変更し、Xは`href`と表示中のハンドルをセットで変更します。既存の活動記録に同じアカウントの個別投稿リンクがある場合は、必要に応じて別途監査します。
 
 `mailto:`はメール作成を要求するURI Schemeです。端末の既定メールアプリに依存し、サイトから直接送信する処理ではありません。問い合わせフォームに変える場合は、HTMLの入力欄とは別に受信・保存先を用意します。
 
-### Updates / X埋め込み
+### Updates / 活動記録
 
-`index.html`の`id="updates"`にある`.twitter-timeline`がプロフィールURL、表示名、`data-height`、`data-theme`を持ちます。外枠幅は`style.css`の`.updates-embed`です。
+活動記録を1件追加する手順は次のとおりです。
 
-X埋め込みを完全に削除する場合は、`#updates`セクション、Headerの`href="#updates"`、body末尾にある`https://platform.x.com/widgets.js`のscriptをセットで整理します。Contactの通常Xリンクを残すかはInformation Architectureとして別に判断できます。scriptは現在1回だけ読み込みます。
+1. `index.html`の`id="updates"`へ移動し、`.updates-list`内の「活動記録追加テンプレート」をコピーする。
+2. コピーした`article.update-entry`をHTMLコメントの外へ置く。
+3. 最初の1件を公開する場合は、`p.updates-placeholder`を削除する。
+4. `time`の画面表示を実際の日付にし、`datetime`を`YYYY-MM-DD`形式にする。
+5. `h3`へ活動タイトル、`p`へ短い説明を入れる。
+6. 実在するX投稿を補足参照させる場合だけリンクを残し、正しいURLへ変更する。投稿がなければ`a`を削除する。
+7. 架空情報やtemplateの`YYYY`、仮URLが残っていないことを確認し、DesktopとMobileで表示する。
+
+新しい記録は原則として新しい順に並べます。並びはHTMLのSource Orderそのものであり、CSSは日付順へ自動整列しません。日付列と本文列の見た目は`style.css`の`.update-entry`、スマートフォンの1列化は460px以下のMedia Queryで管理しています。
+
+10件程度なら直接追加、50件前後では年別archive、100件以上ではMarkdown / JSONへのData分離やStatic Site Generator / CMSを検討します。ただし、件数だけを理由に直ちに道具を増やさず、更新頻度と作業負荷を見て移行します。
 
 ### 配色・フォント・余白
 
