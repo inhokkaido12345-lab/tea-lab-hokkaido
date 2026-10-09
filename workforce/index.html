@@ -80,7 +80,7 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D2 (2026-10-09)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D3 (2026-10-09)</p>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -89,13 +89,14 @@
       <ol class="steps">
         <li>GitHub Pages</li>
         <li>LIFF初期化</li>
+        <li>ID token取得（値は非表示）</li>
       </ol>
     </section>
   </main>
 
   <script>
     /**
-     * TLH Workforce / LIFF 診断画面 D2。
+     * TLH Workforce / LIFF 診断画面 D3。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
@@ -103,13 +104,13 @@
      *    を別々の段階として表示する。
      *  - Promiseが応答しないときも有限時間で診断結果を表示する。
      *
-     * 本画面は本人確認・打刻・給与処理をまだ行わない。
+     * 本画面はLINE ID tokenの有無だけ確認し、本人確認・打刻・給与処理はまだ行わない。
      * ID token、URLのquery/hash、LINE userIdをログ/画面へ出さない。
      */
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D2 (2026-10-09)';
+    const DIAGNOSTIC_VERSION = 'D3 (2026-10-09)';
     const INIT_TIMEOUT_MS = 15000;
 
     const titleElement = document.getElementById('status-title');
@@ -178,7 +179,7 @@
 
     async function start() {
       setStatus(
-        '診断 1/3 — JavaScriptが起動しました',
+        '診断 1/4 — JavaScriptが起動しました',
         '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
         'ページ: ' + getSafePagePath() + '\n' +
         'LIFF SDKを検査しています。',
@@ -193,7 +194,7 @@
         }
 
         setStatus(
-          '診断 2/3 — LIFF SDKを検出しました',
+          '診断 2/4 — LIFF SDKを検出しました',
           '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
           'ページ: ' + getSafePagePath() + '\n' +
           'liff.init() の完了を最大15秒待っています。',
@@ -202,18 +203,62 @@
 
         await initializeLiffWithTimeout();
 
+        const initDurationMs = Date.now() - startedAt;
+
+        setStatus(
+          '診断 3/4 — LIFF初期化に成功しました',
+          '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
+          'LINEアプリ内: ' + String(liff.isInClient()) + '\n' +
+          'LINEログイン済み: ' + String(liff.isLoggedIn()) + '\n' +
+          'ID tokenの取得可否を検査しています。',
+          false
+        );
+
+        /**
+         * LIFF公式APIから raw ID token を取得する。
+         *
+         * この段階ではtokenの存在だけを確認する。
+         * 値・一部文字列・長さ・JWT payloadを画面にもconsoleにも出さず、
+         * localStorage等へ保存せず、サーバーへ送信しない。
+         *
+         * raw tokenは次段階で安全なPOST経路が確立した後にのみ、
+         * GAS serverへ送り、LINEの検証APIで検証する予定。
+         *
+         * "openid" scopeが未許可だとnull相当になる。
+         * LIFFログイン成功だけでは本人認証完了とは見なさない。
+         */
+        if (!liff.isLoggedIn()) {
+          const error = new Error('LINEへログインしていません。');
+          error.code = 'LINE_NOT_LOGGED_IN';
+          throw error;
+        }
+
+        const idToken = liff.getIDToken();
+
+        if (typeof idToken !== 'string' || idToken.length === 0) {
+          const error = new Error(
+            'LINE ID tokenを取得できません。LINE Developers側のopenid権限を確認してください。'
+          );
+          error.code = 'ID_TOKEN_MISSING';
+          throw error;
+        }
+
+        // tokenはこの関数のローカル変数のまま捨てる。
+        // 画面へ出すのは「取得できた」という事実だけ。
         const lines = [
           '診断版: ' + DIAGNOSTIC_VERSION,
           'liff.init: 成功',
           'LINEアプリ内: ' + String(liff.isInClient()),
           'LINEログイン済み: ' + String(liff.isLoggedIn()),
+          'LINE ID token取得: 成功（token値は非表示）',
+          'GAS側の本人確認: 未実施',
           'LIFF SDK: ' + String(liff.getVersion ? liff.getVersion() : 'unknown'),
           'OS: ' + String(liff.getOS ? liff.getOS() : 'unknown'),
-          '初期化所要時間: ' + String(Date.now() - startedAt) + 'ms',
+          '初期化所要時間: ' + String(initDurationMs) + 'ms',
         ];
 
         setStatus(
-          '診断 3/3 — LIFF初期化に成功しました',
+          '診断 4/4 — LINE ID tokenの取得に成功しました',
           lines.join('\n'),
           false
         );
