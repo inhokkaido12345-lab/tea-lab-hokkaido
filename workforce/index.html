@@ -84,11 +84,10 @@
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
-      <div id="status-detail" class="detail">LIFF設定を取得しています。</div>
+      <div id="status-detail" class="detail">LIFFを初期化しています。</div>
 
       <ol class="steps">
         <li>GitHub Pages</li>
-        <li>GAS 公開設定</li>
         <li>LIFF初期化</li>
       </ol>
     </section>
@@ -96,110 +95,29 @@
 
   <script>
     /**
-     * 現在のGAS backend Web App。
+     * LINE MINI App の本番用 LIFF ID。
      *
-     * Web App URL自体は公開URLでありsecretではない。
-     * ここにはChannel SecretやOAuth tokenを置かない。
+     * LIFF IDは秘密情報ではない。
+     * 実際のLIFF URL自体にも含まれる公開識別子なので、
+     * smoke testではGASから毎回取得せず、この静的frontendへ直接置く。
+     *
+     * これにより:
+     * GitHub Pages -> GAS publicConfig -> LIFF
+     *
+     * という余計な依存をなくし、
+     * GitHub Pages -> LIFF
+     *
+     * の最小経路だけを検証できる。
+     *
+     * Channel Secret / access token / ID token等の秘密値は
+     * 絶対にこのHTMLへ置かない。
      */
-    const GAS_BACKEND_URL =
-      'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
-
-    const titleElement = document.getElementById('status-title');
-    const detailElement = document.getElementById('status-detail');
-
-    function setStatus(title, detail, isError) {
-      titleElement.textContent = title;
-      detailElement.textContent = detail || '';
-      detailElement.className = isError ? 'detail error' : 'detail';
-    }
-
-    /**
-     * GASから公開LIFF IDだけをJSONPで取得する。
-     *
-     * なぜfetchではないか:
-     * Apps Script ContentServiceは別originのbrowser fetchで
-     * CORS/redirect制約に当たりやすい。
-     *
-     * なぜJSONPを使ってよいか:
-     * 取得するのは公開識別子のLIFF IDだけだから。
-     *
-     * 重要:
-     * ID token・LINE userId・勤怠・給与等をJSONP/URLへ載せてはいけない。
-     */
-    function loadPublicConfig() {
-      return new Promise(function(resolve, reject) {
-        const callbackName =
-          '__tlhPublicConfig_' +
-          Date.now() +
-          '_' +
-          Math.floor(Math.random() * 1000000);
-
-        const script = document.createElement('script');
-        let finished = false;
-
-        function cleanup() {
-          delete window[callbackName];
-          script.remove();
-        }
-
-        const timeoutId = window.setTimeout(function() {
-          if (finished) return;
-          finished = true;
-          cleanup();
-          reject(new Error('GAS公開設定の取得がタイムアウトしました。'));
-        }, 12000);
-
-        window[callbackName] = function(payload) {
-          if (finished) return;
-          finished = true;
-          window.clearTimeout(timeoutId);
-          cleanup();
-
-          if (!payload || !payload.ok) {
-            const message =
-              payload &&
-              payload.error &&
-              payload.error.message
-                ? String(payload.error.message)
-                : 'GAS公開設定の取得に失敗しました。';
-
-            reject(new Error(message));
-            return;
-          }
-
-          if (!payload.result || !payload.result.liffId) {
-            reject(new Error('GAS公開設定にLIFF IDがありません。'));
-            return;
-          }
-
-          resolve(payload.result);
-        };
-
-        script.onerror = function() {
-          if (finished) return;
-          finished = true;
-          window.clearTimeout(timeoutId);
-          cleanup();
-          reject(new Error('GAS公開設定を読み込めませんでした。'));
-        };
-
-        script.src =
-          GAS_BACKEND_URL +
-          '?action=publicConfig&callback=' +
-          encodeURIComponent(callbackName) +
-          '&_=' +
-          Date.now();
-
-        document.head.appendChild(script);
-      });
-    }
+    const LIFF_ID = '2011940133-JXUDzLnG';
 
     async function start() {
       try {
-        const config = await loadPublicConfig();
-
         setStatus(
-          'GAS公開設定を取得しました',
+          'GitHub Pagesを読み込みました',
           'LIFFを初期化しています。',
           false
         );
@@ -211,7 +129,7 @@
          * LIFF URLをLINEアプリで開いた時の初期化成功だけを見る。
          */
         await liff.init({
-          liffId: config.liffId,
+          liffId: LIFF_ID,
         });
 
         const context = [
