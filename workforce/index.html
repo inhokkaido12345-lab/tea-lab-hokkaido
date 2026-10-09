@@ -155,7 +155,19 @@
           window.clearTimeout(timeoutId);
           cleanup();
 
-          if (!payload || !payload.ok || !payload.result || !payload.result.liffId) {
+          if (!payload || !payload.ok) {
+            const message =
+              payload &&
+              payload.error &&
+              payload.error.message
+                ? String(payload.error.message)
+                : 'GAS公開設定の取得に失敗しました。';
+
+            reject(new Error(message));
+            return;
+          }
+
+          if (!payload.result || !payload.result.liffId) {
             reject(new Error('GAS公開設定にLIFF IDがありません。'));
             return;
           }
