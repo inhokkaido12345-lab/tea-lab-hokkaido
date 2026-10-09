@@ -730,3 +730,49 @@ MINI Appのブラウザ上で `/workforce/` が開いた後、
 
 ページキャッシュが疑わしい場合は、LINE内のMINI Appを閉じてから改めて開き、
 まず診断版D2が表示されているか確認する。
+
+
+### 2026-10-09: LIFF初期化成功 → 次段階のID token取得を検証
+
+スマートフォンのLINE MINI Appで診断版D2が次を確認した。
+
+```text
+診断 3/3 — LIFF初期化に成功しました
+liff.init: 成功
+LINEアプリ内: true
+LINEログイン済み: true
+LIFF SDK: 2.31.2
+OS: android
+初期化所要時間: 1073ms
+```
+
+これで、GitHub PagesのWeb表示、LINE MINI AppからのEndpoint起動、
+LIFF SDK初期化、LINEログイン状態確認は成功した。
+
+**注意:** これはLIFF側の初期化成功であり、TLHバックエンドで本人確認したわけではない。
+
+診断版D3を実装し、`liff.getIDToken()` の取得可否を次に確認する。
+ID tokenは公開してはいけない認証情報なので、画面・ログ・localStorage等に
+tokenの値や一部を出してはいけない。診断版では存在確認の結果だけを表示する。
+LINE公式によると、取得には `openid` スコープが必要。
+
+期待する画面:
+
+```text
+診断 4/4 — LINE ID tokenの取得に成功しました
+LINEアプリ内: true
+LINEログイン済み: true
+LINE ID token取得: 成功（token値は非表示）
+GAS側の本人確認: 未実施
+```
+
+もし `ID_TOKEN_MISSING` なら、LINE Developersの本番用LIFFの
+`openid` 権限が利用可能か確認する。
+
+今後のサーバー本人確認は別工程。GitHub PagesのJavaScriptや
+LIFFのログイン済みフラグをサーバー認可根拠にせず、
+raw ID tokenを**安全な送信経路**でGASへ渡し、
+LINE公式のID token検証APIと対象チャネルID照合を行う。
+旧The TEAチェックインのJSONPは、tokenの送信や勤怠・給与APIへ流用しない。
+
+LINE公式参照: https://developers.line.biz/ja/reference/liff/
