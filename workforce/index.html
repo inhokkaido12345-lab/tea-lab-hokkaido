@@ -114,6 +114,30 @@
      */
     const LIFF_ID = '2011940133-JXUDzLnG';
 
+    /**
+     * 画面上の状態表示を更新する。
+     *
+     * DOM（Document Object Model）は、HTMLをJavaScriptから操作するための
+     * ブラウザ上のオブジェクト表現。
+     *
+     * getElementById() でHTML要素を取得し、
+     * textContent を書き換えると画面表示が変わる。
+     *
+     * 重要:
+     * 前回、GAS publicConfig用コードを削除した際に、
+     * このUI共通関数まで一緒に削除してしまい、
+     * start()の最初の setStatus() でReferenceErrorになっていた。
+     * LIFF初期化そのものへ到達していなかった。
+     */
+    const titleElement = document.getElementById('status-title');
+    const detailElement = document.getElementById('status-detail');
+
+    function setStatus(title, detail, isError) {
+      titleElement.textContent = title;
+      detailElement.textContent = detail || '';
+      detailElement.className = isError ? 'detail error' : 'detail';
+    }
+
     async function start() {
       try {
         setStatus(
