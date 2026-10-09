@@ -694,10 +694,12 @@ LINE MINI App
 最初の段階では認証tokenや勤怠APIをまだ送らず、
 GitHub Pages上で `liff.init()` が成功することだけをsmoke testする。
 
-LIFF IDはGASのScript Propertiesを正本とし、
-GitHub PagesはGASの `publicConfig` JSONP endpointから
-公開識別子として取得する。
+LIFF IDは公開識別子なので、現在のsmoke testでは
+`workforce/index.html` に本番用LIFF IDを直接設定する。
 
-JSONPには公開LIFF ID以外のデータを載せない。
-LINE ID token、LINE userId、従業員情報、勤怠、給与、銀行情報は
-URL/JSONP経由で扱わない。
+これにより、LIFF初期化の確認から
+GitHub Pages → GAS publicConfig という余計な依存を外している。
+
+Channel Secret、LINE ID token、LINE userId、従業員情報、
+勤怠、給与、銀行情報などの秘密/個人データは
+静的HTMLへ置かない。
