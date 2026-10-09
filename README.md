@@ -703,3 +703,30 @@ GitHub Pages → GAS publicConfig という余計な依存を外している。
 Channel Secret、LINE ID token、LINE userId、従業員情報、
 勤怠、給与、銀行情報などの秘密/個人データは
 静的HTMLへ置かない。
+
+
+### Workforce LIFF診断版 D2（2026-10-09）
+
+MINI Appのブラウザ上で `/workforce/` が開いた後、
+「GitHub Pagesを読み込みました / LIFFを初期化しています。」の表示のまま止まる場合があった。
+
+この2文はもともとHTMLに書かれた初期値と、JavaScriptの初期表示が同じだったため、
+ページのキャッシュ・JavaScript未起動・LIFF SDKの初期化待機を画面だけで区別できなかった。
+
+診断版D2では次を追加した。
+
+- 画面上に `診断版 D2 (2026-10-09)` を常時表示する。表示されないなら古いHTMLの可能性
+- JavaScriptが実行されたら `診断 1/3`、LIFF SDKを検出したら `診断 2/3`
+- `liff.init()` が成功したら `診断 3/3`
+- `liff.init()` が15秒以内にsettleしなければ `LIFF_INIT_TIMEOUT` を表示
+- SDK未読込なら `LIFF_SDK_MISSING` を表示
+- URLのquery/hashはLIFFの認証情報を含み得るので画面やログへ表示しない
+
+`Promise.race` のtimeoutは診断用で、LIFF SDK内の通信を中断しない。
+また本画面はまだID token取得・打刻・給与処理を行わない。
+
+テストするURL:
+`https://miniapp.line.me/2011940133-JXUDzLnG`
+
+ページキャッシュが疑わしい場合は、LINE内のMINI Appを閉じてから改めて開き、
+まず診断版D2が表示されているか確認する。
