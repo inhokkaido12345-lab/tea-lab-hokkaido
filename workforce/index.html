@@ -80,7 +80,7 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D2 (2026-10-09)</p>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -95,93 +95,140 @@
 
   <script>
     /**
-     * LINE MINI App の本番用 LIFF ID。
+     * TLH Workforce / LIFF 診断画面 D2。
      *
-     * LIFF IDは秘密情報ではない。
-     * 実際のLIFF URL自体にも含まれる公開識別子なので、
-     * smoke testではGASから毎回取得せず、この静的frontendへ直接置く。
+     * 目的:
+     *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
+     *  - 「HTML表示」「JavaScript起動」「LIFF SDK検出」「liff.init()完了」
+     *    を別々の段階として表示する。
+     *  - Promiseが応答しないときも有限時間で診断結果を表示する。
      *
-     * これにより:
-     * GitHub Pages -> GAS publicConfig -> LIFF
-     *
-     * という余計な依存をなくし、
-     * GitHub Pages -> LIFF
-     *
-     * の最小経路だけを検証できる。
-     *
-     * Channel Secret / access token / ID token等の秘密値は
-     * 絶対にこのHTMLへ置かない。
+     * 本画面は本人確認・打刻・給与処理をまだ行わない。
+     * ID token、URLのquery/hash、LINE userIdをログ/画面へ出さない。
      */
-    const LIFF_ID = '2011940133-JXUDzLnG';
 
-    /**
-     * 画面上の状態表示を更新する。
-     *
-     * DOM（Document Object Model）は、HTMLをJavaScriptから操作するための
-     * ブラウザ上のオブジェクト表現。
-     *
-     * getElementById() でHTML要素を取得し、
-     * textContent を書き換えると画面表示が変わる。
-     *
-     * 重要:
-     * 前回、GAS publicConfig用コードを削除した際に、
-     * このUI共通関数まで一緒に削除してしまい、
-     * start()の最初の setStatus() でReferenceErrorになっていた。
-     * LIFF初期化そのものへ到達していなかった。
-     */
+    // LIFF IDは公開識別子。Channel Secretとは別物。
+    const LIFF_ID = '2011940133-JXUDzLnG';
+    const DIAGNOSTIC_VERSION = 'D2 (2026-10-09)';
+    const INIT_TIMEOUT_MS = 15000;
+
     const titleElement = document.getElementById('status-title');
     const detailElement = document.getElementById('status-detail');
+    const startedAt = Date.now();
 
+    /**
+     * UI状態の更新はtextContentを使い、外部から得た文字列を
+     * HTMLコードとして実行させない。
+     */
     function setStatus(title, detail, isError) {
       titleElement.textContent = title;
       detailElement.textContent = detail || '';
       detailElement.className = isError ? 'detail error' : 'detail';
     }
 
-    async function start() {
+    /**
+     * URLはpathnameのみ表示する。
+     * LIFFの初期化前URLには認証パラメータが含まれ得るため、
+     * location.href / location.search / location.hash は画面やログへ出さない。
+     */
+    function getSafePagePath() {
+      return window.location.origin + window.location.pathname;
+    }
+
+    function safeErrorText(error) {
+      const code = error && error.code ? String(error.code) : 'UNKNOWN';
+      const raw = error && error.message ? String(error.message) : String(error);
+      const sanitized = raw.replace(
+        /((?:access_token|id_token|liff\.state|code)=)[^\s&]+/gi,
+        '$1[hidden]'
+      );
+      return '[' + code + '] ' + sanitized.slice(0, 300);
+    }
+
+    /**
+     * Promise.race:
+     * 「LIFF初期化の成功/失敗」と「15秒経過」のうち先に
+     * 完了した方を採用する。
+     *
+     * 注意: Promise.raceはLIFF SDKの内部通信を中断する機能ではない。
+     * 応答待ちのまま永久に表示が止まることを防ぐ診断用の監視である。
+     */
+    async function initializeLiffWithTimeout() {
+      let timerId;
+
+      const timeout = new Promise(function(_resolve, reject) {
+        timerId = window.setTimeout(function() {
+          const error = new Error(
+            'liff.init() が15秒以内に完了しませんでした。'
+          );
+          error.code = 'LIFF_INIT_TIMEOUT';
+          reject(error);
+        }, INIT_TIMEOUT_MS);
+      });
+
       try {
+        await Promise.race([
+          liff.init({ liffId: LIFF_ID }),
+          timeout,
+        ]);
+      } finally {
+        window.clearTimeout(timerId);
+      }
+    }
+
+    async function start() {
+      setStatus(
+        '診断 1/3 — JavaScriptが起動しました',
+        '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
+        'ページ: ' + getSafePagePath() + '\n' +
+        'LIFF SDKを検査しています。',
+        false
+      );
+
+      try {
+        if (!window.liff || typeof window.liff.init !== 'function') {
+          const error = new Error('LIFF SDKを読み込めませんでした。');
+          error.code = 'LIFF_SDK_MISSING';
+          throw error;
+        }
+
         setStatus(
-          'GitHub Pagesを読み込みました',
-          'LIFFを初期化しています。',
+          '診断 2/3 — LIFF SDKを検出しました',
+          '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
+          'ページ: ' + getSafePagePath() + '\n' +
+          'liff.init() の完了を最大15秒待っています。',
           false
         );
 
-        /**
-         * 今回は「まずLINE内で開くか」を切り分ける最小smoke test。
-         *
-         * 外部ブラウザ用の自動login redirectはまだ入れない。
-         * LIFF URLをLINEアプリで開いた時の初期化成功だけを見る。
-         */
-        await liff.init({
-          liffId: LIFF_ID,
-        });
+        await initializeLiffWithTimeout();
 
-        const context = [
+        const lines = [
+          '診断版: ' + DIAGNOSTIC_VERSION,
           'liff.init: 成功',
           'LINEアプリ内: ' + String(liff.isInClient()),
           'LINEログイン済み: ' + String(liff.isLoggedIn()),
           'LIFF SDK: ' + String(liff.getVersion ? liff.getVersion() : 'unknown'),
           'OS: ' + String(liff.getOS ? liff.getOS() : 'unknown'),
-        ].join('\n');
+          '初期化所要時間: ' + String(Date.now() - startedAt) + 'ms',
+        ];
 
         setStatus(
-          'LIFF初期化に成功しました',
-          context,
+          '診断 3/3 — LIFF初期化に成功しました',
+          lines.join('\n'),
           false
         );
       } catch (error) {
-        const code = error && error.code
-          ? '[' + error.code + '] '
-          : '';
-
         setStatus(
-          '初期化に失敗しました',
-          code + (error && error.message ? error.message : String(error)),
+          'LIFF診断で停止しました',
+          '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
+          'ページ: ' + getSafePagePath() + '\n' +
+          safeErrorText(error),
           true
         );
       }
     }
 
+    // スクリプトを起動した時点で必ず可視のメッセージが変わる。
     start();
   </script>
 </body>
