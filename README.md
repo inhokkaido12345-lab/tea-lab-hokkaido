@@ -663,3 +663,41 @@ IPv6も使う場合:
 | 実コード上の要確認 | `a:focus-visible`の枠は`--color-brand-soft`(透明度0.12)です。単色の`--color-bg`上へ合成した計算では約1.20:1のコントラストで、薄い枠になります。実ページの背景とTab操作で視認性を確認し、必要なら別作業で色を見直します。 |
 
 コメント量に起因する点として、元の文字コード宣言は先頭1024バイトの範囲をわずかに超えていました。今回、その前のコメントを短くして範囲内へ戻しました。`meta charset`要素の位置関係・属性・値は変更していません。今後も冒頭に長い説明を追加せず、詳細はREADMEへ置きます。[HTML Standard: 文字コード宣言](https://html.spec.whatwg.org/multipage/semantics.html#charset)
+
+
+### Workforce LINE MINI App
+
+TLH WorkforceのLINE MINI App frontend smoke testは、
+既存のGitHub Pages配信基盤を再利用する。
+
+公開パス:
+
+```text
+https://tealabhokkaido.com/workforce/
+```
+
+実ファイル:
+
+```text
+workforce/index.html
+```
+
+構成:
+
+```text
+LINE MINI App
+→ GitHub Pages
+→ LIFF SDK
+→ GAS backend
+```
+
+最初の段階では認証tokenや勤怠APIをまだ送らず、
+GitHub Pages上で `liff.init()` が成功することだけをsmoke testする。
+
+LIFF IDはGASのScript Propertiesを正本とし、
+GitHub PagesはGASの `publicConfig` JSONP endpointから
+公開識別子として取得する。
+
+JSONPには公開LIFF ID以外のデータを載せない。
+LINE ID token、LINE userId、従業員情報、勤怠、給与、銀行情報は
+URL/JSONP経由で扱わない。

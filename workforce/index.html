@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>TLH 勤怠管理</title>
+
+  <!--
+    LINE公式のLIFF SDK。
+    このページ自体はGitHub Pagesから通常のtop-level HTTPSページとして配信する。
+    GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
+  -->
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: light dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: max(24px, env(safe-area-inset-top))
+               max(20px, env(safe-area-inset-right))
+               max(24px, env(safe-area-inset-bottom))
+               max(20px, env(safe-area-inset-left));
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(100%, 560px);
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.45rem;
+    }
+
+    .subtitle {
+      margin: 0;
+      opacity: 0.68;
+      font-size: 0.9rem;
+    }
+
+    .card {
+      margin-top: 20px;
+      padding: 18px;
+      border: 1px solid currentColor;
+      border-radius: 14px;
+    }
+
+    .status-title {
+      font-weight: 700;
+    }
+
+    .detail {
+      margin-top: 8px;
+      opacity: 0.78;
+      font-size: 0.92rem;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .steps {
+      margin: 14px 0 0;
+      padding-left: 1.25rem;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .error {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TLH 勤怠管理</h1>
+    <p class="subtitle">LINE MINI App 接続テスト</p>
+
+    <section class="card" aria-live="polite">
+      <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
+      <div id="status-detail" class="detail">LIFF設定を取得しています。</div>
+
+      <ol class="steps">
+        <li>GitHub Pages</li>
+        <li>GAS 公開設定</li>
+        <li>LIFF初期化</li>
+      </ol>
+    </section>
+  </main>
+
+  <script>
+    /**
+     * 現在のGAS backend Web App。
+     *
+     * Web App URL自体は公開URLでありsecretではない。
+     * ここにはChannel SecretやOAuth tokenを置かない。
+     */
+    const GAS_BACKEND_URL =
+      'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
+
+    const titleElement = document.getElementById('status-title');
+    const detailElement = document.getElementById('status-detail');
+
+    function setStatus(title, detail, isError) {
+      titleElement.textContent = title;
+      detailElement.textContent = detail || '';
+      detailElement.className = isError ? 'detail error' : 'detail';
+    }
+
+    /**
+     * GASから公開LIFF IDだけをJSONPで取得する。
+     *
+     * なぜfetchではないか:
+     * Apps Script ContentServiceは別originのbrowser fetchで
+     * CORS/redirect制約に当たりやすい。
+     *
+     * なぜJSONPを使ってよいか:
+     * 取得するのは公開識別子のLIFF IDだけだから。
+     *
+     * 重要:
+     * ID token・LINE userId・勤怠・給与等をJSONP/URLへ載せてはいけない。
+     */
+    function loadPublicConfig() {
+      return new Promise(function(resolve, reject) {
+        const callbackName =
+          '__tlhPublicConfig_' +
+          Date.now() +
+          '_' +
+          Math.floor(Math.random() * 1000000);
+
+        const script = document.createElement('script');
+        let finished = false;
+
+        function cleanup() {
+          delete window[callbackName];
+          script.remove();
+        }
+
+        const timeoutId = window.setTimeout(function() {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          reject(new Error('GAS公開設定の取得がタイムアウトしました。'));
+        }, 12000);
+
+        window[callbackName] = function(payload) {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          cleanup();
+
+          if (!payload || !payload.ok || !payload.result || !payload.result.liffId) {
+            reject(new Error('GAS公開設定にLIFF IDがありません。'));
+            return;
+          }
+
+          resolve(payload.result);
+        };
+
+        script.onerror = function() {
+          if (finished) return;
+          finished = true;
+          window.clearTimeout(timeoutId);
+          cleanup();
+          reject(new Error('GAS公開設定を読み込めませんでした。'));
+        };
+
+        script.src =
+          GAS_BACKEND_URL +
+          '?action=publicConfig&callback=' +
+          encodeURIComponent(callbackName) +
+          '&_=' +
+          Date.now();
+
+        document.head.appendChild(script);
+      });
+    }
+
+    async function start() {
+      try {
+        const config = await loadPublicConfig();
+
+        setStatus(
+          'GAS公開設定を取得しました',
+          'LIFFを初期化しています。',
+          false
+        );
+
+        /**
+         * 今回は「まずLINE内で開くか」を切り分ける最小smoke test。
+         *
+         * 外部ブラウザ用の自動login redirectはまだ入れない。
+         * LIFF URLをLINEアプリで開いた時の初期化成功だけを見る。
+         */
+        await liff.init({
+          liffId: config.liffId,
+        });
+
+        const context = [
+          'liff.init: 成功',
+          'LINEアプリ内: ' + String(liff.isInClient()),
+          'LINEログイン済み: ' + String(liff.isLoggedIn()),
+          'LIFF SDK: ' + String(liff.getVersion ? liff.getVersion() : 'unknown'),
+          'OS: ' + String(liff.getOS ? liff.getOS() : 'unknown'),
+        ].join('\n');
+
+        setStatus(
+          'LIFF初期化に成功しました',
+          context,
+          false
+        );
+      } catch (error) {
+        const code = error && error.code
+          ? '[' + error.code + '] '
+          : '';
+
+        setStatus(
+          '初期化に失敗しました',
+          code + (error && error.message ? error.message : String(error)),
+          true
+        );
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>
