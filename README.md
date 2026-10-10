@@ -882,3 +882,57 @@ GitHub mainへコードがあるだけではWeb Appデプロイは更新され�
 
 P1が失敗した場合はiframe内のGoogle側制約が原因候補。
 未検証のまま個人情報・ID tokenを使った本番APIを実装しない。
+
+
+### 2026-10-10: GitHub Pages ↔ GAS 往復疎通 P1成功、LINE内検査D4を追加
+
+使用者がPCの通常ブラウザで
+`https://tealabhokkaido.com/workforce/bridge-test.html` を操作し、
+次の結果を確認した。
+
+```text
+通信成功 — PONGを受信しました
+GitHub Pages → GAS（POST）→ HTMLのpostMessage → GitHub Pages
+往復所要時間: 3017ms
+送信したのはPINGとランダムな検査IDだけ
+```
+
+この結果により、「新しい中継サービスがなければGASから応答を返せない」
+という当初の想定は**少なくとも通常ブラウザの非機密往復通信については誤り**と判明した。
+
+現在の最小構成:
+
+```text
+LINE MINI App
+   └─ GitHub Pages：画面・LIFF SDK
+           └─ HTML form POST（隠しiframeへ）
+                   └─ 既存GAS doPost
+                           └─ HtmlServiceからpostMessageで返事
+                                   └─ GitHub Pages画面更新
+```
+
+**注意:** P1ではまだLINE内の動作も、ID tokenの安全な送信も確認していない。
+単なる公開PING/PONG成功は、安全な給与・勤怠APIが完成したという意味ではない。
+
+次に `tea-lab-hokkaido/workforce/index.html` を
+診断版D4へ更新し、LIFF初期化・LINE ID token存在確認（D3成功済み）のあとに、
+**GASにPINGを送る** ボタンを追加した。
+
+- LINE MINI App内からのみ実機確認する。入口 `https://miniapp.line.me/2011940133-JXUDzLnG`
+- ボタンから送るのは `action=bridgePing` とランダムなnonceだけ
+- ID tokenは本番GASへ**まだ送らない**
+- PONG成功なら往復時間とLINEアプリ内=trueを表示
+- 15秒を超えたらタイムアウト診断を表示する
+
+次の作業はLINE MINI App内でD4を開き、実際にボタンを押して結果を確認すること。
+それまで認証用のform POSTを実装しない。
+
+重要なセキュリティ注記:
+P1/D4の `event.origin === 'null'` 許容・nonce照合は公開PONG向けの診断。
+このまま機密情報の受信へ拡張しない。
+本人確認経路を実装するときはiframeのwindow階層、認証メッセージの送信元、
+Origin/source検証、stateを変更するAPIへのCSRF対策、UIのclickjacking対策を
+改めて設計する。
+
+新規Cloudflare Workerは公開していない。既存の
+`workers/workforce-api` は採用していない代替案のまま。
