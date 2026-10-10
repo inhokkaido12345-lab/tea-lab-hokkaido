@@ -1,3 +1,5 @@
+> **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
+
 # ティーラボラトリー北海道 公式Webサイト
 
 `tealabhokkaido.com` で公開するための、最小構成の静的サイトです。GitHub Pagesでそのまま配信できるよう、HTML、CSS、ドメイン設定用の `CNAME` を中心に構成しています。
