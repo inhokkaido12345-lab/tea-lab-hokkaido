@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
   <title>TLH 勤怠管理</title>
 
   <!--
@@ -94,7 +95,7 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D4 (2026-10-10)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D5 (2026-10-10)</p>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -116,6 +117,20 @@
       <div id="bridge-status" class="detail">ボタンを押すと公開PINGだけを送信します。</div>
       <button id="bridge-button" class="bridge-button" type="button">GASにPINGを送る</button>
     </section>
+
+    <!--
+      D5: 明示操作に限り、生ID tokenをHTTPS form POSTのbodyとしてGASへ送る。
+      画面へ表示・URLに付加・localStorageへ保存しない。
+      サーバーのLINE本人確認結果は真偽値のみ。従業員情報は扱わない。
+    -->
+    <section id="auth-section" class="card" aria-live="polite" hidden>
+      <strong>LINE本人確認テスト（GAS側）</strong>
+      <div id="auth-status" class="detail">
+        ボタンを押すとLINE ID tokenをGASへ安全なHTTPS POSTで送信し、
+        GASがLINE公式APIで検証します。値は表示しません。
+      </div>
+      <button id="auth-button" class="bridge-button" type="button">LINE本人確認を試す</button>
+    </section>
   </main>
 
   <!--
@@ -125,10 +140,13 @@
   -->
   <iframe id="tlhBridgeFrame" name="tlhBridgeFrame"
     title="TLH GAS通信テスト応答" hidden aria-hidden="true"></iframe>
+  <!-- PINGと本人確認の結果が混線しないよう別iframeにする。 -->
+  <iframe id="tlhAuthFrame" name="tlhAuthFrame"
+    title="TLH LINE本人確認テスト応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
-     * TLH Workforce / LIFF＋非機密PING通信 診断画面 D4。
+     * TLH Workforce / LIFF＋LINE公式本人確認 診断画面 D5。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
@@ -142,7 +160,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D4 (2026-10-10)';
+    const DIAGNOSTIC_VERSION = 'D5 (2026-10-10)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
@@ -160,6 +178,15 @@
     let bridgeNonce = null;
     let bridgeTimeout = null;
     let bridgeStartedAt = 0;
+
+    // D5専用: PINGとは異なるnonce/iframe/timeoutを使う。
+    const authSection = document.getElementById('auth-section');
+    const authStatus = document.getElementById('auth-status');
+    const authButton = document.getElementById('auth-button');
+    const AUTH_TIMEOUT_MS = 20000;
+    let authNonce = null;
+    let authTimeout = null;
+    let authStartedAt = 0;
 
     const titleElement = document.getElementById('status-title');
     const detailElement = document.getElementById('status-detail');
@@ -331,6 +358,134 @@
       }
     });
 
+    /**
+     * D5: LINE本人確認の診断結果を表示する。
+     *
+     * 本人確認の根拠:
+     *   GASがLINE公式 POST /oauth2/v2.1/verify を呼び成功すること。
+     *   この画面の緑色の文字やLIFFのisLoggedIn()だけでは本人確認できない。
+     *
+     * postMessageには固定booleanとcodeとnonceだけが含まれる。
+     * プロフィール、ID token、LINE userId等の業務情報は返さない。
+     *
+     * 注意: Google HtmlServiceのiframe sandboxは送信元originが
+     * 'null'になる場合がある。nonceでこのテストリクエストの応答か
+     * 照合するが、この条件を給与データ返信等の認可には使用しない。
+     */
+    function finishAuthTest() {
+      if (authTimeout !== null) window.clearTimeout(authTimeout);
+      authTimeout = null;
+      authNonce = null;
+      authButton.disabled = false;
+    }
+
+    window.addEventListener('message', function(event) {
+      if (!authNonce) return;
+      const data = event.data;
+      if (!data || data.type !== 'TLH_BRIDGE_AUTH_RESULT' ||
+          data.nonce !== authNonce) return;
+
+      const googleOrigin =
+        /^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin);
+      if (!googleOrigin && event.origin !== 'null') return;
+
+      const duration = String(Date.now() - authStartedAt);
+      if (data.verified === true && data.code === 'LINE_VERIFIED') {
+        authStatus.textContent =
+          'GAS側のLINE本人確認: 成功\n' +
+          'LINE公式APIがID tokenを検証しました。\n' +
+          '往復所要時間: ' + duration + 'ms\n' +
+          'TLH Account照合: 未実施\n' +
+          '従業員情報・給与情報: 未取得';
+      } else {
+        const code = typeof data.code === 'string' &&
+                     /^[A-Z_]{1,40}$/.test(data.code)
+          ? data.code
+          : 'UNKNOWN_ERROR';
+
+        authStatus.textContent =
+          'GAS側のLINE本人確認: 未成功\n' +
+          'エラーコード: ' + code + '\n' +
+          (code === 'LINE_VERIFY_REJECTED'
+            ? '本番MINI AppのChannel IDとGAS設定の一致を確認してください。'
+            : 'GAS側の設定・通信状態などを確認してください。');
+      }
+      finishAuthTest();
+    });
+
+    authButton.addEventListener('click', function() {
+      if (authNonce) return;
+
+      if (!window.liff || !liff.isLoggedIn()) {
+        authStatus.textContent =
+          'LINEログインが必要です。MINI Appを開き直してください。';
+        return;
+      }
+
+      // クリックされた時点でLINE SDKからtokenを取得する。
+      // tokenをglobal stateやlocalStorageへ保管しない。
+      const idToken = liff.getIDToken();
+      if (typeof idToken !== 'string' || idToken.length === 0) {
+        authStatus.textContent = 'LINE ID tokenを取得できませんでした。';
+        return;
+      }
+
+      authNonce = createBridgeNonce();
+      authStartedAt = Date.now();
+      authButton.disabled = true;
+      authStatus.textContent =
+        'LINE公式APIによる本人確認を実行中です。\n' +
+        '生ID tokenはHTTP POST bodyにのみ入れています。';
+
+      authTimeout = window.setTimeout(function() {
+        authStatus.textContent =
+          '本人確認の応答を受信できませんでした（20秒）。\n' +
+          'GASの公開状態・LINE Channel IDなどを確認してください。';
+        finishAuthTest();
+      }, AUTH_TIMEOUT_MS);
+
+      /**
+       * form.method='POST' → request bodyに置く（URLではない）。
+       * target='tlhAuthFrame' → LINEの画面を遷移させない。
+       * GAS側は検証後、成功/失敗だけをpostMessageで返す。
+       *
+       * セキュリティ上の区別:
+       * GET / JSONP にID tokenを載せない。
+       * formにはSecret・従業員データ・銀行情報を混ぜない。
+       */
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = 'tlhAuthFrame';
+      form.style.display = 'none';
+
+      const fields = {
+        action: 'bridgeVerifyLine',
+        nonce: authNonce,
+        idToken: idToken,
+      };
+      for (const [name, value] of Object.entries(fields)) {
+        const input = document.createElement('input');
+        input.name = name;
+        input.value = value;
+        input.type = 'hidden';
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+
+      try {
+        form.submit();
+      } catch (_error) {
+        authStatus.textContent = 'ブラウザがPOST送信を拒否しました。';
+        finishAuthTest();
+      } finally {
+        // フォーム内に一時的に置いたtokenをDOMから直ちに消す。
+        // JavaScriptやネットワーク実装が完全にメモリを消去できるとは
+        // 保証できないが、URLや永続ストレージには残さない。
+        form.remove();
+      }
+    });
+
     async function start() {
       setStatus(
         '診断 1/4 — JavaScriptが起動しました',
@@ -420,6 +575,7 @@
         // LINEの初期化・token存在確認ができた後にだけ公開PINGのボタンを表示。
         // tokenの値はブリッジへ渡さない。
         bridgeSection.hidden = false;
+        authSection.hidden = false;
       } catch (error) {
         setStatus(
           'LIFF診断で停止しました',
