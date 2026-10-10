@@ -823,3 +823,62 @@ LINE MINI App
 Developing Channel IDのままだと、LINE verify APIの
 `client_id` 照合で失敗する可能性が高い。
 Channel IDは公開識別子だが、Channel Secretをソースやチャットに貼らない。
+
+
+### 2026-10-10: 最小構成へ方針固定 — GitHub Pages + GAS（通信の往復PoC）
+
+利用者の決定は「初心者でも役割を理解できる、最小構成」。
+Cloudflare / Vercel / 新規hosting / 新たな契約は追加しない。
+
+最終的な役割は、LINE＝ログイン入口、GitHub Pages＝画面、
+GAS＝本人確認・業務処理、Sheets/Drive＝保存のみ。
+
+ただしブラウザのCORS制約により、GitHub PagesからGASへ
+`fetch()` し直接レスポンスを読むことは簡単ではない。
+CORS回避のためにLINE ID tokenをURL/JSONPへ載せることは禁止。
+
+Google公式にHtmlServiceの外部iframe埋込み機能
+`setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)` がある。
+ただしGoogleのiframe sandboxやブラウザ制約があるため、
+**この方式がLINE MINI App内で動くかはまだ未確認**。
+
+まず、機密情報を送らない小規模PoC:
+
+```text
+GitHub Pages /workforce/bridge-test.html
+        │
+        ├─ フォーム POST（action=bridgePing + ランダムnonce）
+        ↓
+GAS Web App / doPost()
+        │
+        ├─ 固定値PONGのHtmlServiceレスポンスを生成
+        ↓
+別origin iframe（画面には表示しない）
+        │
+        └─ window.top.postMessage(PONG, "https://tealabhokkaido.com")
+        ↓
+GitHub Pagesでnonceを照合して画面へ表示
+```
+
+※フォームにLINE token・従業員情報・給与情報は**一切含めない**。
+frameの `load` だけで成功判定はせず、正しいnonceを含むPONGを確認する。
+`window.postMessage` の通信元とnonce検証はPoC用の暫定。
+機密APIへ流用する前に、Google iframeのorigin挙動を実機で確認し、
+メッセージ認証・期限・リプレイ対策・クリックジャッキング防止を設計する。
+
+Google公式:
+- https://developers.google.com/apps-script/reference/html/x-frame-options-mode
+- https://developers.google.com/apps-script/guides/html/reference/run
+
+関連コード:
+- backend: `tlh-platform/gas/workforce/Api.gs` の `serveBridgePing_`
+- frontend: `tea-lab-hokkaido/workforce/bridge-test.html`
+
+Google Apps Script のクラウド反映は別工程。
+GitHub mainへコードがあるだけではWeb Appデプロイは更新されない。
+現状 `clasp push` がGoogle OAuth `invalid_rapt` で停止するため、
+再認証復旧後にGAS Web Appへ新コードを反映する必要がある。
+その後 `https://tealabhokkaido.com/workforce/bridge-test.html` のボタンからP1をテスト。
+
+P1が失敗した場合はiframe内のGoogle側制約が原因候補。
+未検証のまま個人情報・ID tokenを使った本番APIを実装しない。
