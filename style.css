@@ -1,3 +1,14 @@
+/* 【サイトCSSの取扱説明書 / 2026-10】
+   現役: トップページindex.htmlの配色・フォント・余白・配置・レスポンシブを司る。
+   構成: :rootのDesign Tokens → 基本要素 → 各UI component → 画面幅に応じたメディアクエリ。
+   削除すると: HTMLの文字は残るが、ブランド配色・余白・レイアウト・レスポンシブ表示が壊れる。
+     LINE MINI Appのworkforce/index.htmlは独自styleを持つため、その画面デザインには原則影響しない。
+   一般化: Separation of Concerns（文書構造と視覚表現の分離）、CSS Custom Properties、Responsive Design。
+   魔改造: 全体配色は:rootの--color-*、フォントは--font-*、余白は--space-*。
+     特定カードを変える場合は対象selectorを検索し、responsive側の指定も確認する。
+   依存: トップindex.htmlからlink rel=stylesheetで読まれる。assets/brandのSVG自体は別管理。
+   テスト: PC/スマホ両幅とGitHub Pages公開を確認。詳細はREADME。
+*/
 /* =========================================================
    TEA LABORATORY HOKKAIDO
    このファイルは視覚表現とレイアウトを担当します。情報と構造はindex.html、詳しい診断方法はREADMEへ分担します。

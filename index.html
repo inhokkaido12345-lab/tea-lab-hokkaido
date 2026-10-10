@@ -13,6 +13,20 @@
     注意: この宣言より前に長い学習コメントを足さないでください。
   -->
   <meta charset="utf-8">
+  <!--
+    【トップページ全体の取扱説明書 / 2026-10】
+    現役: https://tealabhokkaido.com/ の会社・研究活動紹介ページ。
+    このファイルが司ること: headに検索・SNS用の設定、bodyにページ構造と説明文を置く。
+    コードの構成: head（SEO/OGP/stylesheet）→header/nav→main各section→footer。
+    削除すると: サイトのトップページ自体が表示できなくなる。
+      ただしworkforce/index.htmlのLINE MINI Appは別ファイルなので、アプリのHTMLを消したのと同じではない。
+    一般化: Semantic HTML（情報の意味と文書構造を担当）。
+    魔改造: 文章やセクションの追加はこのHTML、色・配置・余白はstyle.css。
+      サイト名変更時はtitle / h1 / OGP / footerも整合させる。
+    依存: style.css、assets/brand/*.svg、CNAME（独自ドメイン）。
+    注意: SVGの原本pathはロゴ表示サイズを変えるために編集しない。
+    詳細はREADMEとassets/brand/README.md。
+  -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!--
