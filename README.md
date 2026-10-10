@@ -984,3 +984,63 @@ Google HtmlServiceの埋込みとpostMessageの送信元検証、
 そのまま機密データのレスポンスに転用しない。
 
 現時点でユーザーによる新規サービス登録やCloudflareの導入は不要。
+
+
+### 2026-10-10: D5 — GASサーバー側LINE本人確認の実装完了・実機待ち
+
+前回D4で、LINE MINI AppからGitHub Pages ↔ GASの非機密PING/PONG往復が
+実機成功（3,337ms）した。
+
+今回は同じ既存通信路を利用し、**LINE ID tokenのサーバー検証だけ**を追加。
+Cloudflareなどの新しいサービスは使っていない。
+
+```text
+本番LINE MINI App（LINEアプリ）
+ → GitHub Pages /workforce/ （診断版 D5）
+ → liff.getIDToken()（ユーザーがボタンを押した時だけ）
+ → HTML form HTTPS POST（body: action/nonce/idToken）
+ → GAS /exec doPost() → BridgeAuth.gs
+ → LINE公式 POST /oauth2/v2.1/verify
+      client_id = GASのLINE_CHANNEL_ID
+ → GAS HtmlServiceで成否のみのHTMLを生成
+ → postMessage（固定origin指定）
+ → MINI App画面へ「GAS側のLINE本人確認: 成功/未成功」
+```
+
+本番用LINE Channel IDとGAS Script Propertyの`LINE_CHANNEL_ID`が一致していなければ、
+LINE公式の検証は`Invalid IdToken Audience`等で拒否する。
+現在のGASには本番用Channel IDが設定されていることを**まだ実機検証していない**。
+
+実装位置:
+
+- `tlh-platform/gas/workforce/BridgeAuth.gs` — tokenの形式検査、LINE検証、非機密応答作成
+- `tlh-platform/gas/workforce/Api.gs` — `bridgeVerifyLine` のPOSTルート
+- `tlh-platform/gas/workforce/LineAuthService.gs` — LINE公式Verify API呼び出し
+- `tea-lab-hokkaido/workforce/index.html` — D5本人確認テストボタン
+
+検証用のCI `Test TLH LINE Auth Bridge` は **6件すべて成功**。
+Google Apps Script Web AppのデプロイもGitHub Actions `success`。
+GitHub PagesのD5デプロイも`success`。
+
+**注意:** CIはmockであり、実際のLINE token・正しいChannel IDの組合せで
+本人確認できたことを意味しない。ユーザーのLINE実機操作が次の工程。
+
+実機での手順:
+
+1. LINE MINI App `https://miniapp.line.me/2011940133-JXUDzLnG` を再度開く。
+2. 画面が「診断版D5」であることを確認。
+3. 「LINE本人確認を試す」を押す。
+4. 「GAS側のLINE本人確認: 成功」または固定エラーコードを確認。
+5. 結果のスクリーンショットを送る。生のtokenは絶対に送らない。
+
+セキュリティ境界:
+
+- 生ID tokenはフォームPOST bodyにだけ入れる。URL、console、Spreadsheet、ログ、READMEへ保存しない。
+- GASの応答へLINE userId、token、氏名、個人情報を含めない。
+- この成否表示は画面上の診断であり、打刻権限やTLH Accountの登録・閲覧を許可しない。
+- postMessageの`origin='null'`許容＋nonceはこの非機密診断の相関確認専用。
+  仕事・給与・個人情報を返すときにはframe検証、CSRF、クリックジャッキング、
+  情報漏えいへの別設計が必要。
+- 現段階ではGASからGoogle Sheetsの登録情報を取得・変更しない。
+
+LINE公式：https://developers.line.biz/ja/reference/line-login/#verify-id-token
