@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <title>TLH 通信テスト P1</title>
+  <style>
+    :root { font-family: system-ui,-apple-system,"Segoe UI",sans-serif; }
+    body { margin: 0; padding: 24px 18px; line-height: 1.65; }
+    main { max-width: 620px; margin: auto; }
+    .card { border: 1px solid currentColor; border-radius: 14px; padding: 18px; margin: 18px 0; }
+    button { background: #006d70; color: white; padding: 12px 18px; border: 0; border-radius: 9px; font-size: 1rem; cursor: pointer; }
+    button:disabled { opacity: .5; }
+    .detail { white-space: pre-wrap; overflow-wrap: anywhere; font-size: .95rem; }
+    .muted { color: #777; font-size: .88rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>TLH 通信テスト</h1>
+  <p>診断版 P1 — GitHub Pages → GAS → GitHub Pages</p>
+  <p class="muted">これは新しいサービスを使わずに通信できるか確認する試験です。LINE本人確認、打刻、給与情報は扱いません。</p>
+  <div class="card">
+    <strong id="state">テスト準備完了</strong>
+    <p id="detail" class="detail">ボタンを押すと固定文字列PINGを送り、GASからPONGが返るか確認します。</p>
+    <button id="start">PING通信を試す</button>
+  </div>
+  <p class="muted">15秒以内に返事が来ない場合はタイムアウトと表示します。LINE MINI Appの通常画面には影響しません。</p>
+</main>
+
+<!--
+  このiframeは表示画面ではなく「GASからの返事の受け皿」。
+  HTML formのtargetをこのnameへ指定する。
+  iframe内のHTMLを外側のJavaScriptから直接読むことはできないため、
+  GASが返すHTMLからpostMessageで通知してもらう。
+-->
+<iframe id="tlhBridgeFrame" name="tlhBridgeFrame" title="TLH通信テスト応答"
+  hidden aria-hidden="true"></iframe>
+
+<script>
+  /**
+   * このPoCは実際の認証情報を送信しない。
+   *
+   * form POST = URLに送信データを入れず、HTTP bodyへ入れるブラウザ標準機能。
+   * iframe target = ページ遷移させず応答を別のframeへ受ける機能。
+   * postMessage = 異なるWebサイトのwindow間でメッセージを送るAPI。
+   *
+   * nonce = 毎回新しく作るランダムな照合番号。
+   * 認証情報ではないので公開しても構わないが、
+   * 別の通信の返事と混同しないため十分長くランダムにする。
+   *
+   * セキュリティ:
+   * これは公開PONGだけの診断。LINEのtoken/個人情報は扱わない。
+   * 将来の本人確認では送信元origin・message内容・nonceを厳密に検証する。
+   */
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
+  const stateEl = document.getElementById('state');
+  const detailEl = document.getElementById('detail');
+  const buttonEl = document.getElementById('start');
+  let expectedNonce = null;
+  let pendingTimeout = null;
+  let startTime = 0;
+
+  function show(title, detail) {
+    stateEl.textContent = title;
+    detailEl.textContent = detail;
+  }
+
+  function makeNonce() {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function finish() {
+    if (pendingTimeout !== null) {
+      clearTimeout(pendingTimeout);
+      pendingTimeout = null;
+    }
+    expectedNonce = null;
+    buttonEl.disabled = false;
+  }
+
+  /**
+   * GASで返したHTMLからのメッセージを受信する。
+   * イベントのoriginがGoogle管理origin、かつnonceが一致するものだけ採用する。
+   * Google HtmlServiceはsandboxを使うためevent.originが 'null' の場合もあり得る。
+   * 'null' は単体では認証材料にできないので、nonce一致も必要。
+   */
+  window.addEventListener('message', function(event) {
+    if (!expectedNonce) return;
+    const data = event.data;
+    if (!data || data.type !== 'TLH_BRIDGE_PONG' ||
+        data.nonce !== expectedNonce) return;
+
+    const googleOrigin = /^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin);
+    if (!googleOrigin && event.origin !== 'null') return;
+
+    const ms = Date.now() - startTime;
+    if (data.ok === true && data.result === 'PONG') {
+      show('通信成功 — PONGを受信しました',
+        'GitHub Pages → GAS（POST）→ HTMLのpostMessage → GitHub Pages\n' +
+        '往復所要時間: ' + ms + 'ms\n' +
+        '送信したのはPINGとランダムな検査IDだけです。');
+    } else {
+      show('GASからエラー応答', '結果: ' + String(data.result || 'UNKNOWN'));
+    }
+    finish();
+  });
+
+  buttonEl.addEventListener('click', function() {
+    if (expectedNonce) return;
+    expectedNonce = makeNonce();
+    startTime = Date.now();
+    buttonEl.disabled = true;
+    show('送信しました — GASからの返事を待っています',
+      'HTML formのPOSTでPINGを送信しています。最大15秒待ちます。');
+
+    pendingTimeout = setTimeout(function() {
+      show('通信タイムアウト',
+        'GASのHTML応答が届かない、iframe埋込みが制限された、' +
+        'またはpostMessageが届いていない可能性があります。\n' +
+        '個人情報は送っていません。');
+      finish();
+    }, 15000);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = GAS_URL;
+    form.target = 'tlhBridgeFrame';
+    form.style.display = 'none';
+
+    for (const [name, value] of Object.entries({
+      action: 'bridgePing',
+      nonce: expectedNonce,
+    })) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    try {
+      form.submit();
+    } finally {
+      // フォーム要素は消してよいが、送信先iframeは結果受信まで残す。
+      form.remove();
+    }
+  });
+</script>
+</body>
+</html>
