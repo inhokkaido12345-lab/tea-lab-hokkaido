@@ -776,3 +776,50 @@ LINE公式のID token検証APIと対象チャネルID照合を行う。
 旧The TEAチェックインのJSONPは、tokenの送信や勤怠・給与APIへ流用しない。
 
 LINE公式参照: https://developers.line.biz/ja/reference/liff/
+
+
+### 2026-10-10: D3 実機テスト成功 — LINE ID token取得まで完了
+
+利用者のAndroid端末上で、本番用 LINE MINI App の診断版D3を実行し、次を確認した。
+
+```text
+診断 4/4 — LINE ID tokenの取得に成功しました
+liff.init: 成功
+LINEアプリ内: true
+LINEログイン済み: true
+LINE ID token取得: 成功（token値は非表示）
+GAS側の本人確認: 未実施
+LIFF SDK: 2.31.2
+OS: android
+初期化所要時間: 1047ms
+```
+
+これでクライアント側の起動経路:
+
+```text
+LINE MINI App
+→ GitHub Pages /workforce/
+→ LIFF SDK
+→ LINEログイン状態確認
+→ 生ID token取得
+```
+
+までは実機で成功した。tokenそのものは画面・ログに表示していない。
+
+**未完了:** LINE ID tokenのGAS側検証・TLH Accountとの照合。クライアントの
+`liff.isLoggedIn()` だけを本人確認や打刻権限の根拠として扱ってはいけない。
+
+**次の技術課題:** GitHub Pagesは静的ホスティングで、GAS ContentServiceは
+ブラウザからのcross-origin POSTに対してCORS/redirectの制約がある。
+旧The TEAチェックインのJSONP方式をID token送信や業務処理に流用しない。
+
+現在の構成を維持しつつ認証APIを接続するには、GASにPOSTしそのJSON応答を返す
+小さなサーバー側ゲートウェイ（同一origin APIを用意できる外部ホストなど）、
+または同等の安全な通信経路を設計する必要がある。
+追加ホストの採用・費用/運用条件は別途決定する。
+
+さらに、本番用LIFF IDを使用中なので、GASの `LINE_CHANNEL_ID` は
+**本番用内部チャネルのChannel ID** と一致させる必要がある。
+Developing Channel IDのままだと、LINE verify APIの
+`client_id` 照合で失敗する可能性が高い。
+Channel IDは公開識別子だが、Channel Secretをソースやチャットに貼らない。
