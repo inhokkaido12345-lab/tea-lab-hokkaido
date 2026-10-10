@@ -1,3 +1,14 @@
+<!--
+  【このHTMLの取扱説明書：workforce/bridge-test.html / 2026-10】
+  このファイルが司ること: 【検査用・現役画面ではない】GitHub Pages→GAS→postMessageのPING/PONGだけを試す独立した教材。
+  コードの構成部位: 画面のbutton→ランダムnonce生成→隠しiframeへのフォームPOST→固定PONGを受信して所要時間表示。
+  削除するとどうなるか: MINI App本体は壊れないが、LINE外の通常ブラウザで通信のみ切り分ける簡易検査を失う。
+  一般化: Integration smoke test / Cross-origin messaging / 最小再現手順。
+  魔改造の入口: 時間制限・見た目はこのHTML、GAS側のPING動作はtlh-platform/gas/workforce/Api.gsのserveBridgePing_。
+  セキュリティ境界: LINE ID token・個人情報・給与データは絶対に送らない。nonceは本人認証の代替ではない。
+  依存するもの: 同じGitHub Pagesから配信。GASのApi.gs→bridgePingルートと対応。
+  このコメントは学習用。公開画面の動作コードを変更していない。
+-->
 <!doctype html>
 <html lang="ja">
 <head>

@@ -1,3 +1,14 @@
+<!--
+  【このHTMLの取扱説明書：workforce/index.html / 2026-10】
+  このファイルが司ること: 【現役・公開中】LINE MINI Appの唯一の実画面。HTML（構造）・CSS（見た目）・JS（LINE認証・GAS通信）を1枚にまとめる。
+  コードの構成部位: headでLIFF SDK取得→bodyでD4〜D7カードと隠しiframe→scriptで共通設定・表示更新・各ボタンのPOST・postMessage受信→start()でLIFFを初期化。
+  削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録の入口が失われる。GAS内の既存データは消えない。
+  一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
+  魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
+  セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
+  依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
+  このコメントは学習用。公開画面の動作コードを変更していない。
+-->
 <!doctype html>
 <html lang="ja">
 <head>
