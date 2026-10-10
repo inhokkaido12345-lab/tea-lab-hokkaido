@@ -1113,3 +1113,53 @@ D5は読み取り専用の本人確認診断。給与、銀行口座、従業員
 GAS側でTLH Account照合・招待・権限判定を追加する前に
 CSRF・iframe clickjacking・postMessage origin/source検証・
 秘密データのレスポンス方針を再評価する。
+
+### 2026-10-10: D6 — TLH Account・従業員紐付け状態の読み取り専用診断
+
+D5でLINE公式による本人確認が実機成功した後の工程。
+**LINEログインだけで従業員登録を自動作成しない。** 設計決定稿に従い、初回登録は管理者による招待制とする。
+
+#### 現在実装した処理
+
+```text
+LINE MINI App（診断版D6）
+ → GitHub Pagesで「登録状態を確認する」を押す
+ → LINE ID tokenをHTTPS form POST bodyへ入れてGASへ送る
+ → GASでLINE公式verify APIによる本人確認
+ → IdentitiesでLINEの認証済みsubを検索
+ → UsersでTLH Accountを特定
+ → EmployeeProfilesで有効な従業員情報を確認
+ → 固定の状態コードのみpostMessageで返す
+```
+
+返す4つの状態:
+
+- UNREGISTERED: LINE本人確認は成功しているがTLH Accountは未登録。招待が必要
+- ACCOUNT_ONLY: TLH Accountはあるが、有効な従業員情報はない
+- EMPLOYEE_LINKED: TLH Accountと有効な従業員情報が紐付いている
+- ACCOUNT_INACTIVE: 登録済みだがTLH Accountが無効
+
+エラー: INVALID_NONCE / INVALID_ID_TOKEN_FORMAT / LINE_VERIFY_REJECTED / ACCOUNT_STATUS_UNAVAILABLE。
+コード以外の内部エラーやLINE userId・従業員ID・氏名・給与情報は返さない。
+
+#### 正本のソースとテスト
+
+- backend: tlh-platform/gas/workforce/BridgeAccountStatus.gs
+- backendルータ: tlh-platform/gas/workforce/Api.gs の bridgeAccountStatus
+- データ参照: AccountService.gs と WorkforceService.gs
+- frontend: tea-lab-hokkaido/workforce/index.html
+- テスト: tlh-platform/tests/bridge-account-status.test.mjs
+- Actions: Test TLH Account Status Bridge（成功）、Deploy GAS Workforce DEV（成功）
+
+Google Sheetsの書込みや招待発行は今回一切行わない。LINE実機でのD6成功はまだ未確認。
+
+#### 次の設計工程
+
+招待登録の際は管理者が先にEmployeeProfilesを用意し、従業員専用の招待を発行する。
+招待の生トークンはSheetへ保存せずハッシュを保存し、有効期限・一度だけの使用・対象従業員・本人確認を検査する。
+同時登録時のLockServiceや、途中失敗時の整合性・管理者権限も必須。
+
+注意: 今回のiframe/postMessage通信は登録状態の診断用。LINE本人確認とクライアントのnonceは将来の業務認可の代わりではない。
+給与・勤怠・個人情報の返却や更新を実装する際には、送信元の検証、opaque origin 'null'、CSRF、クリックジャッキング、応答漏えい対策を別途設計する。
+
+初学者向け: LINEのAuthenticationは『誰がログインしたか』、TLH Account/Identitiesは『TLHの誰に対応するか』、EmployeeProfileは『従業員として存在するか』。
