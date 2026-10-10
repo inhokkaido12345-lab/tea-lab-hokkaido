@@ -1044,3 +1044,72 @@ GitHub PagesのD5デプロイも`success`。
 - 現段階ではGASからGoogle Sheetsの登録情報を取得・変更しない。
 
 LINE公式：https://developers.line.biz/ja/reference/line-login/#verify-id-token
+
+
+### 2026-10-10: D5実機成功 — LINE公式APIによるID token検証／GASの意味
+
+Android端末のLINE MINI Appから診断版D5で「LINE本人確認を試す」を押し、
+次の結果を実機画面で確認した。
+
+```text
+診断版 D5 (2026-10-10)
+liff.init: 成功
+LINEアプリ内: true
+LINEログイン済み: true
+LINE ID token取得: 成功（token値は非表示）
+
+GAS通信テスト:
+通信成功 — PONGを受信しました
+往復所要時間: 1945ms
+
+LINE本人確認テスト（GAS側）:
+GAS側のLINE本人確認: 成功
+LINE公式APIがID tokenを検証しました
+往復所要時間: 3321ms
+TLH Account照合: 未実施
+従業員情報・給与情報: 未取得
+```
+
+したがって、以下の経路が実機で成立した。
+
+```text
+LINE MINI App（LIFF）
+  → GitHub Pages（画面）
+  → HTTPS form POST（ID tokenはbodyのみ）
+  → Google Apps Script（GAS）
+  → LINE公式 Verify ID token API
+  → GAS HtmlService（固定の成功フラグのみ）
+  → postMessage
+  → GitHub Pages画面へ表示
+```
+
+重要: この結果は**LINEアカウントの認証成功**である。
+特定の従業員本人であること、TLH Accountへの紐付け、勤務権限を
+証明したわけではない。今後、検証済みの`sub`とTLH Identities/Usersの紐付け、
+招待による登録、従業員権限の検査を順に進める。
+
+#### 初学者向け：GASとは
+
+GAS = Google Apps Script（Googleが運営するクラウドのスクリプト実行環境）。
+JavaScriptベースで、Google SheetsやDriveへアクセスしたりWebアプリの
+サーバー処理を担当できる。ユーザー側PCの常時起動は不要。
+
+- LINE MINI App: 従業員がアプリを開き、LINEでログインする入口
+- GitHub Pages: HTML/CSS/JavaScriptの画面を配信する「フロントエンド」
+- GAS: LINE tokenのサーバー検証・打刻・集計等の「バックエンド」
+- Google Sheets/Drive: 業務記録の保存先
+- GitHub: GASや画面のコードの変更履歴と正本
+- clasp: GitHub内のGASコードをGoogle Apps Scriptへアップロードする開発ツール
+- CLASP_AUTH_JSON: claspがGoogleへデプロイするためのOAuth認証情報であり、
+  LINE従業員本人確認用tokenとは無関係
+
+`clasp push`はコードの転送、`update-deployment`は既存Web Appの
+公開版更新。GASのデプロイ認証`invalid_rapt`の再発可能性は依然残る。
+
+#### セキュリティと次の実装
+
+D5は読み取り専用の本人確認診断。給与、銀行口座、従業員の個人情報、
+打刻データをまだ返していない。これをそのまま業務APIへ拡張せず、
+GAS側でTLH Account照合・招待・権限判定を追加する前に
+CSRF・iframe clickjacking・postMessage origin/source検証・
+秘密データのレスポンス方針を再評価する。
