@@ -1163,3 +1163,42 @@ Google Sheetsの書込みや招待発行は今回一切行わない。LINE実機
 給与・勤怠・個人情報の返却や更新を実装する際には、送信元の検証、opaque origin 'null'、CSRF、クリックジャッキング、応答漏えい対策を別途設計する。
 
 初学者向け: LINEのAuthenticationは『誰がログインしたか』、TLH Account/Identitiesは『TLHの誰に対応するか』、EmployeeProfileは『従業員として存在するか』。
+
+
+### 2026-10-10: D6 LINE実機でTLH Account未登録を正常判定
+
+Android版LINE MINI Appの診断版D6にて「登録状態を確認する」を実行。
+実機画面で次を確認した。
+
+```text
+TLH Account登録状態テスト
+登録状態の確認: 成功
+LINE認証済みですが、TLH Accountは未登録です。
+招待コードによる登録が必要です。
+GASでLINE ID tokenを再検証済み
+往復所要時間: 3886ms
+今回のテストではデータの追加・変更をしていません。
+```
+
+これで、次の読み取り経路がLINE実機で完走した。
+
+```text
+LINE MINI App → LIFF ID token取得
+→ GitHub Pages → HTTPS form POST
+→ GAS / LINE公式ID token検証
+→ Identities・Usersを検索
+→ 未登録（UNREGISTERED）を固定の状態コードで返す
+→ postMessage → LINE MINI Appへ結果表示
+```
+
+未登録という結果はエラーではなく、LINE認証が済んでいる一方で
+TLH Accountのデータがまだ作られていないことを正しく表す。
+
+**この確認だけでは招待による新規アカウント発行・EmployeeProfileとの
+紐付け・管理者権限の付与・打刻の実施は一切していない。**
+
+次工程は新規アカウント作成と従業員招待の設計・実装。
+初心者が理解できる最低限の構造、管理者による事前登録、
+一度だけ使える招待コード、LINE公式本人確認、重複防止、
+同時更新時の整合性保護を必須条件とする。
+将来の自由登録TLH Accountと、勤怠への従業員権限付与は独立させる。
