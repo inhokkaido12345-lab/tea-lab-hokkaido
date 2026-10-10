@@ -1202,3 +1202,43 @@ TLH Accountのデータがまだ作られていないことを正しく表す。
 一度だけ使える招待コード、LINE公式本人確認、重複防止、
 同時更新時の整合性保護を必須条件とする。
 将来の自由登録TLH Accountと、勤怠への従業員権限付与は独立させる。
+
+
+### 2026-10-10: D7 — 自分のTLH共通アカウントを作り、あとから初期管理者へ設定
+
+利用者は「まず自分のTLHアカウントを作成し、実際にログインして確認する」方針を選択した。
+アカウント作成と初期管理者権限の付与を**別々の操作**にする。
+
+- **一般登録**: LINE ID tokenをサーバー側で検証し、UsersとIdentitiesに新しいTLH IDを作る。RoleAssignmentsとEmployeeProfilesには書かない
+- **初期管理者の付与**: 所有者がGAS編集画面で特定のTLH IDを指定し、`grantFirstTlhAdmin_` を手動実行してTLH_ADMINを1件付与する
+- **従業員登録**: 招待制。管理者だからといってEmployeeProfileを勝手に作らない
+- **将来の一般向け登録**: Users/Identitiesと従業員権限が分かれているので、既存コードを拡張可能
+
+D7のLINE画面:
+`https://miniapp.line.me/2011940133-JXUDzLnG`
+
+新しいボタン:
+`自分のTLHアカウントを作成する`
+
+安全上の理由で、登録は初期状態で**無効**。
+GASスクリプトプロパティ`TLH_ACCOUNT_SIGNUP_ENABLED`が完全に`true`と一致した時だけ、
+LINE公式本人確認が成功した人物本人のTLHアカウントを新規作成する。
+
+最初のテストでは管理者が短時間だけ`true`へ変更し、
+登録したらすぐ`false`へ戻す。設定が開いている間は他のLINE利用者も一般アカウントを作成できるため、
+初期段階では開けたまま放置しない。ただし一般登録では管理者権限を得られない。
+
+実装:
+- `tlh-platform/gas/workforce/RegistrationService.gs`: SheetsへUsers/Identitiesのみ追加、排他制御と二重登録防止
+- `tlh-platform/gas/workforce/BridgeRegistration.gs`: token検証と固定コード応答
+- `tlh-platform/gas/workforce/FirstAdminSetup.gs`: 所有者だけがエディタから行う初期管理者付与
+- `tea-lab-hokkaido/workforce/index.html`: 新規登録用D7診断UI
+- `tlh-platform/tests/registration.test.mjs`: Mockによる11件の単体テスト
+
+初期管理者の操作は
+`tlh-platform/gas/workforce/README.md` の「10. 初めてのTLHアカウント作成と初期管理者設定（D7）」に、
+初心者向けの具体的な画面操作として記録した。
+
+今回のGitHub Actionsの単体テスト11件とGASデプロイは成功。
+LINEの実機からUsers/Identitiesへ正しく登録できたかはまだ未確認。
+登録が成功したら、D6の「登録状態を確認する」で`ACCOUNT_ONLY`へ変わることを確認する。
