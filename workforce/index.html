@@ -75,12 +75,26 @@
     .error {
       opacity: 1;
     }
+
+    .bridge-button {
+      font: inherit;
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 16px;
+      margin-top: 12px;
+      background: #006d70;
+      color: white;
+      cursor: pointer;
+    }
+
+    .bridge-button:disabled { opacity: 0.5; }
+
   </style>
 </head>
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D3 (2026-10-09)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D4 (2026-10-10)</p>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -92,11 +106,29 @@
         <li>ID token取得（値は非表示）</li>
       </ol>
     </section>
+
+    <!--
+      D4追加: LIFFが成功した場合だけ、GASへの疎通テストを表示する。
+      PING/PONGにLINEのID tokenや従業員データは含めない。
+    -->
+    <section id="bridge-section" class="card" aria-live="polite" hidden>
+      <strong>GAS通信テスト（PING/PONG）</strong>
+      <div id="bridge-status" class="detail">ボタンを押すと公開PINGだけを送信します。</div>
+      <button id="bridge-button" class="bridge-button" type="button">GASにPINGを送る</button>
+    </section>
   </main>
+
+  <!--
+    HTML formのtargetとなるiframe。通信結果の表示には使わない。
+    GAS HtmlService内のJavaScriptがtop.postMessageで結果を返す。
+    postMessageの内容は今回も固定PONG + nonceのみ。
+  -->
+  <iframe id="tlhBridgeFrame" name="tlhBridgeFrame"
+    title="TLH GAS通信テスト応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
-     * TLH Workforce / LIFF 診断画面 D3。
+     * TLH Workforce / LIFF＋非機密PING通信 診断画面 D4。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
@@ -110,8 +142,24 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D3 (2026-10-09)';
+    const DIAGNOSTIC_VERSION = 'D4 (2026-10-10)';
     const INIT_TIMEOUT_MS = 15000;
+
+    /**
+     * GAS公開Web Appのエンドポイント（公開URL、秘密情報ではない）。
+     * LIFFの本番Endpointは引き続きGitHub Pages。
+     * GASへ直接fetchしてCORSに阻まれる代わりに、
+     * HTML form POST → iframe → postMessageという標準ブラウザAPIで往復する。
+     */
+    const GAS_URL =
+      'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
+    const BRIDGE_TIMEOUT_MS = 15000;
+    const bridgeSection = document.getElementById('bridge-section');
+    const bridgeStatus = document.getElementById('bridge-status');
+    const bridgeButton = document.getElementById('bridge-button');
+    let bridgeNonce = null;
+    let bridgeTimeout = null;
+    let bridgeStartedAt = 0;
 
     const titleElement = document.getElementById('status-title');
     const detailElement = document.getElementById('status-detail');
@@ -176,6 +224,112 @@
         window.clearTimeout(timerId);
       }
     }
+
+    /**
+     * 非機密テストだけのGASブリッジ。
+     *
+     * nonce（number used once）:
+     *   毎回16byteの暗号学的乱数を作り、PONGに同じ値が返るか照合する。
+     *   LINE本人確認tokenとは別の、公開して差し支えない照合用番号。
+     *
+     * 注意:
+     *   LINE ID token・LINE userId・勤怠・給与データは送信しない。
+     *   PONG成功を認証成功と誤認しない。
+     *
+     * GAS HtmlServiceは内部に入れ子のiframeを持つ場合がある。
+     * window.top.postMessage()からのevent.sourceが直下のiframeと
+     * 必ず一致するとは限らないため、PoCではGoogle originとnonceを照合する。
+     * Google側のsandboxがopaque originを使う場合は 'null' も受け付ける。
+     * この判定をそのまま個人情報の受信や業務APIへ流用してはいけない。
+     */
+    function createBridgeNonce() {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, function(byte) {
+        return byte.toString(16).padStart(2, '0');
+      }).join('');
+    }
+
+    function finishBridge() {
+      if (bridgeTimeout !== null) window.clearTimeout(bridgeTimeout);
+      bridgeTimeout = null;
+      bridgeNonce = null;
+      bridgeButton.disabled = false;
+    }
+
+    window.addEventListener('message', function(event) {
+      if (!bridgeNonce) return;
+      const data = event.data;
+      if (!data || data.type !== 'TLH_BRIDGE_PONG' ||
+          data.nonce !== bridgeNonce) return;
+
+      const googleOrigin =
+        /^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin);
+      if (!googleOrigin && event.origin !== 'null') return;
+
+      if (data.ok === true && data.result === 'PONG') {
+        bridgeStatus.textContent =
+          '通信成功 — PONGを受信しました。\n' +
+          '往復所要時間: ' + String(Date.now() - bridgeStartedAt) + 'ms\n' +
+          'LINEアプリ内: ' + String(liff.isInClient()) + '\n' +
+          'LINEの認証情報は送信していません。';
+      } else {
+        bridgeStatus.textContent =
+          'GASの診断応答: ' + String(data.result || 'UNKNOWN');
+      }
+      finishBridge();
+    });
+
+    bridgeButton.addEventListener('click', function() {
+      if (bridgeNonce) return;
+      bridgeNonce = createBridgeNonce();
+      bridgeStartedAt = Date.now();
+      bridgeButton.disabled = true;
+      bridgeStatus.textContent =
+        'PING送信中です。最大15秒待ちます。\n' +
+        '送信内容は固定文字列とランダムな照合番号だけです。';
+
+      bridgeTimeout = window.setTimeout(function() {
+        bridgeStatus.textContent =
+          'PING通信タイムアウト（15秒）。\n' +
+          'LINE内ブラウザのiframe・postMessage制約、通信状況などを調べる必要があります。';
+        finishBridge();
+      }, BRIDGE_TIMEOUT_MS);
+
+      /**
+       * HTTP POST formはブラウザ標準機能なので、
+       * cross-originであってもCORS preflightなしで送信できる。
+       * targetをiframeにすることでLINEの画面を遷移させない。
+       * GASの返事をiframeのDOMから読み取らず、postMessageで受け取る。
+       */
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = 'tlhBridgeFrame';
+      form.style.display = 'none';
+
+      for (const [name, value] of Object.entries({
+        action: 'bridgePing',
+        nonce: bridgeNonce,
+      })) {
+        const input = document.createElement('input');
+        input.name = name;
+        input.value = value;
+        input.type = 'hidden';
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      try {
+        form.submit();
+      } catch (_error) {
+        bridgeStatus.textContent =
+          'ブラウザがフォームの送信を拒否しました。';
+        finishBridge();
+      } finally {
+        form.remove();
+      }
+    });
 
     async function start() {
       setStatus(
@@ -262,6 +416,10 @@
           lines.join('\n'),
           false
         );
+
+        // LINEの初期化・token存在確認ができた後にだけ公開PINGのボタンを表示。
+        // tokenの値はブリッジへ渡さない。
+        bridgeSection.hidden = false;
       } catch (error) {
         setStatus(
           'LIFF診断で停止しました',
