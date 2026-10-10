@@ -95,7 +95,7 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D6 (2026-10-10)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D7 (2026-10-10)</p>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -145,6 +145,22 @@
       </div>
       <button id="account-button" class="bridge-button" type="button">登録状態を確認する</button>
     </section>
+
+    <!--
+      D7: 自分の「一般TLH Account」を作成する、明示的な操作。
+      LINEで本人確認した人自身のアカウントだけを作る。
+      従業員・管理者権限はここでは付与しない。
+      Script Property「TLH_ACCOUNT_SIGNUP_ENABLED=true」が必要で、
+      初期状態では安全のため登録を許可しない。
+    -->
+    <section id="signup-section" class="card" aria-live="polite" hidden>
+      <strong>TLHアカウントの新規作成</strong>
+      <div id="signup-status" class="detail">
+        LINE本人確認を使い、あなた自身のTLHアカウントを作成します。
+        管理者・従業員権限は付与されません。
+      </div>
+      <button id="signup-button" class="bridge-button" type="button">自分のTLHアカウントを作成する</button>
+    </section>
   </main>
 
   <!--
@@ -159,10 +175,13 @@
     title="TLH LINE本人確認テスト応答" hidden aria-hidden="true"></iframe>
   <iframe id="tlhAccountFrame" name="tlhAccountFrame"
     title="TLHアカウント状態検査応答" hidden aria-hidden="true"></iframe>
+  <!-- D7: ユーザー作成処理の応答専用 -->
+  <iframe id="tlhSignupFrame" name="tlhSignupFrame"
+    title="TLHアカウント作成応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
-     * TLH Workforce / LIFF＋登録状態確認 診断画面 D6。
+     * TLH Workforce / LINE認証・TLH一般アカウント作成 診断画面 D7。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
@@ -176,7 +195,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D6 (2026-10-10)';
+    const DIAGNOSTIC_VERSION = 'D7 (2026-10-10)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
@@ -211,6 +230,14 @@
     let accountNonce = null;
     let accountTimeout = null;
     let accountStartedAt = 0;
+
+    // D7: 自分用のTLH Account作成。管理者権限は別工程。
+    const signupSection = document.getElementById('signup-section');
+    const signupStatus = document.getElementById('signup-status');
+    const signupButton = document.getElementById('signup-button');
+    let signupNonce = null;
+    let signupTimeout = null;
+    let signupStartedAt = 0;
 
     const titleElement = document.getElementById('status-title');
     const detailElement = document.getElementById('status-detail');
@@ -630,6 +657,129 @@
       }
     });
 
+    /**
+     * D7: 新規TLH一般アカウント作成の結果表示。
+     *
+     * 正常ならUsersとIdentitiesに各1行作るのみ。
+     * RoleAssignments / EmployeeProfilesには絶対に書かない。
+     *
+     * 初期管理者付与はGoogle Apps Script所有者が後で手動実行する。
+     * LINEで本人確認できたからといって管理者にはしない。
+     *
+     * 画面で受け取るのは固定のcodeとnonceだけ。
+     * アカウント内部ID、氏名、LINE userIdなどを返さない。
+     */
+    function finishSignup() {
+      if (signupTimeout !== null) window.clearTimeout(signupTimeout);
+      signupTimeout = null;
+      signupNonce = null;
+      signupButton.disabled = false;
+    }
+
+    window.addEventListener('message', function(event) {
+      if (!signupNonce) return;
+
+      const data = event.data;
+      if (!data || data.type !== 'TLH_BRIDGE_ACCOUNT_CREATED' ||
+          data.nonce !== signupNonce) return;
+
+      // D4〜D6と同じGoogle HtmlService送信元の暫定判定。
+      // この条件を権限管理や給与データの返信に流用しないこと。
+      const googleOrigin =
+        /^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin);
+      if (!googleOrigin && event.origin !== 'null') return;
+
+      const elapsedMs = String(Date.now() - signupStartedAt);
+      const messages = {
+        CREATED:
+          '一般TLHアカウントを作成しました。\n' +
+          'LINEログイン方法を新しいTLH IDに紐付けました。\n' +
+          '管理者権限・従業員権限はまだありません。',
+        ALREADY_REGISTERED:
+          'このLINEアカウントには、すでにTLHアカウントが存在します。\n' +
+          '二重登録は行っていません。',
+        SIGNUP_CLOSED:
+          '現在、新規登録は停止しています。\n' +
+          'GASのスクリプト プロパティで管理者が登録を許可する必要があります。',
+        IDENTITY_REVIEW_REQUIRED:
+          '既存のLINE紐付けに確認が必要です。\n' +
+          '安全のため新規アカウントを作っていません。',
+      };
+
+      const safeCode = typeof data.code === 'string' &&
+        /^[A-Z_]{1,48}$/.test(data.code) ? data.code : 'UNKNOWN_ERROR';
+      const message = Object.prototype.hasOwnProperty.call(messages,safeCode)
+        ? messages[safeCode]
+        : ('登録処理は完了していません。\nエラーコード: ' + safeCode);
+
+      signupStatus.textContent = message +
+        '\n往復所要時間: ' + elapsedMs + 'ms';
+      finishSignup();
+    });
+
+    signupButton.addEventListener('click', function() {
+      if (signupNonce) return;
+      if (!window.liff || !liff.isLoggedIn()) {
+        signupStatus.textContent =
+          'LINEアプリでログインしてから操作してください。';
+        return;
+      }
+      const idToken = liff.getIDToken();
+      if (typeof idToken !== 'string' || idToken.length === 0) {
+        signupStatus.textContent = 'LINE ID tokenを取得できません。';
+        return;
+      }
+
+      signupNonce = createBridgeNonce();
+      signupStartedAt = Date.now();
+      signupButton.disabled = true;
+      signupStatus.textContent =
+        'LINEの本人確認とアカウント登録を実行しています。\n' +
+        '従業員情報・管理者権限はまだ作りません。';
+
+      signupTimeout = window.setTimeout(function() {
+        signupStatus.textContent =
+          'アカウント登録の応答が20秒以内に届きませんでした。\n' +
+          'この場合も処理が完了した可能性があるため、\n' +
+          'まず「登録状態を確認する」で重複登録されていないか確認してください。';
+        finishSignup();
+      }, 20000);
+
+      /**
+       * GET/URL/JSONPにtokenを載せない。
+       * HTTPSのPOST bodyだけで、GAS側がLINE公式APIで再検証する。
+       * サーバーへ人間が指定したrole/idは一切送らない。
+       */
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = GAS_URL;
+      form.target = 'tlhSignupFrame';
+      form.style.display = 'none';
+      for (const [name, value] of Object.entries({
+        action: 'bridgeCreateAccount',
+        nonce: signupNonce,
+        idToken: idToken,
+      })) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+
+      document.body.appendChild(form);
+      try {
+        form.submit();
+      } catch (_error) {
+        signupStatus.textContent =
+          'フォームの送信を開始できませんでした。';
+        finishSignup();
+      } finally {
+        // iframe経由の通信は残すが、tokenを含む一時formは削除する。
+        form.remove();
+      }
+    });
+
     async function start() {
       setStatus(
         '診断 1/4 — JavaScriptが起動しました',
@@ -721,6 +871,7 @@
         bridgeSection.hidden = false;
         authSection.hidden = false;
         accountSection.hidden = false;
+        signupSection.hidden = false;
       } catch (error) {
         setStatus(
           'LIFF診断で停止しました',
