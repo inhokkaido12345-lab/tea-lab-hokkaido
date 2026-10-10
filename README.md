@@ -936,3 +936,51 @@ Origin/source検証、stateを変更するAPIへのCSRF対策、UIのclickjackin
 
 新規Cloudflare Workerは公開していない。既存の
 `workers/workforce-api` は採用していない代替案のまま。
+
+
+### 2026-10-10: LINE MINI App実機でGASとの双方向通信D4成功
+
+Android版LINE MINI Appで診断版D4を開き、
+ログイン済みLIFFから「GASにPINGを送る」ボタンを押した。
+
+実機スクリーンショットで次の結果を確認した。
+
+```text
+診断 4/4 — LINE ID tokenの取得に成功しました
+liff.init: 成功
+LINEアプリ内: true
+LINEログイン済み: true
+GAS通信テスト（PING/PONG）
+通信成功 — PONGを受信しました。
+往復所要時間: 3337ms
+LINEアプリ内: true
+LINEの認証情報は送信していません。
+```
+
+確定した動作経路:
+
+```text
+LINE MINI App / GitHub Pages
+    → HTML form POST (action=bridgePing, nonce)
+    → GAS doPost
+    → HtmlService
+    → postMessage
+    → 元のLINE MINI App画面でPONG表示
+```
+
+**成果:** Cloudflareなどの新規外部サービスを追加しなくても、
+既存のGitHub PagesとGASの間で、非機密情報の双方向通信が
+LINEアプリ内で実際に成立することを証明した。
+
+**未検証:** ID tokenをGASへ安全に送信すること、GASでLINE公式検証を
+完了すること、TLH Account照合、従業員権限、打刻記録、給与計算。
+PONGは利用者本人確認の証拠ではない。
+
+次工程では「tokenを含むPOST」の機密性および、
+Google HtmlServiceの埋込みとpostMessageの送信元検証、
+応答をどのframeへ送るか、リプレイ／CSRF／クリックジャッキング対策を
+設計・確認する。現行D4のnonceとevent.origin='null'容認は
+公開PING応答に限る暫定的な判定であり、
+そのまま機密データのレスポンスに転用しない。
+
+現時点でユーザーによる新規サービス登録やCloudflareの導入は不要。
