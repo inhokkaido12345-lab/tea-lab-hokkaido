@@ -1244,3 +1244,27 @@ LINE公式本人確認が成功した人物本人のTLHアカウントを新規�
 今回のGitHub Actionsの単体テスト11件とGASデプロイは成功。
 LINEの実機からUsers/Identitiesへ正しく登録できたかはまだ未確認。
 登録が成功したら、D6の「登録状態を確認する」で`ACCOUNT_ONLY`へ変わることを確認する。
+
+
+## 初学者向け：サイト全体のファイル役割・削除影響
+
+TLHのホームページとLINE勤怠管理は同じGitHub Pages上にあるが、実行されるHTMLは別。
+
+| ファイル | 司ること | 削除したらどうなるか | 一般化・魔改造 |
+| --- | --- | --- | --- |
+| `index.html` | TLH公式サイトの文章・ページ構造・SEO/OGP | `https://tealabhokkaido.com/`のトップページが失われる。勤怠の`/workforce/`は別HTML | Semantic HTML。文章・セクションはこちら |
+| `style.css` | トップページのブランド配色・見た目・レスポンシブ | ページの文章は残るが見た目・余白・配置が崩れる | CSS Custom Properties。色は`:root` |
+| `CNAME` | GitHub Pagesと`tealabhokkaido.com`独自ドメインの関連付け | GitHub Pagesのカスタムドメイン設定・公開URLへ影響し得る。変更はDNSとGitHub Pages設定の確認が必要 | DNS/Hosting configuration。むやみに削除しない |
+| `assets/brand/logo-mark.svg` | ブラウザfaviconなどの小さいブランド識別 | マーク画像を参照する表示が欠ける | Vector asset。原本のpath編集は禁止 |
+| `assets/brand/logo-horizontal.svg` | ヘッダーの横長ロゴ | ヘッダーロゴが表示されなくなる | Asset variant。CSSから表示サイズ調整 |
+| `assets/brand/logo-vertical.svg` | トップHeroの主ロゴ | Heroの主ブランド表現が消える | SVGのviewBoxと表示幅を区別 |
+| `workforce/index.html` | **現役LINE MINI App画面** | LINE勤怠管理のボタン・LIFF起動が壊れる | 詳細は[workforce/README.md](workforce/README.md) |
+| `workforce/bridge-test.html` | GAS PING/PONGの単独試験 | 現役のMINI Appは変わらないが試験画面が失われる | Cross-origin integration smoke test |
+| `assets/brand/README.md` | ロゴSVGの保護・配置・サイズ調整手順 | プログラムは動くが、原本を誤って加工する危険が増す | Asset management |
+
+**ファイルを物理削除する前に**、その名前が参照されている場所をGitHub全体で検索し、
+代替の実装へ参照を差し替えてから削除する。PNG/JPEGやSVGをコピーする場合でも、
+同じ名前の異なる版が複数混ざらないよう整理する。
+
+別リポジトリのGAS処理ファイルと削除影響の全体図：
+[TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md)。
