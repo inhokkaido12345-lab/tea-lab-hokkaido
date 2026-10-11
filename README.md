@@ -1268,3 +1268,16 @@ TLHのホームページとLINE勤怠管理は同じGitHub Pages上にあるが�
 
 別リポジトリのGAS処理ファイルと削除影響の全体図：
 [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md)。
+
+
+### 2026-10-11: D8 — LINE実機の初期管理者権限の読み取り診断
+
+`workforce/index.html`をD8へ更新し、`自分の管理者権限を確認する`ボタンを追加。
+
+処理はLINE ID tokenをHTTPS form POST bodyへ送信し、GASがLINE公式による本人確認と`RoleAssignments`内の`TLH_ADMIN/GLOBAL/ACTIVE`・有効期間を再検査する。返すのは`ACTIVE_TLH_ADMIN`など固定コードのみで、個人ID・給与情報・Sheetのレコード内容は返信しない。
+
+D8は**診断用**であり、管理者表示を今後の書込APIの認可代わりに使ってはならない。
+
+**公開上の注意：** GitHub Pagesの画面は更新されたが、GAS側の`Deploy GAS Workforce DEV`が`invalid_rapt`で失敗したため、この時点でD8の実機成功はまだ確認できていない。GASへソースが反映されるまでD8ボタンはタイムアウトする可能性がある。従来のD4〜D7の公開機能は別ルートであり、今回それらの処理は書き換えていない。
+
+削除すると：`workforce/index.html`内のD8カード・専用iframe・対応イベント処理を消すと管理者権限の診断のみ使えなくなる。既存の`RoleAssignments`は削除されない。
