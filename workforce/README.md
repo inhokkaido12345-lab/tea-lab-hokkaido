@@ -1,6 +1,6 @@
 # TLH 勤怠管理フロントエンド — 初心者向けファイル説明
 
-## D16：今月開始分の完了勤務（公開/LINE実機未確認）
+## D16：今月開始分の完了勤務（公開済み、LINE実機未確認）
 
 本登録保留・実打刻受付閉鎖を維持。「自分の今月分を確認する」は全Sheet/Properties無書込の明示照会。
 初回は「有効な従業員登録がありません。」が期待結果。招待受取り/受付開放/実打刻は試さない。
@@ -16,6 +16,9 @@ summary全文をHMAC、型/暦月の日数/日数≤回数/合計整合性も検
 旧集計は照会開始で消す。二重タップ/期限切れ応答/埋込を拒否。自動登録/打刻/再送やブラウザ保存はない。
 削除時はHTMLのscript/init/section/iframeと共有duration/foldの呼出しを確認する。原簿は消さない。
 backend183/frontend54（計237）テスト成功。模擬画面320/390/1280pxで日数/回数/端数/未終了注意/停止拒否/無書込を確認。
+GAS公開版30の30ファイルが正本一致。画面正本59ca57f46e63e52edb4b9b5a9388a56aeab9932f。
+[画面テストrun 38257600928](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38257600928)/[Pages公開run 38257600692](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38257600692)成功。
+公開HTML/monthly-work-summary.js/共有daily-summary.jsはHTTP 200・正本全文一致。ソース手編集/再認可/受付開放/実登録なし。
 LINE実機結果・現物Sheet全項目の直接照合は未確認。非公開repo docs/D16-今月開始分の完了勤務集計.mdが再構築/列/計算/制約の説明。
 
 ## D15：本日開始分の完了勤務（有効社員なし拒否はLINE実機確認済み）

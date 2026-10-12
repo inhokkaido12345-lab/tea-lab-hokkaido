@@ -1,6 +1,6 @@
 > **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
 
-> **2026-10-12：Workforce D16の今月開始分の完了勤務表示を実装（公開/LINE実機未確認）。** 全237テスト成功。暦月の日数/回数/時間を無書込で集計。未終了/給与締め/給与保存とは別、本登録/受付開放なし。[操作と制約](workforce/README.md)。
+> **2026-10-12：Workforce D16の今月開始分の完了勤務表示を公開（LINE実機未確認）。** GAS版30/Pages公開・全237テスト成功。暦月の日数/回数/時間を無書込で集計。未終了/給与締め/給与保存とは別、本登録/受付開放なし。[操作と制約](workforce/README.md)。
 
 > **2026-10-12：Workforce D15の有効社員なし拒否をLINE実機で確認（利用者報告）。** GAS版29/Pages公開・全217テスト成功。正常な完了勤務集計は模擬検査のみ。無書込、本登録/受付開放/給与計算なし。[結果と制約](workforce/README.md)。
 
