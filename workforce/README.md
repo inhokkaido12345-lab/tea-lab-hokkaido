@@ -1,5 +1,23 @@
 # TLH 勤怠管理フロントエンド — 初心者向けファイル説明
 
+## D15：本日開始分の完了勤務（公開/LINE実機未確認）
+
+本登録保留・実受付閉鎖を維持。「自分の本日分を確認する」は全Sheet/Propertiesへ無書込の明示照会。
+初回の利用者は有効社員なしのため「有効な従業員登録がありません。」が期待結果。招待/打刻を試さない。
+有効社員の正常生原簿ならGAS本日の出勤日で完了勤務を集計。全休憩を引き、整数ミリ秒の端数を保つ。
+日跨ぎ分は出勤日へ帰属。未終了は合計へ足さず別表示。修正合成/過去日/月次/給与は未実装。
+関連Correctionsがあれば拒否し、修正未反映の集計を正常表示しない。
+
+daily-summary.jsは独立controller、iframeはtlhDailySummaryFrame、actionはbridgeGetDailySummary。
+Api→BridgeDailySummary→DailySummaryService→D13/D14共通の認可/原簿/Script Lockを使う。
+成功返信のsummaryは日付/回数/3時間合計/現在状態のみ。人物ID/氏名/個別時刻/原簿/給与は返信しない。
+JSON文字列全体を一回用鍵でHMAC検証。型/範囲/暦日/合計整合性も検査し、textContentで表示する。
+読取開始で旧集計を隠し、timeout/拒否/遅延返信で昔の個人集計を残さない。二重タップ/自動照会/自動再送なし。
+URL/console/localStorage/sessionStorageへ集計/token/鍵を出さず、埋込ページからの照会を拒否する。
+削除時はHTMLのscript/init/section/iframeを確認する。既存の他機能と原簿は残す。
+backend171/frontend46（計217）テスト成功。模擬ブラウザ320/390/1280pxで集計/未終了注意/停止後拒否/無書込が成功。
+LINE実機結果と現物Sheet全項目の直接照合は未確認。非公開repo docs/D15-本日開始分の完了勤務集計.mdが再構築/列/計算/制約の説明。
+
 ## D14：本人打刻の追記（受付停止表示はLINE実機確認済み）
 
 本登録保留を維持。TLH_PUNCH_ENABLEDが未設定/falseなら閉鎖で、今回実環境の受付を開けていない。

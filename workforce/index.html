@@ -1,13 +1,13 @@
 <!--
   【このHTMLの取扱説明書：workforce/index.html / 2026-10】
   このファイルが司ること: 【現役・公開中】LINE MINI Appの唯一の実画面。HTML/CSS・LIFF初期化を持ち、登録controllerは別JSから読み込む。
-  コードの構成部位: headでLIFF SDKとD9〜D14 controller取得→bodyで勤務状態・打刻・登録・停止/訂正・診断→start()でLIFF初期化。
+  コードの構成部位: headでLIFF SDKとD9〜D15 controller取得→bodyで勤務状態・打刻・本日集計・登録・停止/訂正・診断→start()でLIFF初期化。
   削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
   一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
   魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
-  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch.test.mjs→Actions→LINE実機。D14受付は初期閉鎖。
+  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary.test.mjs→Actions→LINE実機。D14受付は初期閉鎖。
 -->
 <!doctype html>
 <html lang="ja">
@@ -29,6 +29,7 @@
   <script src="staff-maintenance.js?v=D12-20261012"></script>
   <script src="work-state.js?v=D13-20261012"></script>
   <script src="punch.js?v=D14-20261012"></script>
+  <script src="daily-summary.js?v=D15-20261012"></script>
 
   <style>
     :root {
@@ -121,6 +122,9 @@
     .staff-section textarea { resize: vertical; min-height: 76px; overflow-wrap: anywhere; }
     .staff-section button { border-radius: 8px; max-width: 100%; }
     #maintenance-stop { background: #b42318; }
+    .daily-summary-values { margin: 12px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 10px 12px; }
+    .daily-summary-values dt, .daily-summary-values dd { margin: 0; overflow-wrap: anywhere; }
+    .daily-summary-values dd { font-variant-numeric: tabular-nums; }
     .invite-code { font-family: ui-monospace, monospace !important; }
     .diagnostics { margin-top: 28px; border-top: 1px solid #777; padding-top: 14px; }
     .diagnostics summary { cursor: pointer; font-weight: 600; }
@@ -130,7 +134,7 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">打刻・勤務状態・従業員登録 D14 (2026-10-12)</p>
+    <p class="subtitle">打刻・勤務状態・本日集計 D15 (2026-10-12)</p>
     <div id="staff-load-status" class="detail" role="status" aria-live="polite">LINEを確認しています。</div>
 
     <!-- D13は本人状態の読取りのみ。出勤/退勤/休憩をここで記録しない。 -->
@@ -151,6 +155,23 @@
         <button id="punch-out" class="bridge-button" type="button" hidden>退勤する</button>
       </div>
       <button id="punch-retry" class="bridge-button" type="button" hidden>同じ打刻を再送する</button>
+    </section>
+
+    <!-- D15は完了勤務の読取集計のみ。未終了分/給与/修正の見込は作らない。 -->
+    <section id="daily-summary-section" class="staff-section" hidden>
+      <h2>本日開始分の完了勤務</h2>
+      <div id="daily-summary-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="daily-summary-check" class="bridge-button" type="button">自分の本日分を確認する</button>
+      <div id="daily-summary-result" hidden>
+        <dl class="daily-summary-values">
+          <dt>出勤日<br>（日本時間）</dt><dd id="daily-summary-date"></dd>
+          <dt>完了した勤務</dt><dd id="daily-summary-count"></dd>
+          <dt>出勤から退勤</dt><dd id="daily-summary-gross"></dd>
+          <dt>休憩時間</dt><dd id="daily-summary-break"></dd>
+          <dt>休憩を除く時間</dt><dd id="daily-summary-worked"></dd>
+        </dl>
+        <p id="daily-summary-open" class="detail"></p>
+      </div>
     </section>
 
     <!-- D11業務入力は独立controller。D9ダミーや未検証の診断応答に流用しない。 -->
@@ -329,6 +350,8 @@
     title="TLH勤務状態応答" hidden aria-hidden="true"></iframe>
   <iframe id="tlhPunchFrame" name="tlhPunchFrame"
     title="TLH本人打刻応答" hidden aria-hidden="true"></iframe>
+  <iframe id="tlhDailySummaryFrame" name="tlhDailySummaryFrame"
+    title="TLH本日集計応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
@@ -346,7 +369,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D11 (2026-10-12)';
+    const DIAGNOSTIC_VERSION = 'D15 (2026-10-12)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
@@ -364,6 +387,7 @@
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff });
+    TlhDailySummary.init({ gasUrl: GAS_URL, liff: window.liff });
     const bridgeSection = document.getElementById('bridge-section');
     const bridgeStatus = document.getElementById('bridge-status');
     const bridgeButton = document.getElementById('bridge-button');
@@ -1155,6 +1179,7 @@
         document.getElementById('maintenance-section').hidden = false;
         document.getElementById('work-state-section').hidden = false;
         document.getElementById('punch-section').hidden = false;
+        document.getElementById('daily-summary-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
