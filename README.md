@@ -1,6 +1,6 @@
 > **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
 
-> **2026-10-12：Workforce D10のLINE実機成功（利用者報告）。** ダミー解除後、有効な従業員情報なし・TLHアカウントあり・管理者権限有効を確認。D9の登録/監査も実機成功。[結果と画面の手順](workforce/README.md)。
+> **2026-10-12：Workforce D11の個別招待を実装（実機未確認）。** 管理者の事前登録・24時間招待・取消し・本人のLINE登録。D9/D10診断も残し、初回はデータを書かない管理者画面確認から。[結果と手順](workforce/README.md)。
 
 > **D8実機成功。** GitHub ActionsからGASへの配布・公開更新が復旧し、LINEで「管理者権限：有効です」を確認済み。両リポジトリのmainが正本です。GAS手動ソース編集や新しい外部サービスは使っていません。
 
