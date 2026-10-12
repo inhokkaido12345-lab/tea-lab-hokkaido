@@ -1,5 +1,7 @@
 > **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
 
+> **2026-10-12：Workforce D13の本人勤務状態の読取を実装（公開・実機はこれから）。** 全164テスト成功。本登録・打刻書込なし。勤務外/勤務中/休憩中、または有効社員なし等の固定結果だけ表示。[手順と制約](workforce/README.md)。
+
 > **2026-10-12：Workforce D12の事前登録データの氏名訂正・停止がLINE実機で成功（利用者報告）。** 訂正/停止後の読み直しと両監査action行を確認。本登録は保留、ACTIVE従業員の操作は実機未確認。全136テスト成功。[結果・手順・制約](workforce/README.md)。
 
 > **2026-10-12：Workforce D11の管理者確認・招待発行・未使用取消しがLINE実機で成功（利用者報告）。** 本人の招待受取りは未確認。管理者の事前登録・24時間招待・取消し・本人のLINE登録。D9/D10診断も残す。[結果と手順](workforce/README.md)。

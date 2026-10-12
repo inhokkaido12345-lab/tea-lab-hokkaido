@@ -1,13 +1,13 @@
 <!--
   【このHTMLの取扱説明書：workforce/index.html / 2026-10】
   このファイルが司ること: 【現役・公開中】LINE MINI Appの唯一の実画面。HTML/CSS・LIFF初期化を持ち、登録controllerは別JSから読み込む。
-  コードの構成部位: headでLIFF SDKとD9〜D12 controller取得→bodyで登録・停止/訂正・折りたたみ診断→start()でLIFF初期化。
+  コードの構成部位: headでLIFF SDKとD9〜D13 controller取得→bodyで勤務状態・登録・停止/訂正・診断→start()でLIFF初期化。
   削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
   一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
   魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
-  検証: tests/workforce-invitation.test.mjs、staff-enrollment.test.mjs、staff-maintenance.test.mjs→GitHub Actions→LINE実機。D11/D12は独立controller。
+  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state.test.mjs→GitHub Actions→LINE実機。D13は読取専用。
 -->
 <!doctype html>
 <html lang="ja">
@@ -27,6 +27,7 @@
   <script src="demo-invitation.js?v=D10-20261012"></script>
   <script src="staff-enrollment.js?v=D11-20261012"></script>
   <script src="staff-maintenance.js?v=D12-20261012"></script>
+  <script src="work-state.js?v=D13-20261012"></script>
 
   <style>
     :root {
@@ -128,8 +129,15 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">従業員登録・利用停止・訂正 D12 (2026-10-12)</p>
+    <p class="subtitle">勤務状態・従業員登録 D13 (2026-10-12)</p>
     <div id="staff-load-status" class="detail" role="status" aria-live="polite">LINEを確認しています。</div>
+
+    <!-- D13は本人状態の読取りのみ。出勤/退勤/休憩をここで記録しない。 -->
+    <section id="work-state-section" class="staff-section" hidden>
+      <h2>勤務状態</h2>
+      <div id="work-state-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="work-state-check" class="bridge-button" type="button">自分の勤務状態を確認する</button>
+    </section>
 
     <!-- D11業務入力は独立controller。D9ダミーや未検証の診断応答に流用しない。 -->
     <section id="staff-section" class="staff-section" hidden>
@@ -303,6 +311,8 @@
     title="TLH従業員登録応答" hidden aria-hidden="true"></iframe>
   <iframe id="tlhMaintenanceFrame" name="tlhMaintenanceFrame"
     title="TLH従業員停止・訂正応答" hidden aria-hidden="true"></iframe>
+  <iframe id="tlhWorkStateFrame" name="tlhWorkStateFrame"
+    title="TLH勤務状態応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
@@ -336,6 +346,7 @@
     TlhDemoInvitation.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
+    TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
     const bridgeSection = document.getElementById('bridge-section');
     const bridgeStatus = document.getElementById('bridge-status');
     const bridgeButton = document.getElementById('bridge-button');
@@ -1125,6 +1136,7 @@
         document.getElementById('demo-section').hidden = false;
         document.getElementById('staff-section').hidden = false;
         document.getElementById('maintenance-section').hidden = false;
+        document.getElementById('work-state-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
