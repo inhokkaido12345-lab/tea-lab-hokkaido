@@ -1,6 +1,6 @@
 # TLH 勤怠管理フロントエンド — 初心者向けファイル説明
 
-## D14：本人打刻の追記（受付は初期閉鎖、公開/実機はこれから）
+## D14：本人打刻の追記（公開済み、受付は初期閉鎖、LINE実機未確認）
 
 本登録保留を維持。TLH_PUNCH_ENABLEDが未設定/falseなら閉鎖で、今回実環境の受付を開けていない。
 「打刻前の状態を確認する」は読取だけ。閉鎖なら出勤等の保存ボタンを出さない。
@@ -15,6 +15,7 @@ HMACはrevision/固定codeも含めて検証。氏名/人物ID/時刻/原簿/tok
 URL/console/localStorage/sessionStorageにID/token/鍵/指紋を保存しない。自動打刻/自動再送なし。
 GASは原簿を削除補償せず、flush/読戻しで確認。不明な結果は共通印で止め、印だけ消す復旧は禁止。
 backend156/frontend38（合計194）テストと模擬ブラウザ320/390/1280pxで4打刻・閉鎖読取・既存機能が成功。
+GAS版28の26ファイル正本一致。[画面テスト](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38251003733)/[Pages公開](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38251003378)成功、公開HTML/punch.jsがHTTP 200を確認。
 実環境の受付値/実保存は未確認。非公開repo docs/D14-本人打刻の追記と受付閉鎖.mdが設定/保存/復旧の説明。
 
 ## D13：本人の勤務状態読取（有効社員なし拒否はLINE実機成功）
