@@ -2,13 +2,13 @@
 
 > このフォルダは、従業員がLINEから開く**画面**の正本です。
 > こちらのGitHub PagesがHTMLを表示し、仕事の処理は別リポジトリのGoogle Apps Script（GAS）へ依頼します。
-> 本文は2026-10-10のD7実装を基準に説明しています。
+> 本文は診断版D8までの実装を説明しています。2026-10-12、GAS配布が復旧し、LINEで管理者権限が有効と判定されることを実機確認済みです。
 
 ## どのファイルが何を司るか
 
 | ファイル | 責務 | 消すとどうなるか | 魔改造 |
 |---|---|---|---|
-| [index.html](index.html) | **現役**LINE MINI Appの画面・LIFF初期化・GAS通信 | LINEで画面が開かなくなり、D4〜D7すべてのボタンを失う。既存のGoogle Sheetsデータは消えない | HTMLは表示、CSSは見た目、JavaScriptは動作 |
+| [index.html](index.html) | **現役**LINE MINI Appの画面・LIFF初期化・GAS通信 | LINEで画面が開かなくなり、D4〜D8すべてのボタンを失う。既存のGoogle Sheetsデータは消えない | HTMLは表示、CSSは見た目、JavaScriptは動作 |
 | [bridge-test.html](bridge-test.html) | 非機密PING/PONGの独立試験 | 本体は壊れないが、通信だけを切り分ける診断が難しくなる | form POST / iframe / postMessageの教材 |
 
 全体のデータ構造、GAS各ファイルの依存と削除時の影響は
@@ -34,20 +34,21 @@
 | `auth-section`, `auth-button` | D5 LINE公式による本人確認 |
 | `account-section`, `account-button` | D6 TLH Accountと従業員登録の照会 |
 | `signup-section`, `signup-button` | D7 一般TLH Accountを本人が作る |
+| `admin-section`, `admin-button` | D8 TLH管理者権限の読み取り診断 |
 
 ID（識別名）はJavaScriptの`getElementById`で参照しているため、
 **HTML側だけで名前を変更するとボタンが機能しなくなる**ことがあります。
 
-### 3. 通信用の4つの隠しiframe
+### 3. 通信用の5つの隠しiframe
 
-`tlhBridgeFrame`、`tlhAuthFrame`、`tlhAccountFrame`、`tlhSignupFrame`。
+`tlhBridgeFrame`、`tlhAuthFrame`、`tlhAccountFrame`、`tlhSignupFrame`、`tlhAdminFrame`。
 
 別のWebサイトで動くGASにHTMLフォームでPOSTするとき、
 現在の画面を遷移させず、結果のHTMLを受け取る専用の枠です。
 GASはHTML内部から`postMessage`でLINE画面へ結果を通知します。
 
 **削除すると**：対応する送信先がなくなり、正常なGASの応答を受け取れない。
-**重要**：この方式の現行セキュリティ評価は診断とD7一般登録までに限定される。
+**重要**：この方式の現行セキュリティ評価は固定コードの診断（D8を含む）とD7一般登録までに限定される。
 従業員の氏名・給与・銀行情報をそのまま返すことは不可。
 
 ### 4. JavaScriptの設定と共通処理
@@ -62,7 +63,7 @@ GASはHTML内部から`postMessage`でLINE画面へ結果を通知します。
 **削除すると**：`setStatus()`の削除ではエラー表示すらできなくなった実際の事例がある。
 一度の大きな文字列置換で「不要な関数」と一緒に共通関数まで消さない。
 
-### 5. 4つのボタンの処理
+### 5. 5つのボタンの処理
 
 `bridgeButton.addEventListener('click')`などで検索すると、押したときの処理へ移動できる。
 
@@ -90,8 +91,9 @@ POSTの`action`名を変えると、GAS側の`Api.gs`のルーティングも揃
 - D4：LINE内PING/PONG — **実機成功**
 - D5：GAS側LINE本人確認 — **実機成功**
 - D6：TLH Account登録状態確認 — **実機成功（未登録と正しく判定）**
-- D7：本人によるTLH一般アカウント作成 — **コード・単体テスト・公開済み、実機登録はこれから**
-- 管理者権限付与 — GASの非公開セットアップコードあり、**実機では未実施**
+- D7：本人によるTLH一般アカウント作成 — **登録・再照会が実機成功、登録受付はfalseへ戻したと利用者確認済み**
+- 初期管理者権限付与 — **2026-10-11に利用者がRoleAssignmentsへの追加と一時関数の削除を確認済み**
+- D8：LINE本人確認後の管理者権限診断 — **2026-10-12に「管理者権限：有効です」を実機確認済み**
 
 登録の初期状態は無効。GAS側Script Property `TLH_ACCOUNT_SIGNUP_ENABLED=true`に
 一時的に設定した間だけ一般アカウントを作成できる。登録後は`false`へ戻す。
@@ -117,6 +119,8 @@ POSTの`action`名を変えると、GAS側の`Api.gs`のルーティングも揃
 
 D8は**診断用**であり、管理者表示を今後の書込APIの認可代わりに使ってはならない。
 
-**公開上の注意：** GitHub Pagesの画面は更新されたが、GAS側の`Deploy GAS Workforce DEV`が`invalid_rapt`で失敗したため、この時点でD8の実機成功はまだ確認できていない。GASへソースが反映されるまでD8ボタンはタイムアウトする可能性がある。従来のD4〜D7の公開機能は別ルートであり、今回それらの処理は書き換えていない。
+**当時の公開上の注意：** 2026-10-11はGAS配布が`invalid_rapt`で停止し、D8の実機成功は未確認だった。2026-10-12に限定権限のOAuthへ移行し、GitHub ActionsからGASへの配布・公開更新が成功。LINE実機でも管理者権限が有効と表示された。GAS編集画面での手動ソース編集は行っていない。
+
+GitHubで画面を管理し、GASの正本は`tlh-platform`のmainに置く。[配布復旧の記録](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/GAS-配布認証修復.md)には、認証更新を必須にした自動配布成功と、公開版14ファイルが正本と一致したことを記載した。既存Web AppのURLは維持。翌日以降の再配布は未検証。
 
 削除すると：`workforce/index.html`内のD8カード・専用iframe・対応イベント処理を消すと管理者権限の診断のみ使えなくなる。既存の`RoleAssignments`は削除されない。
