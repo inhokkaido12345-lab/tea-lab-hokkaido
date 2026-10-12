@@ -4,7 +4,7 @@
  * 削除影響: D11が使えない。D4-D10や保存済みデータは残る。
  * 概念: controller / immutable retry draft / capability / message authentication。
  * 初歩: draftは再送用の同じ入力。postMessageはHTMLでなく固定codeとして読む。
- * 拡張: 従業員一覧や退職処理は別設計。社員情報をこの応答へ追加しない。
+ * 拡張: 利用停止/属性訂正はstaff-maintenance.js。従業員一覧/法的退職は別設計。社員情報を応答へ追加しない。
  * 境界: token/氏名はURL・ログ・保存領域へ出さない。招待秘密は管理者が本人へ個別に渡す。
  * 検証: tests/staff-enrollment.test.mjs→CI→LINE実機（実在社員を無断登録しない）。
  */
