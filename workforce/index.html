@@ -127,6 +127,7 @@
   <main>
     <h1>TLH 勤怠管理</h1>
     <p class="subtitle">従業員登録 D11 (2026-10-12)</p>
+    <div id="staff-load-status" class="detail" role="status" aria-live="polite">LINEを確認しています。</div>
 
     <!-- D11業務入力は独立controller。D9ダミーや未検証の診断応答に流用しない。 -->
     <section id="staff-section" class="staff-section" hidden>
@@ -1094,7 +1095,10 @@
         signupSection.hidden = false;
         document.getElementById('demo-section').hidden = false;
         document.getElementById('staff-section').hidden = false;
+        document.getElementById('staff-load-status').hidden = true;
       } catch (error) {
+        document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
+        document.querySelector('.diagnostics').open = true;
         setStatus(
           'LIFF診断で停止しました',
           '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
