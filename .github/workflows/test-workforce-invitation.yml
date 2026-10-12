@@ -1,0 +1,14 @@
+# 画面の招待リトライ・偽装応答拒否を検証する。実アカウントは使用しない。
+name: Test Workforce Invitation UI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/*.mjs

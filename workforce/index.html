@@ -1,13 +1,13 @@
 <!--
   【このHTMLの取扱説明書：workforce/index.html / 2026-10】
   このファイルが司ること: 【現役・公開中】LINE MINI Appの唯一の実画面。HTML（構造）・CSS（見た目）・JS（LINE認証・GAS通信）を1枚にまとめる。
-  コードの構成部位: headでLIFF SDK取得→bodyでD4〜D7カードと隠しiframe→scriptで共通設定・表示更新・各ボタンのPOST・postMessage受信（D8の管理者確認も含む）→start()でLIFFを初期化。
+  コードの構成部位: headでLIFF SDKとD9 controller取得→bodyでD4〜D8診断とD9試験→scriptでPOST/受信→start()でLIFF初期化。
   削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
   一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
   魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
-  このコメントは学習用。公開画面の動作コードを変更していない。
+  検証: D9のtests/workforce-invitation.test.mjs→GitHub Actions→LINE実機。D9安全境界はdemo-invitation.js。
 -->
 <!doctype html>
 <html lang="ja">
@@ -24,6 +24,7 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="demo-invitation.js"></script>
 
   <style>
     :root {
@@ -100,13 +101,28 @@
     }
 
     .bridge-button:disabled { opacity: 0.5; }
+    .demo-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid currentColor; }
+    .demo-section h2 { margin: 0; font-size: 1.1rem; }
+    .demo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .demo-actions button { border-radius: 8px; max-width: 100%; }
 
   </style>
 </head>
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D8 (2026-10-11)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D9 (2026-10-12)</p>
+
+    <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
+    <section id="demo-section" class="demo-section" aria-live="polite" hidden>
+      <h2>ダミー従業員の登録試験（D9）</h2>
+      <div class="detail">対象：D9 ダミー従業員 / DEMO-D9</div>
+      <div id="demo-status" class="detail">未登録</div>
+      <div class="demo-actions">
+        <button id="demo-issue" class="bridge-button" type="button">ダミーを事前登録して招待を発行</button>
+        <button id="demo-claim" class="bridge-button" type="button" disabled>自分のLINEで招待を受け取る</button>
+      </div>
+    </section>
 
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
@@ -202,6 +218,8 @@
   <!-- D7: ユーザー作成処理の応答専用 -->
   <iframe id="tlhSignupFrame" name="tlhSignupFrame"
     title="TLHアカウント作成応答" hidden aria-hidden="true"></iframe>
+  <iframe id="tlhDemoFrame" name="tlhDemoFrame"
+    title="TLHダミー従業員招待応答" hidden aria-hidden="true"></iframe>
 
   <script>
     /**
@@ -219,7 +237,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D8 (2026-10-11)';
+    const DIAGNOSTIC_VERSION = 'D9 (2026-10-12)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
@@ -231,6 +249,8 @@
     const GAS_URL =
       'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
     const BRIDGE_TIMEOUT_MS = 15000;
+    // 独立controller。古い診断のnull-origin/nonceだけの受信を再利用しない。
+    TlhDemoInvitation.init({ gasUrl: GAS_URL, liff: window.liff });
     const bridgeSection = document.getElementById('bridge-section');
     const bridgeStatus = document.getElementById('bridge-status');
     const bridgeButton = document.getElementById('bridge-button');
@@ -1017,6 +1037,7 @@
         accountSection.hidden = false;
         adminSection.hidden = false;
         signupSection.hidden = false;
+        document.getElementById('demo-section').hidden = false;
       } catch (error) {
         setStatus(
           'LIFF診断で停止しました',

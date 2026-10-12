@@ -1,6 +1,8 @@
 > **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
 
-> **2026-10-12：Workforce D8実機成功。** GitHub ActionsからGASへの配布・公開更新が復旧し、LINEで「管理者権限：有効です」を確認済み。両リポジトリのmainがソースの正本で、GAS手動ソース編集や新しい外部サービスは使っていません。詳細は [workforce/README.md](workforce/README.md)。
+> **2026-10-12：Workforce D9を実装（実機未確認）。** 固定ダミーの事前登録・管理者本人への一回限りの招待・従業員紐付け。実社員の招待ではありません。[画面の手順](workforce/README.md)。
+
+> **D8実機成功。** GitHub ActionsからGASへの配布・公開更新が復旧し、LINEで「管理者権限：有効です」を確認済み。両リポジトリのmainが正本です。GAS手動ソース編集や新しい外部サービスは使っていません。
 
 # ティーラボラトリー北海道 公式Webサイト
 
