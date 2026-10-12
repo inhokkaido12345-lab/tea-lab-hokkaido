@@ -1,5 +1,23 @@
 # TLH 勤怠管理フロントエンド — 初心者向けファイル説明
 
+## D16：今月開始分の完了勤務（公開/LINE実機未確認）
+
+本登録保留・実打刻受付閉鎖を維持。「自分の今月分を確認する」は全Sheet/Properties無書込の明示照会。
+初回は「有効な従業員登録がありません。」が期待結果。招待受取り/受付開放/実打刻は試さない。
+GASの日本時間の本日から暦月を決め、正常な完了勤務だけ計算。同日に2回なら勤務日数1日/回数2回。
+月跨ぎは全て出勤月へ帰属。整数ミリ秒を保持、未終了は除外して注意表示。給与締め/給与額/MonthlySummary保存/確定は別の未実装機能。
+関連修正/不正原簿を無視して正常集計にしない。過去月・任意月・他人指定を受け付けない。
+
+monthly-work-summary.jsは独立controller。専用action=bridgeGetMonthlyWorkSummary、iframe=tlhMonthlyWorkFrame。
+Api→BridgeMonthlyWorkSummary→MonthlyWorkSummaryService→共通認可/原簿/完了勤務fold。
+時間表記だけ先に読み込むTlhDailySummary.durationを共有。daily-summary.js削除はD16にも影響する。
+返信summaryは月/日数/回数/合計/現在状態だけ。人物ID/氏名/個別時刻/原簿/給与を返信しない。
+summary全文をHMAC、型/暦月の日数/日数≤回数/合計整合性も検査。textContentで表示する。
+旧集計は照会開始で消す。二重タップ/期限切れ応答/埋込を拒否。自動登録/打刻/再送やブラウザ保存はない。
+削除時はHTMLのscript/init/section/iframeと共有duration/foldの呼出しを確認する。原簿は消さない。
+backend183/frontend54（計237）テスト成功。模擬画面320/390/1280pxで日数/回数/端数/未終了注意/停止拒否/無書込を確認。
+LINE実機結果・現物Sheet全項目の直接照合は未確認。非公開repo docs/D16-今月開始分の完了勤務集計.mdが再構築/列/計算/制約の説明。
+
 ## D15：本日開始分の完了勤務（有効社員なし拒否はLINE実機確認済み）
 
 本登録保留・実受付閉鎖を維持。「自分の本日分を確認する」は全Sheet/Propertiesへ無書込の明示照会。
@@ -14,7 +32,7 @@ Api→BridgeDailySummary→DailySummaryService→D13/D14共通の認可/原簿/S
 JSON文字列全体を一回用鍵でHMAC検証。型/範囲/暦日/合計整合性も検査し、textContentで表示する。
 読取開始で旧集計を隠し、timeout/拒否/遅延返信で昔の個人集計を残さない。二重タップ/自動照会/自動再送なし。
 URL/console/localStorage/sessionStorageへ集計/token/鍵を出さず、埋込ページからの照会を拒否する。
-削除時はHTMLのscript/init/section/iframeを確認する。既存の他機能と原簿は残す。
+durationはD16でも使う。削除時はD16とHTMLのscript/init/section/iframeを確認する。原簿は残す。
 backend171/frontend46（計217）テスト成功。模擬ブラウザ320/390/1280pxで集計/未終了注意/停止後拒否/無書込が成功。
 GAS公開版29の28ファイル正本一致。画面正本0931b14705cfa66f8171ae5416f25206430939cf。
 [画面テストrun 38254376754](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38254376754)/[Pages公開run 38254376447](https://github.com/inhokkaido12345-lab/tea-lab-hokkaido/actions/runs/38254376447)成功。
