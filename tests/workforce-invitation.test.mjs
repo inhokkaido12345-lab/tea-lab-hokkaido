@@ -9,7 +9,7 @@ import { createHmac, webcrypto } from 'node:crypto';
 
 function harness() {
   const handlers={}, timers=new Map(), sent=[]; let timerSeq=0;
-  const nodes=Object.fromEntries(['demo-issue','demo-claim','demo-status'].map(id=>[id,{
+  const nodes=Object.fromEntries(['demo-issue','demo-claim','demo-release','demo-status'].map(id=>[id,{
     disabled:id==='demo-claim', textContent:'', addEventListener(type,fn){this[type]=fn;},
   }]));
   const window={addEventListener(type,fn){handlers[type]=fn;},confirm(){return true;}};
@@ -61,4 +61,32 @@ test('review result stops both buttons; embedding cannot send writes',async()=>{
   assert.equal(h.nodes['demo-issue'].disabled,true);assert.equal(h.nodes['demo-claim'].disabled,true);
   const embedded=harness();embedded.window.top={};embedded.nodes['demo-issue'].click();
   assert.equal(embedded.sent.length,0);
+});
+
+test('D10 release works after page reload, sends no invite secret, blocks double taps',async()=>{
+  const h=harness();h.nodes['demo-release'].click();h.nodes['demo-release'].click();
+  assert.equal(h.sent.length,1);assert.equal(h.sent[0].action,'bridgeReleaseDemoEmployee');
+  assert.equal(Object.hasOwn(h.sent[0],'inviteToken'),false);
+  assert.equal(h.nodes['demo-issue'].disabled,true);
+  await h.reply(h.sent[0],'DEMO_RELEASED');
+  for(const id of ['demo-issue','demo-claim','demo-release'])assert.equal(h.nodes[id].disabled,true);
+});
+test('D10 release remains possible immediately after D9 claim without reopening page',async()=>{
+  const h=harness();h.nodes['demo-issue'].click();await h.reply(h.sent[0],'INVITATION_READY');
+  h.nodes['demo-claim'].click();await h.reply(h.sent[1],'DEMO_EMPLOYEE_LINKED');
+  assert.equal(h.nodes['demo-release'].disabled,false);h.nodes['demo-release'].click();
+  await h.reply(h.sent[2],'DEMO_RELEASED');assert.equal(h.nodes['demo-release'].disabled,true);
+});
+test('D10 forged release result cannot stop UI; timeout retry uses new response key',async()=>{
+  const h=harness();h.nodes['demo-release'].click();const old=h.sent[0];
+  await h.reply(old,'DEMO_RELEASED',{mac:'0'.repeat(64)});assert.equal(h.timers.size,1);
+  [...h.timers.values()][0]();assert.equal(h.nodes['demo-release'].disabled,false);
+  h.nodes['demo-release'].click();const next=h.sent[1];assert.notEqual(old.responseKey,next.responseKey);
+  await h.reply(old,'DEMO_RELEASED');assert.equal(h.nodes['demo-release'].disabled,true);
+  assert.equal(h.timers.size,1);await h.reply(next,'DEMO_ALREADY_RELEASED');assert.equal(h.timers.size,0);
+});
+test('D10 cancelled confirmation never sends; review response disables every action',async()=>{
+  const h=harness();h.window.confirm=()=>false;h.nodes['demo-release'].click();assert.equal(h.sent.length,0);
+  h.window.confirm=()=>true;h.nodes['demo-release'].click();await h.reply(h.sent[0],'D9_REVIEW_REQUIRED');
+  for(const id of ['demo-issue','demo-claim','demo-release'])assert.equal(h.nodes[id].disabled,true);
 });

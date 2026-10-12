@@ -1,6 +1,6 @@
 /**
- * 【D9 controller / 現役】責務: ダミー登録・自分への招待の明示操作と応答認証。
- * 消すとD9が使えない。古い診断・Sheetデータは変わらない。
+ * 【D9/D10 controller / 現役】責務: ダミー登録・招待受取り・解除の明示操作と応答認証。
+ * 消すとD9/D10が使えない。古い診断・Sheetデータは変わらない。
  * 構成: 乱数→HMAC検証→一回用通信状態→画面更新。
  * 拡張: 実在従業員への招待共有/URL/個人情報表示は未対応。別設計にする。
  * tokenはメモリのみ。再読込は新規発行で旧PENDINGを失効。期限30分。
@@ -16,6 +16,10 @@
     INVITATION_READY: 'ダミー従業員を事前登録しました。招待は30分間有効です。',
     DEMO_EMPLOYEE_LINKED: 'ダミー従業員とあなたのTLHアカウントの紐付けが完了しました。',
     ALREADY_CLAIMED: 'この招待は受取り済みです。重複登録はしていません。',
+    DEMO_RELEASED: '試験用ダミーの従業員情報と従業員権限を停止しました。管理者権限と履歴は残しています。',
+    DEMO_ALREADY_RELEASED: '試験用ダミーは解除済みです。追加の変更はしていません。',
+    NO_LINKED_DEMO: '解除対象の紐付け済みダミーがありません。変更はしていません。',
+    DEMO_NOT_OWNED: 'このダミーはあなたのアカウントに紐付いていません。変更はしていません。',
     TLH_ADMIN_REQUIRED: '管理者権限が必要です。',
     TLH_ACCOUNT_REQUIRED: 'TLHアカウントの登録が必要です。',
     LINE_VERIFY_REJECTED: 'LINE本人確認が失敗しました。LINEから開き直してください。',
@@ -45,16 +49,20 @@
   function init(options) {
     const issue = document.getElementById('demo-issue');
     const claim = document.getElementById('demo-claim');
+    const release = document.getElementById('demo-release');
     const status = document.getElementById('demo-status');
     let token = null, pending = null, ready = false, completed = false;
+    let released = false, blocked = false;
     function finish() {
       if (pending) clearTimeout(pending.timer);
       pending = null;
-      issue.disabled = ready || completed;
-      claim.disabled = !ready || completed;
+      issue.disabled = ready || completed || released || blocked;
+      claim.disabled = !ready || completed || released || blocked;
+      release.disabled = released || blocked;
     }
     async function send(action) {
-      if (pending || completed) return;
+      const releasing = action === 'bridgeReleaseDemoEmployee';
+      if (pending || released || blocked || (completed && !releasing)) return;
       if (!crypto.subtle || global !== global.top) {
         status.textContent = '安全な通信を開始できません。LINEから開き直してください。';
         return;
@@ -66,11 +74,12 @@
         return;
       }
       // tokenはリトライ時に固定。再送で招待を複数発行しない。
-      if (!token) token = randomHex(32);
+      if (!releasing && !token) token = randomHex(32);
       const request = { action: action, nonce: randomHex(16), responseKey: randomHex(32) };
       pending = request;
       issue.disabled = true;
       claim.disabled = true;
+      release.disabled = true;
       status.textContent = '処理中です。';
       request.timer = setTimeout(function() {
         if (pending !== request) return;
@@ -80,8 +89,11 @@
       const form = document.createElement('form');
       form.method = 'POST'; form.action = options.gasUrl; form.target = 'tlhDemoFrame';
       form.hidden = true;
-      Object.entries({ action: action, nonce: request.nonce, responseKey: request.responseKey,
-        idToken: idToken, inviteToken: token }).forEach(function(entry) {
+      const fields = { action: action, nonce: request.nonce, responseKey: request.responseKey,
+        idToken: idToken };
+      // D10は元招待tokenを不要とする。本人・D9来歴をサーバーで照合する。
+      if (!releasing) fields.inviteToken = token;
+      Object.entries(fields).forEach(function(entry) {
         const input = document.createElement('input');
         input.type = 'hidden'; input.name = entry[0]; input.value = entry[1];
         form.appendChild(input);
@@ -107,7 +119,10 @@
         if (data.code === 'DEMO_EMPLOYEE_LINKED' || data.code === 'ALREADY_CLAIMED') {
           completed = true; token = null;
         }
-        if (data.code === 'D9_REVIEW_REQUIRED') { completed = true; token = null; }
+        if (data.code === 'DEMO_RELEASED' || data.code === 'DEMO_ALREADY_RELEASED') {
+          released = true; token = null;
+        }
+        if (data.code === 'D9_REVIEW_REQUIRED') { blocked = true; token = null; }
         finish();
       } catch (_error) { /* 検証できない応答は無視し、秘密を含む例外を表示しない。 */ }
     });
@@ -117,8 +132,16 @@
       });
     });
     claim.addEventListener('click', function() {
+      if (pending || blocked || completed || released) return;
       if (!global.confirm('あなたのTLHアカウントを「D9 ダミー従業員」に紐付けます。続けますか？')) return;
       send('bridgeClaimDemoInvitation').catch(function() {
+        status.textContent = '安全な送信を開始できませんでした。'; finish();
+      });
+    });
+    release.addEventListener('click', function() {
+      if (pending || blocked || released) return;
+      if (!global.confirm('試験用ダミーの従業員情報と従業員権限を停止します。管理者権限・TLHアカウント・履歴は残します。続けますか？')) return;
+      send('bridgeReleaseDemoEmployee').catch(function() {
         status.textContent = '安全な送信を開始できませんでした。'; finish();
       });
     });

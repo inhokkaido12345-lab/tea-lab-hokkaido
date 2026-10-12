@@ -1,7 +1,7 @@
 <!--
   【このHTMLの取扱説明書：workforce/index.html / 2026-10】
   このファイルが司ること: 【現役・公開中】LINE MINI Appの唯一の実画面。HTML（構造）・CSS（見た目）・JS（LINE認証・GAS通信）を1枚にまとめる。
-  コードの構成部位: headでLIFF SDKとD9 controller取得→bodyでD4〜D8診断とD9試験→scriptでPOST/受信→start()でLIFF初期化。
+  コードの構成部位: headでLIFF SDKとD9/D10 controller取得→bodyでD4〜D8診断とダミー登録/解除→scriptでPOST/受信→start()でLIFF初期化。
   削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
   一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
   魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
@@ -24,7 +24,7 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="demo-invitation.js"></script>
+  <script src="demo-invitation.js?v=D10-20261012"></script>
 
   <style>
     :root {
@@ -111,16 +111,17 @@
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D9 (2026-10-12)</p>
+    <p class="subtitle">LINE MINI App 接続テスト — 診断版 D10 (2026-10-12)</p>
 
     <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
     <section id="demo-section" class="demo-section" aria-live="polite" hidden>
-      <h2>ダミー従業員の登録試験（D9）</h2>
+      <h2>ダミー従業員の登録・解除試験</h2>
       <div class="detail">対象：D9 ダミー従業員 / DEMO-D9</div>
-      <div id="demo-status" class="detail">未登録</div>
+      <div id="demo-status" class="detail">未確認</div>
       <div class="demo-actions">
         <button id="demo-issue" class="bridge-button" type="button">ダミーを事前登録して招待を発行</button>
         <button id="demo-claim" class="bridge-button" type="button" disabled>自分のLINEで招待を受け取る</button>
+        <button id="demo-release" class="bridge-button" type="button">試験用ダミーを解除する</button>
       </div>
     </section>
 
@@ -237,7 +238,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D9 (2026-10-12)';
+    const DIAGNOSTIC_VERSION = 'D10 (2026-10-12)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
