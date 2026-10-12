@@ -28,6 +28,8 @@ HMACは応答偽装対策であり、暗号化や勤務許可ではない。給�
 
 利用者が「招待は30分有効」「紐づけが完了」「紐づいています」を順に確認。
 権限表の行が増えたとの報告も受け取った。担当側によるSheet全項目の直接監査は未実施。
+さらに利用者がAdminAuditLogのaction列にD9_INVITATION_CLAIMEDの行があることを確認した。
+この確認は受取り履歴の存在を示し、監査の全列・全レコードを直接照合したという意味ではない。
 受取り時、EmployeeProfiles/Invitationsは発行時の既存行を更新するので行数は増えない。
 RoleAssignmentsにはEMPLOYEE/WORKFORCE/ACTIVEを1行、AdminAuditLogにはD9_INVITATION_CLAIMEDを1行追加する設計。
 監査が見つからない場合はタブ/フィルタ表示を確認し、手で行を追加・削除しない。
