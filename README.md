@@ -1,5 +1,7 @@
 > **TLH勤怠管理のプログラムを読む人へ**：現役LINE画面の説明は [workforce/README.md](workforce/README.md)、GASの各ファイルと削除時の影響は [TLHコード構造と魔改造ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md) にあります。旧試作・未採用コードは現役と区別してください。
 
+> **現在の操作順・設定・改造レシピ**は[Workforceの作業入口](workforce/README.md)から参照。日付付き説明は履歴です。GAS一時編集案は取り下げ、安全な新環境初期管理者入口は未整備。本登録保留・打刻受付閉鎖を維持します。
+
 > **2026-10-13：Workforce D17はGASの修正合成の計算基礎（本番経路へ未接続）。** 全267テスト成功。画面ソースはD16のまま、LINE操作不要。実承認/実修正/再修正は未実装、既存の修正拒否・本登録保留・受付閉鎖を維持。[制約と開発状況](workforce/README.md)。
 
 > **2026-10-13：Workforce D16の有効社員なし拒否をLINEで利用者確認済み。** 正常暦月集計は模擬検査のみ。無書込、本登録/受付開放/給与保存なし。10月12日の公開記録はGAS版30/Pages公開・全237テスト成功。[結果と制約](workforce/README.md)。

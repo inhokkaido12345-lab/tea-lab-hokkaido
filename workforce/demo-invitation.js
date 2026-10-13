@@ -8,6 +8,8 @@
  * 概念: event-driven controller / request correlation / message authentication。
  * 初歩: pendingは通信中request、awaitは暗号検査の完了待ち。textContentは文字だけ表示。
  * 検証: tests/workforce-invitation.test.mjs→Actions→LINE実機。GAS側も同時に変更する。
+ * 改造箇所: messages/verifyResponse/initはBridgeEmployeeInvitation/両ダミーServiceと同期。
+ * 実社員招待はD11 staff-enrollment.js。ダミー条件を解除して流用しない。
  */
 (function(global) {
   'use strict';

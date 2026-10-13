@@ -6,6 +6,7 @@
  * 概念: read-only view / authenticated DTO / stale response rejection。
  * 初歩: 時間はサーバー合計。端末時計で未終了分を増やしたり給与へ換算しない。
  * 拡張: D16暦月は別controllerで実装。任意日/給与/個別打刻は別仕様と認可・署名・テストが必要。
+ * 改造箇所: 表示はduration（D16も使用）。parseSummary/verifyResponseのDTOはBridgeDailySummaryと同期。
  * 境界: token/鍵/集計をURL・ログ・ブラウザ保存へ出さず、textContentだけ使う。
  * 検証: daily-summary.test.mjs→CI→LINE。読取照会から自動登録/打刻を行わない。
  */
@@ -29,7 +30,11 @@
     INVALID_REQUEST:'送信内容を確認できませんでした。',
   });
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
-  /** JSONを型検査するだけで表示しない。件数・整数時間・加減算・暦日・許可状態を厳密に検査する。 */
+  /**
+   * @param {string} text 受信summary JSON文字列。512文字以内の許可列だけを受け付ける。
+   * @return {Object|null} 型/暦日/件数/整数時間/加減算/状態が正常ならDTO、不正/JSON例外はnull。
+   * この検査だけでは表示しない。署名検証も必要。列変更はGAS DTO/Bridge/テストと同期する。
+   */
   function parseSummary(text){
     if(typeof text!=='string'||text.length>512)return null;
     try{
@@ -45,6 +50,12 @@
       return s;
     }catch(_error){return null;}
   }
+  /**
+   * @param {Object} data 固定codeとsummary文字列/mac等の受信結果。
+   * @param {Object} request メモリ内のnonce/action/responseKey。
+   * @return {Promise<boolean>} 型/要求対応/summary全文HMACの一致。Crypto失敗はrejectしcallerが処理。
+   * 集計の一部を署名から外さない。BridgeDailySummaryと通信テストを同期する。
+   */
   async function verifyResponse(data,request){
     if(!data||!request||data.type!==TYPE||data.action!==ACTION||data.action!==request.action||data.nonce!==request.nonce||
       typeof data.code!=='string'||!Object.hasOwn(messages,data.code)||typeof data.summary!=='string'||data.summary.length>512||
@@ -54,11 +65,20 @@
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(data.mac.match(/../g),b=>parseInt(b,16)),
       enc.encode([TYPE,data.nonce,data.action,data.code,data.summary].join('\n')));
   }
-  /** 端数は切捨てない。給与用の丸めではなく、整数ミリ秒をそのまま表示。 */
+  /**
+   * @param {number} ms 検証済み非負の整数ミリ秒。型検査はparseSummaryが先に行う。
+   * @return {string} 時間/分/秒と最大3桁の端数。給与丸めではない。通常例外なし。
+   * 月次もTlhDailySummary.durationを共有。変更は日次/月次テストと画面の収まりを確認する。
+   */
   function duration(ms){
     const hours=Math.floor(ms/3600000),minutes=Math.floor(ms%3600000/60000),seconds=Math.floor(ms%60000/1000),fraction=ms%1000;
     return hours+'時間 '+minutes+'分 '+seconds+(fraction?'.'+String(fraction).padStart(3,'0'):'')+'秒';
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlの接続設定。
+   * @return {undefined} 明示照会/表示を結ぶ。必須DOM欠落は初期化エラーになり得る。
+   * 照会開始/拒否で旧集計を消す。id変更はHTML/テストを同期し、勝手に原簿を作らない。
+   */
   function init(options){
     const button=document.getElementById('daily-summary-check'),status=document.getElementById('daily-summary-status'),
       result=document.getElementById('daily-summary-result');

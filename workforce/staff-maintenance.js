@@ -5,6 +5,8 @@
  * 概念: controller / optimistic concurrency / immutable retry / message authentication。
  * 初歩: 結果不明なら同じoperationIdで再送する。新しい操作で重複履歴を作らない。
  * 拡張: 社員番号変更・再紐付け・再入社・給与訂正は別Service/設計が必要。
+ * 改造箇所: init/verifyResponseとHTML入力、GAS StaffMaintenanceService/Bridge、両repoテストを同期。
+ * 注意: このUI削除はD12だけだがGASのService削除は共有指紋を使うD14も壊す。
  * 境界: 氏名/token/指紋はPOST body/メモリだけ。URL/ログ/保存領域へ出さない。
  * 検証: staff-maintenance.test.mjs、模擬ブラウザ、LINE実機を区別する。
  */
@@ -36,6 +38,12 @@
   });
   const isReview=code=>['STAFF_REVIEW_INVITED','STAFF_REVIEW_ACTIVE','STAFF_REVIEW_INACTIVE'].includes(code);
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
+  /**
+   * @param {Object} data 固定code/revision/nonce/action/macの受信結果。
+   * @param {Object} request 同じ通信の応答鍵とnonce/actionを保持した記録。
+   * @return {Promise<boolean>} 要求対応/HMAC一致ならtrue。Crypto失敗はrejectしcallerが処理する。
+   * BridgeStaffMaintenanceと署名順を同期。revisionは競合検知であって管理者証明ではない。
+   */
   async function verifyResponse(data,request){
     if(!data||!request||data.type!==TYPE||data.nonce!==request.nonce||data.action!==request.action||
       typeof data.code!=='string'||!Object.hasOwn(messages,data.code)||typeof data.revision!=='string'||
@@ -46,6 +54,12 @@
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(data.mac.match(/../g),b=>parseInt(b,16)),
       enc.encode([TYPE,data.nonce,data.action,data.code,data.revision].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlの接続設定。
+   * @return {undefined} 照合/訂正/停止を結ぶ。必須DOM欠落は初期化エラーになり得る。
+   * 同じoperationId/属性/指紋で再送し、不明結果で入力を変更しない。対象確認/明示同意を省略しない。
+   * 項目変更はGAS入力検査/digest/監査/テストも同期。氏名を自動取得する画面ではない。
+   */
   function init(options){
     const ids=['maintenance-target-form','maintenance-target-fields','maintenance-code','maintenance-old-name',
       'maintenance-old-date','maintenance-check','maintenance-reviewed','maintenance-correct-form',

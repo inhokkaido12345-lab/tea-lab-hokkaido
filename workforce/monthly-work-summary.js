@@ -29,7 +29,11 @@
     INVALID_REQUEST:'送信内容を確認できませんでした。',
   });
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
-  /** 構造検査だけでは表示しない。月の日数上限と合計整合性も検査する。 */
+  /**
+   * @param {string} text 受信月次summaryのJSON文字列。許可列/型/範囲/暦月を検査する。
+   * @return {Object|null} 正常DTOかnull。JSON/日付検査例外は捕捉する。署名確認前に表示しない。
+   * 日数は回数以下かつ暦月の日数以内。DTO変更はGAS Service/Bridge/テストを同期する。
+   */
   function parseSummary(text){
     if(typeof text!=='string'||text.length>512)return null;
     try{
@@ -46,6 +50,12 @@
       return s;
     }catch(_error){return null;}
   }
+  /**
+   * @param {Object} data 月次受信結果。summary全文を署名対象にする。
+   * @param {Object} request メモリ内のnonce/action/responseKey。
+   * @return {Promise<boolean>} 形式/要求/HMAC一致ならtrue。Crypto失敗はrejectしcallerが処理する。
+   * BridgeMonthlyWorkSummaryと署名の列順/通信テストを同期。失敗codeに集計を添えない。
+   */
   async function verifyResponse(data,request){
     if(!data||!request||data.type!==TYPE||data.action!==ACTION||data.action!==request.action||data.nonce!==request.nonce||
       typeof data.code!=='string'||!Object.hasOwn(messages,data.code)||typeof data.summary!=='string'||data.summary.length>512||
@@ -55,6 +65,12 @@
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(data.mac.match(/../g),b=>parseInt(b,16)),
       enc.encode([TYPE,data.nonce,data.action,data.code,data.summary].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlからの接続設定。
+   * @return {undefined} 明示照会/表示を結ぶ。自動登録/保存はしない。
+   * 必須DOM/先に読むTlhDailySummary.duration欠落で表示エラーになり得る。
+   * parseSummary/verifyResponse変更はBridgeMonthlyWorkSummaryとテストを同期。給与期間へ流用しない。
+   */
   function init(options){
     const button=document.getElementById('monthly-work-check'),status=document.getElementById('monthly-work-status'),result=document.getElementById('monthly-work-result');
     let pending=null,blocked=false;

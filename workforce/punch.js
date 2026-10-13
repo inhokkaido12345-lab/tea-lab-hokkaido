@@ -6,6 +6,7 @@
  * 概念: command controller / optimistic concurrency / idempotency / immutable retry。
  * 初歩: 返信nonceは毎回新しく、打刻eventIdは同操作の再送で変えない。
  * 拡張: 過去時刻・代理打刻・給与/履歴表示は別設計。勝手に受付を開けない。
+ * 改造箇所: commands/allowedはGAS WorkStateの遷移/PunchService/BridgePunchと両集計テストも同期。
  * 境界: ID/token/鍵/指紋はメモリ/POSTだけ。URL/ログ/ブラウザ保存へ出さない。
  * 検証: punch.test.mjs→CI→LINE受付閉鎖確認。模擬保存と実打刻を区別する。
  */
@@ -36,6 +37,12 @@
     LINE_VERIFY_REJECTED:'LINE本人確認が失敗しました。LINEから開き直してください。',INVALID_REQUEST:'送信内容を確認できませんでした。',
   });
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
+  /**
+   * @param {Object} d 受信結果。type/action/nonce/code/revision/macを全て照合。
+   * @param {Object} r メモリ内の送信記録。responseKeyと保存時fieldsを保持する。
+   * @return {Promise<boolean>} 署名と操作が一致すればtrue。未知code/偽装/別打刻成功はfalse。
+   * Web Crypto失敗はrejectしcallerが処理する。BridgePunchの署名順/辞書と通信テストを同期する。
+   */
   async function verifyResponse(d,r){
     if(!d||!r||d.type!==TYPE||d.action!==r.action||d.nonce!==r.nonce||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||
       typeof d.revision!=='string'||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac))return false;
@@ -46,6 +53,12 @@
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,d.nonce,d.action,d.code,d.revision].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlからのLIFFと公開GAS /exec URL。
+   * @return {undefined} DOM/操作を結ぶ。必須DOM欠落は初期化エラーになり得る。
+   * pendingは通信、readyは確認結果、draftは固定eventId/入力。retryでdraftを再生成しない。
+   * id変更はHTML/テストを同期。表示だけで自動打刻しない。
+   */
   function init(options){
     const check=document.getElementById('punch-check'),retry=document.getElementById('punch-retry'),status=document.getElementById('punch-status');
     const buttons=Object.fromEntries(Object.entries(commands).map(([type,c])=>[type,document.getElementById(c.id)]));

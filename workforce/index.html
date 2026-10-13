@@ -8,6 +8,9 @@
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
   検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary/monthly-work-summary.test.mjs→Actions→LINE実機。D14受付は初期閉鎖。
+  改造の連動: D9以降の文言/検査は各controllerのmessages/verifyResponse。durationは日次/月次で共有。
+  削除前: script読込/init/section/iframeを検索。GASの共有helperがあるD番号別ファイルは独立削除不可。
+  再現: workforce/README.mdとprivate repo docs/現行再構築手順.md。GAS一時関数追加の旧案は使わない。
 -->
 <!doctype html>
 <html lang="ja">

@@ -5,6 +5,7 @@
  * 概念: controller / immutable retry draft / capability / message authentication。
  * 初歩: draftは再送用の同じ入力。postMessageはHTMLでなく固定codeとして読む。
  * 拡張: 利用停止/属性訂正はstaff-maintenance.js。従業員一覧/法的退職は別設計。社員情報を応答へ追加しない。
+ * 改造箇所: initの入力制約/messagesはGAS staffCodeValid_/staffDetailsValid_/期限、BridgeStaffEnrollmentと同期。
  * 境界: token/氏名はURL・ログ・保存領域へ出さない。招待秘密は管理者が本人へ個別に渡す。
  * 検証: tests/staff-enrollment.test.mjs→CI→LINE実機（実在社員を無断登録しない）。
  */
@@ -36,6 +37,12 @@
   function hexRandom(size) {
     return Array.from(crypto.getRandomValues(new Uint8Array(size)), b=>b.toString(16).padStart(2,'0')).join('');
   }
+  /**
+   * @param {Object} data 受信固定結果。未知code/action/nonce/macを拒否する。
+   * @param {Object} request 一回用応答鍵と送信内容をページメモリに保持した記録。
+   * @return {Promise<boolean>} HMAC一致ならtrue。Web Crypto失敗はrejectしcallerが処理する。
+   * 署名変更はBridgeStaffEnrollmentとテストを同期。名前/招待秘密を応答へ追加しない。
+   */
   async function verifyResponse(data, request) {
     if (!data || !request || data.type !== TYPE || data.nonce !== request.nonce ||
         data.action !== request.action || typeof data.code !== 'string' || !Object.hasOwn(messages, data.code) ||
@@ -47,6 +54,12 @@
       Uint8Array.from(data.mac.match(/../g), b=>parseInt(b,16)),
       encoder.encode([TYPE,data.nonce,data.action,data.code].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlの接続設定。
+   * @return {undefined} DOM/操作を結ぶ。必須DOM欠落は初期化エラーになり得る。
+   * pendingは通信、draftは同入力/招待秘密の再送用。adminReadyはUIだけでGAS認可の代用ではない。
+   * 項目変更はHTML/Service/Bridge/テストを同期。表示だけで登録しない。
+   */
   function init(options) {
     const ids=['staff-check','staff-admin','staff-issue-form','staff-claim-form','staff-fields',
       'staff-employee-code','staff-name','staff-hire-date','staff-claim-code','staff-issue','staff-claim',

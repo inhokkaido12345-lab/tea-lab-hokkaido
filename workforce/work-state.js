@@ -6,6 +6,7 @@
  * 概念: read-only controller / message authentication / stale-response rejection。
  * 初歩: 「確認」は打刻ではない。ブラウザ時刻から勤務状態を推測しない。
  * 拡張: 打刻操作や日時/給与表示は別API・仕様・テストを追加してから。
+ * 改造箇所: messages/verifyResponseとBridgeWorkStateのcode/HMAC、WorkState遷移、両repoテストを同期。
  * 境界: 氏名/ID/原簿を受け取らず、token/鍵をURL・ログ・ブラウザ保存に出さない。
  * 検証: work-state.test.mjs→CI→LINE実機。実社員の登録・打刻は行わない。
  */
@@ -29,12 +30,23 @@
     INVALID_REQUEST:'送信内容を確認できませんでした。',
   });
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
+  /**
+   * @param {Object} data 固定状態と署名の受信結果。
+   * @param {Object} request 一回用nonce/action/responseKey。
+   * @return {Promise<boolean>} 要求とHMAC一致ならtrue。Crypto失敗はrejectしcallerが処理する。
+   * 未知状態を推測せず拒否。BridgeWorkStateと辞書/署名/テストを同期する。
+   */
   async function verifyResponse(data,request){
     if(!data||!request||data.type!==TYPE||data.action!==ACTION||data.action!==request.action||data.nonce!==request.nonce||
       typeof data.code!=='string'||!Object.hasOwn(messages,data.code)||typeof data.mac!=='string'||!/^[a-f0-9]{64}$/.test(data.mac))return false;
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(request.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(data.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,data.nonce,data.action,data.code].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlの接続設定。
+   * @return {undefined} 読取操作/表示を結ぶ。必須DOM欠落は初期化エラーになり得る。
+   * 古い状態を正常値として残さず、自動打刻/自動登録しない。id変更はHTML/テストを同期する。
+   */
   function init(options){
     const button=document.getElementById('work-state-check'),status=document.getElementById('work-state-status');
     let pending=null,blocked=false;

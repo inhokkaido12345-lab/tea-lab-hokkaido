@@ -1,5 +1,44 @@
 # TLH 勤怠管理フロントエンド — 初心者向けファイル説明
 
+## 現行の作業入口（2026-10-13）
+
+画面の正本はこのrepoの`workforce/`、GASの正本はprivate repo `tlh-platform/gas/workforce/`。
+両方ともGitHub mainから公開。GAS手動ソース編集・一時関数追加・新サービス追加は行いません。
+D番号別説明は当時の履歴。現在は画面D16、D17はGAS検査部品のみで本番未接続。
+本登録保留・実受付閉鎖を維持し、説明確認のために実社員/打刻を作りません。
+
+所有者向けの[現行再構築手順](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/現行再構築手順.md)、
+[設定台帳](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/config/README.md)、
+[依存表と改造レシピ](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/コード構造と魔改造ガイド.md)はprivate repoです。
+閲覧にはGitHub権限が必要。秘密や社員情報を公開repoへ複写しません。
+新環境の初期管理者は安全な実行入口が未整備。旧手動編集案で迂回せず停止します。
+
+### UI改造の地図
+
+| やりたいこと | 読む場所 | 一緒に確認するもの |
+|---|---|---|
+| 文言/色/配置 | index.htmlのbody/style、controllerのmessages | id/action/codeは維持、全UIテストと表示確認 |
+| 招待入力/期限 | staff-enrollment.jsのinit/messages | GAS StaffEnrollmentService、D11/D12テスト。期限はGASが正本 |
+| 訂正/停止 | staff-maintenance.jsのinit/verifyResponse | Service/Bridgeとdraft/operationId固定再送 |
+| 打刻候補 | punch.jsのcommands/allowed/init | GAS遷移/PunchService/Bridge/集計/D17テスト。受付閉鎖維持 |
+| 時間表記 | daily-summary.jsのduration | 月次も共有。サーバー整数ms/署名対象は不変 |
+| 結果code追加 | 各messages/verifyResponse | 相手BridgeのHMAC/DTO、Service、両repoテスト |
+
+index.htmlは各controllerを読み`init({liff,gasUrl})`でボタン/iframeを結びます。
+削除前にscript読込・初期化・section・iframeを一組で確認します。
+daily-summary.jsの削除はD16の時間表示にも影響。UIのstaff-maintenance.js削除とGAS Service削除は別です。
+GAS側には打刻が使う共有hash/canonicalがあるためD14も壊れます。
+
+### 編集・検証・戻し方
+
+1. 変更前commitと差分を確認。文言変更ではDOM id/action/codeを変えません。
+2. repoで`node --test tests/*.mjs`を実行。拒否テストを削って通さないでください。
+3. mainへ反映してPages成功を確認。LINEを開き直し画面と読取ボタンを確認します。
+4. 通信契約変更はGAS側も更新し、GAS公開版更新まで成功してから確認します。
+5. 戻すときは変更を打ち消すcommitを同じ経路で公開。保存済みSheet行はコードrevertでは戻りません。
+
+模擬、Pages公開、GAS公開、LINE成功を別々に記録します。今回のコメント整備では画面/通信/保存は変更しません。
+
 ## D17：修正合成の計算基礎（GASの部品だけ、本番未接続）
 
 2026-10-13。正常原簿のコピーへ1段の追加/置換/無効化を合成する部品を非公開repoに実装。
