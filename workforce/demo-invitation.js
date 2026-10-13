@@ -33,10 +33,23 @@
     D9_UNAVAILABLE: '処理を完了できませんでした。同じボタンで再試行してください。',
     INVALID_REQUEST: '送信内容を確認できませんでした。',
   });
+  /**
+   * @param {number} size 生成する乱数のバイト数。16は32hex、32は64hexになる。
+   * @return {string} 暗号用乱数の小文字hex。Web Crypto非対応/不正sizeは例外になり得る。
+   * nonce/応答鍵/招待秘密をMath.randomや時刻へ置換しない。生成長変更はGASの形式検査とテストを同期する。
+   */
   function randomHex(size) {
     return Array.from(crypto.getRandomValues(new Uint8Array(size)),
       function(b) { return b.toString(16).padStart(2, '0'); }).join('');
   }
+  /**
+   * @param {Object} data 受信結果。type/nonce/action/許可code/macと署名を照合する。
+   * @param {Object} request ページメモリにある、その通信のnonce/action/responseKey。
+   * @return {Promise<boolean>} 要求対応とHMAC一致ならtrue、形式/照合不一致ならfalse。
+   * Crypto失敗はrejectしmessage側で処理する。dataだけで管理者権限を証明する処理ではない。
+   * 鍵はhex文字列をUTF-8文字として使う契約。GASと違う生バイト変換を片側だけ追加しない。
+   * 変更はBridgeEmployeeInvitationと両repoの偽装/遅延応答テストを同期する。
+   */
   async function verifyResponse(data, request) {
     if (!data || !request || data.type !== TYPE || data.nonce !== request.nonce ||
         data.action !== request.action || !Object.hasOwn(messages, data.code) ||
@@ -48,6 +61,13 @@
     return crypto.subtle.verify('HMAC', key, mac,
       encoder.encode([TYPE, data.nonce, data.action, data.code].join('\n')));
   }
+  /**
+   * @param {{liff:Object,gasUrl:string}} options index.htmlからのLIFFと公開GAS接続設定。
+   * @return {undefined} DOM/イベントを結ぶだけ。必須DOMの欠落は初期化エラーになり得る。
+   * tokenは招待秘密、pendingは通信、ready/completed/releasedはUI状態。いずれもGASの認可証明ではない。
+   * timeout再送は同じ招待秘密を保ち、nonce/応答鍵は新しくする。解除は再読込後も秘密なしで依頼できる。
+   * id/操作変更はHTML・Bridge・Service・テストも同期。ダミーを実社員の練習へ流用しない。
+   */
   function init(options) {
     const issue = document.getElementById('demo-issue');
     const claim = document.getElementById('demo-claim');
