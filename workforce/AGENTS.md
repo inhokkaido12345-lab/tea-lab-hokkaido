@@ -1,5 +1,14 @@
 # Workforceの恒常ルール
 
+## UI1の簡易整理（2026-10-15）
+
+所有者は簡易見本を了承し、テスト成功後に同じLINEアプリへ公開することも明示了承。
+デザインの磨込みは後回し。配置/見出し/従業員・管理者tabだけを変更し、既存Service/通信契約は保つ。
+layout.jsは新設pane wrapperだけを切り替える。既存controllerのhidden/disabled/draft/結果を上書きしない。
+タブ選択は認可ではない。招待受取りとadmin操作の共通staff-statusは消去/再送せずそのまま保持する。
+D14準備結果を通常の勤務状態・打刻に使い、D13単独照会は診断へ保持。受付閉鎖中に勤務状態も取得できたと書かない。
+layout.test.mjsは実HTMLのIDで全controllerを模擬起動。描画/LINE実機とは区別し、本登録保留/受付閉鎖を維持。
+
 ここは現役LINE画面。ブランドサイト本体とは別のアプリです。
 GitHub mainが唯一の正本。GASはprivate repoからActions/claspで配布するコピー。
 GASへソース/一時関数を手入力しない。新しい外部サービスは追加しない。

@@ -11,6 +11,8 @@
   改造の連動: D9以降の文言/検査は各controllerのmessages/verifyResponse。durationは日次/月次で共有。
   削除前: script読込/init/section/iframeを検索。GASの共有helperがあるD番号別ファイルは独立削除不可。
   再現: workforce/README.mdとprivate repo docs/現行再構築手順.md。GAS一時関数追加の旧案は使わない。
+  UI1: layout.jsが新しいpane wrapperだけを切り替える。既存controllerのhidden/disabled/draftは触らない。
+  初期表示: 打刻準備の状態とボタンを主役にし、D13単独照会は診断へ。一般登録/招待/受付の認可は従来のGASが担当。
 -->
 <!doctype html>
 <html lang="ja">
@@ -34,21 +36,23 @@
   <script src="punch.js?v=D14-20261012"></script>
   <script src="daily-summary.js?v=D15-20261012"></script>
   <script src="monthly-work-summary.js?v=D16-20261012"></script>
+  <script src="layout.js?v=UI1-20261015"></script>
 
   <style>
     :root {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color-scheme: light dark;
+      letter-spacing: 0;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      padding: max(24px, env(safe-area-inset-top))
-               max(20px, env(safe-area-inset-right))
-               max(24px, env(safe-area-inset-bottom))
-               max(20px, env(safe-area-inset-left));
+      padding: max(16px, env(safe-area-inset-top))
+               max(16px, env(safe-area-inset-right))
+               max(16px, env(safe-area-inset-bottom))
+               max(16px, env(safe-area-inset-left));
       line-height: 1.6;
     }
 
@@ -56,6 +60,12 @@
       width: min(100%, 560px);
       margin: 0 auto;
     }
+    [hidden] { display: none !important; }
+    .view-tabs { display: flex; border-bottom: 1px solid #888; margin-top: 14px; }
+    .view-tabs button { flex: 1; min-width: 0; min-height: 48px; font: inherit; color: inherit; background: transparent;
+      border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
+    .view-tabs button[aria-selected="true"] { border-bottom-color: #006d70; font-weight: 700; }
+    button:focus-visible, summary:focus-visible { outline: 3px solid #b95a00; outline-offset: 3px; }
 
     h1 {
       margin: 0 0 6px;
@@ -69,10 +79,9 @@
     }
 
     .card {
-      margin-top: 20px;
-      padding: 18px;
-      border: 1px solid currentColor;
-      border-radius: 14px;
+      margin-top: 16px;
+      padding: 16px 0 0;
+      border-top: 1px solid #888;
     }
 
     .status-title {
@@ -101,7 +110,10 @@
     .bridge-button {
       font: inherit;
       border: 0;
-      border-radius: 9px;
+      border-radius: 4px;
+      min-height: 48px;
+      max-width: 100%;
+      overflow-wrap: anywhere;
       padding: 11px 16px;
       margin-top: 12px;
       background: #006d70;
@@ -114,7 +126,7 @@
     .demo-section h2 { margin: 0; font-size: 1.1rem; }
     .demo-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .demo-actions button { border-radius: 8px; max-width: 100%; }
-    .staff-section { margin-top: 24px; padding-top: 18px; border-top: 1px solid currentColor; }
+    .staff-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid #888; }
     .staff-section h2 { font-size: 1.1rem; margin: 0 0 12px; }
     .staff-section h3 { font-size: 1rem; margin: 20px 0 8px; }
     .staff-fields { border: 0; padding: 0; margin: 16px 0 0; min-width: 0; display: grid; gap: 12px; }
@@ -124,7 +136,12 @@
       border-radius: 4px; padding: 10px; color: inherit; background: transparent;
     }
     .staff-section textarea { resize: vertical; min-height: 76px; overflow-wrap: anywhere; }
-    .staff-section button { border-radius: 8px; max-width: 100%; }
+    .staff-section button { border-radius: 4px; max-width: 100%; }
+    #punch-status { font-size: 1.15rem; font-weight: 600; opacity: 1; }
+    #punch-check { width: 100%; }
+    #punch-section .demo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+    #punch-section .demo-actions button { width: 100%; margin-top: 0; border-radius: 4px; }
+    .enrollment-details summary { cursor: pointer; font-weight: 600; }
     #maintenance-stop { background: #b42318; }
     .daily-summary-values { margin: 12px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 10px 12px; }
     .daily-summary-values dt, .daily-summary-values dd { margin: 0; overflow-wrap: anywhere; }
@@ -132,40 +149,40 @@
     .invite-code { font-family: ui-monospace, monospace !important; }
     .diagnostics { margin-top: 28px; border-top: 1px solid #777; padding-top: 14px; }
     .diagnostics summary { cursor: pointer; font-weight: 600; }
+    @media (max-width: 359px) { .daily-summary-values { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+      .daily-summary-values dd { margin-bottom: 8px; } }
 
   </style>
 </head>
 <body>
   <main>
     <h1>TLH 勤怠管理</h1>
-    <p class="subtitle">打刻・日次・今月 D16 (2026-10-12)</p>
     <div id="staff-load-status" class="detail" role="status" aria-live="polite">LINEを確認しています。</div>
+    <nav id="workforce-tabs" class="view-tabs" role="tablist" aria-label="利用画面" hidden>
+      <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel employee-registration-panel">従業員</button>
+      <button id="manager-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="manager-registration-panel manager-maintenance-panel">管理者</button>
+    </nav>
 
-    <!-- D13は本人状態の読取りのみ。出勤/退勤/休憩をここで記録しない。 -->
-    <section id="work-state-section" class="staff-section" hidden>
-      <h2>勤務状態</h2>
-      <div id="work-state-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="work-state-check" class="bridge-button" type="button">自分の勤務状態を確認する</button>
-    </section>
-
+    <!-- layoutだけがこの新しいwrapperを切り替える。既存sectionのhiddenを上書きしない。 -->
+    <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab">
     <section id="punch-section" class="staff-section" hidden>
-      <h2>打刻</h2>
+      <h2>勤務状態・打刻</h2>
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="punch-check" class="bridge-button" type="button">打刻前の状態を確認する</button>
+      <button id="punch-check" class="bridge-button" type="button">勤務状態を確認する</button>
       <div class="demo-actions">
-        <button id="punch-in" class="bridge-button" type="button" hidden>出勤する</button>
-        <button id="punch-break-start" class="bridge-button" type="button" hidden>休憩を開始する</button>
-        <button id="punch-break-end" class="bridge-button" type="button" hidden>休憩を終了する</button>
-        <button id="punch-out" class="bridge-button" type="button" hidden>退勤する</button>
+        <button id="punch-in" class="bridge-button" type="button" hidden>出勤</button>
+        <button id="punch-out" class="bridge-button" type="button" hidden>退勤</button>
+        <button id="punch-break-start" class="bridge-button" type="button" hidden>休憩開始</button>
+        <button id="punch-break-end" class="bridge-button" type="button" hidden>休憩終了</button>
       </div>
       <button id="punch-retry" class="bridge-button" type="button" hidden>同じ打刻を再送する</button>
     </section>
 
     <!-- D15は完了勤務の読取集計のみ。未終了分/給与/修正の見込は作らない。 -->
     <section id="daily-summary-section" class="staff-section" hidden>
-      <h2>本日開始分の完了勤務</h2>
+      <h2>今日の勤務（完了分）</h2>
       <div id="daily-summary-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="daily-summary-check" class="bridge-button" type="button">自分の本日分を確認する</button>
+      <button id="daily-summary-check" class="bridge-button" type="button">今日の勤務時間を確認する</button>
       <div id="daily-summary-result" hidden>
         <dl class="daily-summary-values">
           <dt>出勤日<br>（日本時間）</dt><dd id="daily-summary-date"></dd>
@@ -180,9 +197,9 @@
 
     <!-- D16の月は日本時間の暦月。給与の締め/確定ではなく、完了勤務の読取のみ。 -->
     <section id="monthly-work-section" class="staff-section" hidden>
-      <h2>今月開始分の完了勤務</h2>
+      <h2>今月の勤務（完了分）</h2>
       <div id="monthly-work-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="monthly-work-check" class="bridge-button" type="button">自分の今月分を確認する</button>
+      <button id="monthly-work-check" class="bridge-button" type="button">今月の勤務時間を確認する</button>
       <div id="monthly-work-result" hidden>
         <dl class="daily-summary-values">
           <dt>出勤月<br>（日本時間）</dt><dd id="monthly-work-month"></dd>
@@ -195,16 +212,22 @@
         <p id="monthly-work-open" class="detail"></p>
       </div>
     </section>
+    </div>
 
     <!-- D11業務入力は独立controller。D9ダミーや未検証の診断応答に流用しない。 -->
     <section id="staff-section" class="staff-section" hidden>
-      <h2>従業員登録</h2>
+      <div id="employee-registration-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab">
+      <details class="enrollment-details">
+      <summary>招待による従業員登録</summary>
       <form id="staff-claim-form">
         <label for="staff-claim-code">招待コード</label>
         <textarea id="staff-claim-code" class="invite-code" rows="3" required maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
         <button id="staff-claim" class="bridge-button" type="submit">このLINEで招待を受け取る</button>
       </form>
-      <h3>管理者</h3>
+      </details>
+      </div>
+      <div id="manager-registration-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
+      <h2>従業員登録</h2>
       <button id="staff-check" class="bridge-button" type="button">管理者用登録画面を開く</button>
       <div id="staff-admin" hidden>
         <form id="staff-issue-form">
@@ -225,9 +248,12 @@
           <button id="staff-reset" class="bridge-button" type="button">登録入力をやり直す</button>
         </div>
       </div>
+      </div>
+      <!-- claim/発行/取消しは既存controllerの共通結果欄。tab切替で消去/再送しない。 -->
       <div id="staff-status" class="detail" role="status" aria-live="polite"></div>
     </section>
 
+    <div id="manager-maintenance-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
     <section id="maintenance-section" class="staff-section" hidden>
       <h2>従業員の利用停止・訂正</h2>
       <form id="maintenance-target-form">
@@ -251,9 +277,17 @@
       <button id="maintenance-reset" class="bridge-button" type="button">対象を選び直す</button>
       <div id="maintenance-status" class="detail" role="status" aria-live="polite"></div>
     </section>
+    </div>
 
     <details class="diagnostics">
       <summary>接続診断と試験用ダミー</summary>
+
+    <!-- D13単独照会は診断に保持。通常はD14の署名付き準備結果を勤務状態・打刻欄で読む。 -->
+    <section id="work-state-section" class="staff-section" hidden>
+      <h2>勤務状態の単独照会</h2>
+      <div id="work-state-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="work-state-check" class="bridge-button" type="button">自分の勤務状態を確認する</button>
+    </section>
 
     <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
     <section id="demo-section" class="demo-section" aria-live="polite" hidden>
@@ -393,7 +427,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'D16 (2026-10-12)';
+    const DIAGNOSTIC_VERSION = 'D16 / UI1 (2026-10-15)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
@@ -406,6 +440,7 @@
       'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
     const BRIDGE_TIMEOUT_MS = 15000;
     // 独立controller。古い診断のnull-origin/nonceだけの受信を再利用しない。
+    TlhWorkforceLayout.init();
     TlhDemoInvitation.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
@@ -1207,6 +1242,7 @@
         document.getElementById('daily-summary-section').hidden = false;
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
+        document.getElementById('workforce-tabs').hidden = false;
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;
