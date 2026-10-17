@@ -125,8 +125,11 @@
     <iframe name="sandboxAccountFrame" id="sandboxAccountFrame" title="試験用登録の応答" hidden></iframe>
     <script src="account.js"></script>
     <script>
-      // 公開先は実API照合完了後に固定する。URL/query/保存値からの接続先差替えを受け付けない。
-      TlhSandboxAccount.start({ liffId: '2011940133-JXUDzLnG', gasUrl: '' });
+      // 試験専用の公開版1を5ソース/固定先/公開範囲まで実API照合済み。URL/query/保存値から差し替えない。
+      TlhSandboxAccount.start({
+        liffId: '2011940133-JXUDzLnG',
+        gasUrl: 'https://script.google.com/macros/s/AKfycbwmJD09KHLhgUJepZIyJQnoz-WzXYAWE383355-gfUuuyYyWnVUaecLtVOiQe973Q-Z/exec',
+      });
     </script>
   </body>
 </html>
