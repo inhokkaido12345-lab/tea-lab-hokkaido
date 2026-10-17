@@ -1,5 +1,5 @@
 /**
- * 【試験専用controller】責務: LIFF準備と本人の明示登録/読取。通常勤怠のcontrollerは呼ばない。
+ * 【試験専用controller】責務: LIFF準備/明示登録/読取と、試験照合コードへのLINE応答だけ。
  * 構成: start -> 固定接続先/LIFF -> POST一回 -> HMAC検証 -> 固定状態表示。
  * 削除影響: 試験登録画面だけ停止。既存従業員/管理者tab/受付設定は変わらない。
  * 概念: async state machine / request correlation / authenticated DTO / uncertain result handling。
@@ -20,6 +20,13 @@
     BUSY: '他の操作中です。登録状態を確認してください。',
     INVALID_REQUEST: '送信内容を確認できませんでした。',
     UNAVAILABLE: '結果を確認できませんでした。登録状態を確認してください。',
+    PAIR_NOT_STARTED: '試験本人照合は未開始です。',
+    PAIR_OPEN: 'Google側の本人照合コードへのLINE応答を待っています。',
+    PAIR_LINE_CONFIRMED:
+      'LINE側の応答を保存しました。Google側で照合を確定してください。権限は付与していません。',
+    PAIR_CONFIRMED: 'Google・LINEの試験本人照合が完了しました。権限は付与していません。',
+    PAIR_EXPIRED: '照合期限が切れました。担当者へ知らせてください。',
+    PAIR_UNAVAILABLE: '本人照合コードは未発行、または利用できません。',
   });
   function randomHex(size) {
     return Array.from(global.crypto.getRandomValues(new Uint8Array(size)), (b) =>
@@ -38,6 +45,9 @@
       data.action !== request.action ||
       typeof data.code !== 'string' ||
       !Object.hasOwn(messages, data.code) ||
+      (!['pairConfirm', 'pairStatus'].includes(request.action) && data.code.startsWith('PAIR_')) ||
+      (['pairConfirm', 'pairStatus'].includes(request.action) &&
+        ['REGISTERED', 'TICKET_UNAVAILABLE'].includes(data.code)) ||
       typeof data.mac !== 'string' ||
       !/^[a-f0-9]{64}$/.test(data.mac)
     )
@@ -66,9 +76,15 @@
       check = doc.getElementById('check');
     const ticket = doc.getElementById('ticket'),
       login = doc.getElementById('login');
+    const pairTicket = doc.getElementById('pair-ticket'),
+      pairConfirm = doc.getElementById('pair-confirm'),
+      pairCheck = doc.getElementById('pair-check'),
+      pairStatus = doc.getElementById('pair-status');
     let ready = false,
       pending = null,
       attempted = false,
+      pairAttempted = false,
+      registered = false,
       disposed = false,
       sequence = 0,
       operationId = null,
@@ -78,13 +94,16 @@
       /^https:\/\/script\.google\.com\/(?:macros\/s|a\/macros\/tealabhokkaido\.com\/s)\/[A-Za-z0-9_-]+\/exec$/.test(
         options.gasUrl
       );
-    const text = (value, error = false) => {
-      status.textContent = value;
-      status.dataset.error = String(error);
+    const text = (value, error = false, action = '') => {
+      const destination = ['pairConfirm', 'pairStatus'].includes(action) ? pairStatus : status;
+      destination.textContent = value;
+      destination.dataset.error = String(error);
     };
     function controls() {
       register.disabled = !ready || !!pending || attempted || disposed;
       check.disabled = !ready || !!pending || disposed;
+      pairConfirm.disabled = !ready || !registered || !!pending || pairAttempted || disposed;
+      pairCheck.disabled = !ready || !registered || !!pending || disposed;
     }
     function finish(request) {
       if (pending !== request) return;
@@ -98,15 +117,30 @@
       sequence++;
       ready = false;
       ticket.value = '';
+      pairTicket.value = '';
       global.clearTimeout(initTimer);
       if (pending) finish(pending);
       controls();
     }
     async function send(action) {
-      if (!ready || pending || disposed || (action === 'register' && attempted)) return;
-      const code = action === 'register' ? ticket.value.trim() : '';
-      if (action === 'register' && !/^[a-f0-9]{64}$/.test(code)) {
-        text('試験登録コードを確認してください。', true);
+      const pairing = ['pairConfirm', 'pairStatus'].includes(action);
+      if (
+        !ready ||
+        pending ||
+        disposed ||
+        (action === 'register' && attempted) ||
+        (pairing && !registered) ||
+        (action === 'pairConfirm' && pairAttempted)
+      )
+        return;
+      const code =
+        action === 'register' ? ticket.value.trim() : action === 'pairConfirm' ? pairTicket.value.trim() : '';
+      if (['register', 'pairConfirm'].includes(action) && !/^[a-f0-9]{64}$/.test(code)) {
+        text(
+          action === 'register' ? '試験登録コードを確認してください。' : '本人照合コードを確認してください。',
+          true,
+          action
+        );
         return;
       }
       if (
@@ -116,11 +150,18 @@
         )
       )
         return;
+      if (
+        action === 'pairConfirm' &&
+        !global.confirm(
+          '登録済みの自分のLINEで、Google所有者が開始した試験本人照合に応答します。管理者権限・従業員・本番は変更しません。'
+        )
+      )
+        return;
       let idToken;
       try {
         idToken = global.liff.getIDToken();
       } catch (_error) {
-        text(messages.LINE_REJECTED, true);
+        text(messages.LINE_REJECTED, true, action);
         return;
       }
       if (
@@ -129,7 +170,7 @@
         idToken.length > 8192 ||
         !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(idToken)
       ) {
-        text(messages.LINE_REJECTED, true);
+        text(messages.LINE_REJECTED, true, action);
         return;
       }
       let request;
@@ -137,16 +178,23 @@
         operationId = operationId || randomHex(16);
         request = { action, nonce: randomHex(16), responseKey: randomHex(32), sequence: ++sequence };
       } catch (_error) {
-        text(messages.UNAVAILABLE, true);
+        text(messages.UNAVAILABLE, true, action);
         return;
       }
       if (action === 'register') attempted = true;
+      if (action === 'pairConfirm') pairAttempted = true;
       pending = request;
       controls();
-      text('確認中です。');
+      text('確認中です。', false, action);
       request.timer = global.setTimeout(() => {
         if (pending !== request) return;
-        text('応答を確認できませんでした。再登録せず、登録状態を確認してください。', true);
+        text(
+          pairing
+            ? '応答を確認できませんでした。再送せず、本人照合の状態を確認してください。'
+            : '応答を確認できませんでした。再登録せず、登録状態を確認してください。',
+          true,
+          action
+        );
         finish(request);
       }, 30000);
       const form = doc.createElement('form');
@@ -173,7 +221,7 @@
         doc.body.appendChild(form);
         form.submit();
       } catch (_error) {
-        text(messages.UNAVAILABLE, true);
+        text(messages.UNAVAILABLE, true, action);
         finish(request);
       } finally {
         form.remove();
@@ -181,6 +229,7 @@
         fields.idToken = '';
         fields.ticket = '';
         ticket.value = '';
+        pairTicket.value = '';
       }
     }
     global.addEventListener('message', async (event) => {
@@ -204,8 +253,24 @@
           request.sequence !== sequence
         )
           return;
-        text(messages[data.code], !['REGISTERED', 'NOT_REGISTERED'].includes(data.code));
-        if (data.code === 'REGISTERED') attempted = true;
+        text(
+          messages[data.code],
+          ![
+            'REGISTERED',
+            'NOT_REGISTERED',
+            'PAIR_NOT_STARTED',
+            'PAIR_OPEN',
+            'PAIR_LINE_CONFIRMED',
+            'PAIR_CONFIRMED',
+          ].includes(data.code),
+          request.action
+        );
+        if (data.code === 'REGISTERED') {
+          attempted = true;
+          registered = true;
+        }
+        if (['NOT_REGISTERED', 'REVIEW_REQUIRED'].includes(data.code)) registered = false;
+        if (['PAIR_LINE_CONFIRMED', 'PAIR_CONFIRMED'].includes(data.code)) pairAttempted = true;
         finish(request);
       } catch (_error) {
         /* 未検証の返答や内部例外を表示しない。timeoutで読取確認へ戻る。 */
@@ -223,6 +288,17 @@
         if (pending) finish(pending);
       })
     );
+    for (const [button, action] of [
+      [pairConfirm, 'pairConfirm'],
+      [pairCheck, 'pairStatus'],
+    ]) {
+      button.addEventListener('click', () =>
+        send(action).catch(() => {
+          text(messages.UNAVAILABLE, true, action);
+          if (pending) finish(pending);
+        })
+      );
+    }
     login.addEventListener('click', () => {
       if (disposed || !global.liff) return;
       try {

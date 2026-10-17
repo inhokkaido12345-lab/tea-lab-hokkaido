@@ -24,7 +24,17 @@ function harness(changes = {}) {
   let next = 0,
     tokenReads = 0,
     initCalls = 0;
-  for (const id of ['status', 'register', 'check', 'ticket', 'login']) {
+  for (const id of [
+    'status',
+    'register',
+    'check',
+    'ticket',
+    'login',
+    'pair-status',
+    'pair-ticket',
+    'pair-confirm',
+    'pair-check',
+  ]) {
     assert.match(html, new RegExp('id="' + id + '"'));
     elements.set(id, {
       value: '',
@@ -266,4 +276,90 @@ test('login is explicit with a fixed redirect under the existing endpoint; no pr
   );
   assert.match(source, /https:\/\/tealabhokkaido\.com\/workforce\/sandbox\//);
   assert.doesNotMatch(html, /onload=|grantFirst|TLH_ACCOUNT_SIGNUP_ENABLED/);
+});
+
+async function registeredUi() {
+  const h = harness();
+  await flush();
+  assert.equal(h.elements.get('pair-confirm').disabled, true);
+  h.click('check');
+  await flush();
+  await h.events.message({ data: h.response(), origin: 'null' });
+  return h;
+}
+
+test('pairing is gated by fresh account readback, separate consent and challenge; never performs Google final confirmation', async () => {
+  const h = harness();
+  await flush();
+  h.elements.get('pair-ticket').value = 'e'.repeat(64);
+  h.click('pair-confirm');
+  await flush();
+  assert.equal(h.posts.length, 0);
+  h.click('check');
+  await flush();
+  await h.events.message({ data: h.response(), origin: 'null' });
+  assert.equal(h.elements.get('pair-confirm').disabled, false);
+  h.elements.get('pair-ticket').value = '';
+  h.click('pair-confirm');
+  await flush();
+  assert.equal(h.posts.length, 1);
+  h.elements.get('pair-ticket').value = 'e'.repeat(64);
+  h.window.confirm = () => false;
+  h.click('pair-confirm');
+  await flush();
+  assert.equal(h.posts.length, 1);
+  h.window.confirm = () => true;
+  h.click('pair-confirm');
+  h.click('pair-confirm');
+  await flush();
+  assert.equal(h.posts.length, 2);
+  assert.equal(h.posts[1].action, 'pairConfirm');
+  assert.equal(h.posts[1].ticket, 'e'.repeat(64));
+  assert.equal(h.elements.get('pair-ticket').value, '');
+  await h.events.message({ data: h.response(1, 'PAIR_LINE_CONFIRMED'), origin: 'null' });
+  assert.match(h.elements.get('pair-status').textContent, /LINE側の応答を保存/);
+  assert.match(h.elements.get('status').textContent, /登録済み/);
+  assert.equal(h.elements.get('pair-confirm').disabled, true);
+  assert.doesNotMatch(source, /confirmSandboxPairing|OWNER_CONFIRMED|grantFirst/);
+});
+
+test('pairing timeout never resends, late/cross-purpose responses are ignored and readback carries no challenge', async () => {
+  const h = await registeredUi();
+  h.elements.get('pair-ticket').value = 'e'.repeat(64);
+  h.click('pair-confirm');
+  await flush();
+  const old = h.response(1, 'PAIR_LINE_CONFIRMED');
+  await h.events.message({ data: h.response(1, 'REGISTERED'), origin: 'null' });
+  assert.doesNotMatch(h.elements.get('pair-status').textContent, /登録済み/);
+  [...h.timers.values()][0]();
+  h.click('pair-confirm');
+  await flush();
+  assert.equal(h.posts.length, 2);
+  h.click('pair-check');
+  await flush();
+  assert.equal(h.posts[2].action, 'pairStatus');
+  assert.equal(h.posts[2].ticket, '');
+  await h.events.message({ data: old, origin: 'null' });
+  assert.doesNotMatch(h.elements.get('pair-status').textContent, /LINE側の応答を保存/);
+  await h.events.message({ data: h.response(2, 'PAIR_LINE_CONFIRMED'), origin: 'null' });
+  assert.match(h.elements.get('pair-status').textContent, /Google側で照合を確定/);
+});
+
+test('pairing departure clears challenge and cannot revive pending proof or controls from browser history', async () => {
+  const h = await registeredUi();
+  h.elements.get('pair-ticket').value = 'e'.repeat(64);
+  h.click('pair-confirm');
+  await flush();
+  h.elements.get('pair-ticket').value = 'e'.repeat(64);
+  h.events.pagehide();
+  assert.equal(h.elements.get('pair-ticket').value, '');
+  assert.equal(h.timers.size, 0);
+  await h.events.message({ data: h.response(1, 'PAIR_CONFIRMED'), origin: 'null' });
+  assert.doesNotMatch(h.elements.get('pair-status').textContent, /完了/);
+  h.events.pageshow({ persisted: true });
+  h.click('pair-confirm');
+  h.click('pair-check');
+  await flush();
+  assert.equal(h.posts.length, 2);
+  assert.equal(h.elements.get('pair-confirm').disabled, true);
 });

@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  【試験用・分離画面】責務: LINEの本人操作で権限なし試験Accountを登録/再照会する。
+  【試験用・分離画面】責務: 権限なしAccount登録/再照会と、Google開始コードへのLINE応答だけ。
   構成: LIFF初期化 -> account.js -> 試験専用GASへのPOST -> 固定HMAC結果だけ表示。
   削除影響: /workforce/sandbox/だけが使えなくなる。本番indexやcontrollerへコピーしない。
   概念: isolated command UI / authentication vs authorization。登録成功は従業員/管理者権限ではない。
@@ -121,6 +121,15 @@
         <button id="check" type="button" disabled>自分の登録状態を確認</button>
         <p>従業員登録：未実施<br />管理者権限：未付与</p>
       </section>
+      <section>
+        <h2>Google・LINEの試験本人照合</h2>
+        <p id="pair-status" role="status" aria-live="polite">未確認</p>
+        <label for="pair-ticket">本人照合コード（5分有効）</label>
+        <textarea id="pair-ticket" autocomplete="off" spellcheck="false" placeholder="未入力"></textarea>
+        <button id="pair-confirm" type="button" disabled>自分のLINEで照合に応答</button>
+        <p><button id="pair-check" type="button" disabled>本人照合の状態を確認</button></p>
+        <p>管理者権限：未付与</p>
+      </section>
     </main>
     <iframe name="sandboxAccountFrame" id="sandboxAccountFrame" title="試験用登録の応答" hidden></iframe>
     <script src="account.js"></script>
@@ -128,7 +137,8 @@
       // 試験専用の公開版1を5ソース/固定先/公開範囲まで実API照合済み。URL/query/保存値から差し替えない。
       TlhSandboxAccount.start({
         liffId: '2011940133-JXUDzLnG',
-        gasUrl: 'https://script.google.com/macros/s/AKfycbwmJD09KHLhgUJepZIyJQnoz-WzXYAWE383355-gfUuuyYyWnVUaecLtVOiQe973Q-Z/exec',
+        gasUrl:
+          'https://script.google.com/macros/s/AKfycbwmJD09KHLhgUJepZIyJQnoz-WzXYAWE383355-gfUuuyYyWnVUaecLtVOiQe973Q-Z/exec',
       });
     </script>
   </body>
