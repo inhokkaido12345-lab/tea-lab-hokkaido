@@ -1,5 +1,14 @@
 # Workforceの恒常ルール
 
+## 分離した試験LINE Account登録（2026-10-17）
+
+所有者は別試験GASと空試験Sheetへの本人Account1件（権限なし）を明示了承。
+workforce/sandboxの独立HTML/controllerだけを追加。通常index/LIFF設定/各controller/本登録保留/受付閉鎖は維持。
+試験GASの5ソース/公開先検証後のみ固定gasUrlを設定。query/保存値からの接続先指定や本番URL流用は禁止。
+GASへのtoken送信は明示登録/読取のPOSTだけ。コード/Web Crypto nonce/HMAC鍵はメモリ/POST限定。
+登録不明結果の自動再送なし。画面の登録済みを従業員/管理者/Google-LINE照合の完了と説明しない。
+公開/LINE実登録/再照会はprivate repoのdocs/試験用-LINEアカウント登録.mdへ別々に記録する。
+
 ## UI1の簡易整理（2026-10-15）
 
 所有者は簡易見本を了承し、テスト成功後に同じLINEアプリへ公開することも明示了承。

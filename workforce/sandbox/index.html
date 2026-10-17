@@ -1,0 +1,132 @@
+<!doctype html>
+<!--
+  【試験用・分離画面】責務: LINEの本人操作で権限なし試験Accountを登録/再照会する。
+  構成: LIFF初期化 -> account.js -> 試験専用GASへのPOST -> 固定HMAC結果だけ表示。
+  削除影響: /workforce/sandbox/だけが使えなくなる。本番indexやcontrollerへコピーしない。
+  概念: isolated command UI / authentication vs authorization。登録成功は従業員/管理者権限ではない。
+  改造: 接続URLは実API照合後だけ設定。GAS action/DTO/専用テスト/READMEと同時変更する。
+  境界: ID token/試験コード/応答鍵をURL/console/ブラウザ保存へ出さない。自称IDを送らない。
+  検証: 実HTML+模擬LIFF/DOM -> Pages -> LINE本人の明示操作。実機成功は別に記録する。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <title>TLH Workforce 試験登録</title>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        color: #22272a;
+        background: #fff;
+        font:
+          16px/1.65 system-ui,
+          sans-serif;
+        letter-spacing: 0;
+      }
+      header {
+        padding: 18px 20px;
+        background: #f5f7f7;
+        border-bottom: 1px solid #d7dcdf;
+      }
+      header strong {
+        font-size: 20px;
+        color: #234c50;
+      }
+      main {
+        max-width: 720px;
+        margin: auto;
+        padding: 26px 20px 44px;
+      }
+      h1 {
+        font-size: 24px;
+        margin: 0 0 18px;
+      }
+      h2 {
+        font-size: 18px;
+      }
+      section {
+        padding: 22px 0;
+        border-top: 1px solid #d7dcdf;
+      }
+      p {
+        overflow-wrap: anywhere;
+      }
+      #status {
+        min-height: 3.3em;
+      }
+      #status[data-error='true'] {
+        color: #9e272d;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+      }
+      textarea {
+        display: block;
+        width: 100%;
+        min-height: 110px;
+        font: 16px/1.6 monospace;
+        padding: 12px;
+        border: 1px solid #bbc3c6;
+        border-radius: 4px;
+        overflow-wrap: anywhere;
+        margin-bottom: 16px;
+      }
+      button {
+        font: inherit;
+        min-height: 44px;
+        padding: 9px 16px;
+        border: 0;
+        border-radius: 6px;
+        background: #235b60;
+        color: white;
+        max-width: 100%;
+        white-space: normal;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+      button:focus-visible {
+        outline: 3px solid #a37016;
+        outline-offset: 3px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>TLH Workforce</strong>
+      <div>試験環境 / アカウント登録</div>
+    </header>
+    <main>
+      <h1>試験用アカウント登録</h1>
+      <p id="status" role="status" aria-live="polite">LINEの準備を確認しています。</p>
+      <button id="login" type="button" hidden>LINEログイン</button>
+      <section>
+        <label for="ticket">試験登録コード</label
+        ><textarea id="ticket" autocomplete="off" spellcheck="false" placeholder="未入力"></textarea>
+        <button id="register" type="button" disabled>自分の試験用アカウントを登録</button>
+      </section>
+      <section>
+        <h2>登録状態</h2>
+        <button id="check" type="button" disabled>自分の登録状態を確認</button>
+        <p>従業員登録：未実施<br />管理者権限：未付与</p>
+      </section>
+    </main>
+    <iframe name="sandboxAccountFrame" id="sandboxAccountFrame" title="試験用登録の応答" hidden></iframe>
+    <script src="account.js"></script>
+    <script>
+      // 公開先は実API照合完了後に固定する。URL/query/保存値からの接続先差替えを受け付けない。
+      TlhSandboxAccount.start({ liffId: '2011940133-JXUDzLnG', gasUrl: '' });
+    </script>
+  </body>
+</html>
