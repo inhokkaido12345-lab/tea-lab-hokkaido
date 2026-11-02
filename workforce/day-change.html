@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- day-change.js→既存GASの日単位訂正。削除で入力画面だけ停止、保存済み原簿/訂正履歴は残る。
+     previewは読取、commitは明示確認後。実時刻を推測して入力しない。 -->
+<html lang="ja"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+  <title>打刻の訂正・申請 | TLH Workforce</title><link rel="stylesheet" href="recovery.css?v=20261102-1">
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="day-change.js?v=20261103-1" data-bootstrap="true"></script>
+</head><body>
+<header><strong>TLH Workforce</strong><a href="timecard-records.html">日別記録へ戻る</a></header>
+<main><h1>打刻の訂正・申請</h1><button id="change-login" type="button" hidden>LINEログイン</button>
+  <p>日本時間で、確認できた実際の時刻を入力してください。元の打刻は残し、この日の訂正履歴を追加します。</p>
+  <label for="change-mode">操作</label><select id="change-mode"><option value="SELF">自分の訂正を申請</option><option value="DIRECT">管理者として直接訂正</option><option value="REVIEW">管理者として申請を承認</option></select>
+  <div id="change-target" hidden><label for="change-employee">対象の社員番号</label><input id="change-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
+  <div id="change-request" hidden><label for="change-group">申請番号</label><input id="change-group" maxlength="36" autocomplete="off" spellcheck="false"></div>
+  <fieldset id="change-inputs"><legend>この日の正しい勤務</legend>
+    <label for="change-day">出勤日</label><input id="change-day" type="date">
+    <label for="change-in">出勤日時（日本時間）</label><input id="change-in" type="datetime-local" step="60">
+    <label for="change-out">退勤日時（日本時間）</label><input id="change-out" type="datetime-local" step="60">
+    <label for="change-break-start">休憩開始日時（休憩なしなら空欄）</label><input id="change-break-start" type="datetime-local" step="60">
+    <label for="change-break-end">休憩終了日時（休憩なしなら空欄）</label><input id="change-break-end" type="datetime-local" step="60">
+    <label for="change-reason">訂正・申請の理由</label><textarea id="change-reason" maxlength="500" rows="3" autocomplete="off"></textarea>
+  </fieldset>
+  <button id="change-preview" type="button" disabled>内容を確認する</button>
+  <pre id="change-review" hidden style="white-space:pre-wrap"></pre>
+  <button id="change-commit" type="button" disabled>確認した内容で実行する</button>
+  <p id="change-status" role="status" aria-live="polite">LINE本人確認を待っています。</p>
+  <p id="change-receipt"></p><button id="change-copy" type="button" hidden>申請番号をコピー</button>
+  <iframe id="change-frame" name="tlhDayChangeFrame" title="訂正の応答" hidden></iframe>
+</main></body></html>
