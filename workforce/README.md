@@ -9,12 +9,27 @@ GAS側で復旧設定が未設定なら閉鎖。画面が見えても所有者�
 申請コード/氏名/token/応答鍵はPOST bodyとメモリだけ。Storage/URL/ログへ保存しません。
 承認の結果が不明なら自動再送せず、対象と申請の確認に戻ります。pagehideでメモリ/入力を消去します。
 申請コードは明示コピーだけ可能。端末紛失等の際は個別に所有者へ相談する運用が必要です。
-削除すると専用復旧画面だけが停止します。固定source/nonce/action/HMACの検査や確認画面を削らないでください。
+削除すると専用復旧画面だけが停止します。通信枠とのsource関係・origin・nonce/action/HMACの検査や確認画面を削らないでください。
 backendの保存/停止印/設定/履歴保持はprivate repo docs/遠隔LINE復旧-実装と運用.mdを参照。
 画面11件/全公開画面80件の模擬検査が成功。ローカルfile URLの確認は制限されましたが、所有者了承後のHTTPS公開画面は表示できました。
 本人/所有者の画面切替と、未ログイン時の承認/拒否ボタン無効を確認。幅375の実viewportも確認しました。
 実LINEログイン・実申請・実承認・再連携は実行していません。GASの配布用停止フラグはfalseで、Propertiesだけでは受付を開けません。
 通常勤怠のindex/既存controller/LINE設定/受付設定は不変です。
+
+### 返信待ちになる不具合の修正候補（2026-11-02・未公開）
+
+所有者の実機でLINE準備表示までは成功しましたが、架空コードの状態照会は30秒後に応答確認不能となりました。
+復旧controllerは直下iframeのWindowだけを許可しており、Googleの子孫iframeから届く正規返信を拒否する不具合をテストで再現しました。
+GoogleはHTML Serviceを[iframeで実行します](https://developers.google.com/apps-script/guides/html/restrictions)。
+`isResponseFrame`は返信元のparentを最大8段たどり、固定通信枠の子孫であることを確認します。
+別窓・参照拒否・循環・上限超過は拒否します。[cross-originで読めるparent](https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy#window)以外の内部状態を読みません。
+originは従来の固定3値とHTTPSの単一*-script.googleusercontent.comホストのみ許可し、末尾偽装ドメインは拒否。
+一回用nonce/action/既知code/revision/HMACの検査は維持。送信元だけで成功にしません。
+同時にrecovery.htmlのJS参照へ版番号を付け、公開後の旧JSキャッシュ残留を避けます。
+変更は復旧画面だけ。GAS/設定/データ/通常勤怠を変更せず、受付OFFを維持します。
+新規回帰2件は修正前に失敗、修正後に成功。復旧13件を含む全画面82件が成功しました。
+別途のローカルHTTP試験画面は接続できず、実ブラウザのWindowProxy検証は未成立です。模擬試験成功と混同しません。
+公開・LINE実機の再照会は未確認。この修正で実環境の問題がすべて解消したとは扱いません。
 
 ## 分離した試験登録ページ（2026-10-17）
 

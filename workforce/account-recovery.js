@@ -1,6 +1,6 @@
 /**
- * 未公開・復旧controller。本人申請 -> 所有者照合/別経路本人確認 -> 明示承認。
- * 流れ: 公式LIFF token -> POST iframe -> source/nonce/action/HMAC検査 -> 固定結果。
+ * 公開済み・受付OFFの復旧controller。本人申請 -> 所有者照合/別経路本人確認 -> 明示承認。
+ * 流れ: 公式LIFF token -> POST iframe -> 直下/子孫source・origin・nonce/action/HMAC検査 -> 固定結果。
  * 削除影響: recovery.htmlだけ停止。既存勤怠/Account/保存済み履歴を変えない。
  * 概念: command adapter / immutable review / unknown outcome。表示は認可の代わりではない。
  * 改造: BridgeAccountRecoveryの署名順/固定codeと試験を同期。GAS/LIFF設定は既存画面と照合する。
@@ -39,6 +39,24 @@
     LINE_VERIFY_REJECTED: 'LINE本人確認が失敗しました。ログインし直してください。',
   });
   const random = size => Array.from(crypto.getRandomValues(new Uint8Array(size)), b => b.toString(16).padStart(2, '0')).join('');
+  /**
+   * Google HTML Serviceの返信元は送信先iframeの子孫Windowになることがある。
+   * 入力はMessageEvent.sourceと固定通信枠のWindowProxy。祖先に同枠があればtrue。
+   * cross-originでも読めるparentだけを最大8段たどり、参照拒否/循環/別窓はfalse。
+   * 消すと正規返信を拒否、無条件trueへ変えると別窓も候補になる。origin/HMAC検査も必ず併用。
+   * Googleの構造変更時は回帰試験と実機を確認し、origin許可範囲を無制限に広げない。
+   */
+  function isResponseFrame(source, frameWindow) {
+    try {
+      for (let depth = 0; source && depth < 8; depth++) {
+        if (source === frameWindow) return true;
+        const parent = source.parent;
+        if (!parent || parent === source) return false;
+        source = parent;
+      }
+    } catch (_error) { /* Window参照を読めなければ署名検査へ進めない。 */ }
+    return false;
+  }
   async function verifyResponse(data, request) {
     if (!data || !request || data.type !== TYPE || data.nonce !== request.nonce || data.action !== request.action ||
         !Object.hasOwn(messages, data.code) || typeof data.code !== 'string' || typeof data.revision !== 'string' ||
@@ -135,8 +153,9 @@
     });
     global.addEventListener('message', async event => {
       const request = pending;
-      if (!request || event.source !== n.frame.contentWindow ||
-          !['null','https://script.google.com','https://script.googleusercontent.com'].includes(event.origin)) return;
+      if (!request || !isResponseFrame(event.source, n.frame.contentWindow) ||
+          !(['null','https://script.google.com','https://script.googleusercontent.com'].includes(event.origin) ||
+            /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin))) return;
       let valid = false;
       try { valid = await verifyResponse(event.data, request); } catch (_error) { return; }
       if (!valid || pending !== request) return;

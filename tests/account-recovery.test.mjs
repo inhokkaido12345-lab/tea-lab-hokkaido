@@ -48,7 +48,7 @@ test('submission creates random receipt only after explicit consent, then blocks
 test('no LINE proof cannot lock a new request or generate a receipt',()=>{
   const h=harness();h.setProof('');h.click('submit');assert.equal(h.sent.length,0);assert.equal(h.n('user-receipt').value,'');
 });
-test('reply requires exact iframe source, origin, nonce, action, known code, revision shape and HMAC',async()=>{
+test('reply requires a related iframe source, origin, nonce, action, known code, revision shape and HMAC',async()=>{
   const h=harness();h.click('inspect');const r=h.sent[0];
   for(const [patch,eventPatch] of [[{}, {source:{}}],[{}, {origin:'https://attacker.test'}],
     [{mac:'0'.repeat(64)},{}],[{action:'bridgeRecoveryApprove'},{}],[{code:'UNKNOWN'},{}],[{revision:''},{}]]) {
@@ -56,6 +56,42 @@ test('reply requires exact iframe source, origin, nonce, action, known code, rev
   }
   await h.reply(r,'RECOVERY_READY','d'.repeat(64));h.n('verified').checked=true;h.n('method').value='VIDEO';
   h.n('verified').events.change();assert.equal(h.n('approve').disabled,false);
+});
+
+test('signed closed response from a nested Google frame finishes a read without creating an application',async()=>{
+  for (const origin of ['null','https://fixture-script.googleusercontent.com']) {
+    const h=harness();h.n('user-receipt').value='0'.repeat(64);h.click('status-check');
+    const frame=h.n('frame').contentWindow;
+    const nested={parent:{parent:frame}};
+    await h.reply(h.sent[0],'RECOVERY_CLOSED','',{}, {source:nested,origin});
+    assert.equal(h.n('status').textContent,'復旧受付は停止中です。');
+    assert.equal(h.timers.size,0);assert.equal(h.sent.length,1);
+    assert.equal(h.sent[0].action,'bridgeRecoveryStatus');
+  }
+});
+
+test('nested frame still rejects unrelated windows, forged origins, bad signatures and stale requests',async()=>{
+  const h=harness();h.n('user-receipt').value='0'.repeat(64);h.click('status-check');
+  const request=h.sent[0],nested={parent:h.n('frame').contentWindow};
+  const unrelated={};unrelated.parent=unrelated;
+  const unreadable={get parent(){throw new Error('inaccessible');}};
+  for (const [patch,eventPatch] of [
+    [{},{source:{parent:unrelated},origin:'null'}],
+    [{},{source:unreadable,origin:'null'}],
+    [{},{source:nested,origin:'https://fixture-script.googleusercontent.com.attacker.test'}],
+    [{},{source:nested,origin:'https://attacker.test'}],
+    [{mac:'0'.repeat(64)},{source:nested,origin:'null'}],
+    [{nonce:'0'.repeat(32)},{source:nested,origin:'null'}],
+    [{action:'bridgeRecoveryApprove'},{source:nested,origin:'null'}]
+  ]) {
+    await h.reply(request,'RECOVERY_CLOSED','',patch,eventPatch);
+    assert.equal(h.n('status').textContent,'処理中です。');assert.equal(h.timers.size,1);
+  }
+  [...h.timers.values()][0]();h.click('status-check');
+  await h.reply(request,'RECOVERY_CLOSED','',{}, {source:nested,origin:'null'});
+  assert.equal(h.n('status').textContent,'処理中です。');
+  await h.reply(h.sent[1],'RECOVERY_CLOSED','',{}, {source:nested,origin:'null'});
+  assert.equal(h.n('status').textContent,'復旧受付は停止中です。');
 });
 test('owner approval binds immutable target/revision and requires verification method plus confirmation',async()=>{
   const h=harness();await h.review();h.click('approve');assert.equal(h.sent.length,1);
@@ -106,6 +142,6 @@ test('dedicated HTML has required unique controls, no embedded source changes, a
   const h=harness();assert.ok(main.includes(h.window.TlhAccountRecovery.config.gasUrl));
   assert.ok(main.includes(h.window.TlhAccountRecovery.config.liffId));
   for(const id of ['recovery-frame','recovery-approve','recovery-user-receipt','recovery-verified'])assert.ok(ids.includes(id));
-  assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/account-recovery\.js/);
+  assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/account-recovery\.js\?v=[^"]+/);
   assert.match(html,/href="recovery\.css\?v=[^"]+"/);
 });
