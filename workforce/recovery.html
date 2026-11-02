@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- 未公開: 遠隔復旧専用。account-recovery.js -> 既存GASの復旧Service。
+     消すと復旧画面だけ停止。token/申請コードをURLやブラウザ保存へ出さない。
+     改造はGAS/署名契約/試験と同期。既存勤怠画面とその固定版連結試験は変更しない。 -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>LINEの再連携 | TLH Workforce</title>
+  <link rel="stylesheet" href="recovery.css">
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script defer src="account-recovery.js" data-bootstrap="true"></script>
+</head>
+<body>
+  <header><strong>TLH Workforce</strong><a href="./">勤怠へ戻る</a></header>
+  <main>
+    <h1>LINEの再連携</h1>
+    <button id="recovery-login" type="button" hidden>LINEログイン</button>
+    <nav aria-label="復旧の操作" class="tabs">
+      <button type="button" id="recovery-tab-user" aria-pressed="true">本人の申請</button>
+      <button type="button" id="recovery-tab-owner" aria-pressed="false">所有者の承認</button>
+    </nav>
+    <section id="recovery-pane-user" aria-labelledby="recovery-tab-user">
+      <h2>復旧申請</h2>
+      <label for="recovery-user-code">社員番号</label>
+      <input id="recovery-user-code" maxlength="32" autocomplete="off" spellcheck="false">
+      <button id="recovery-submit" type="button">復旧を申請する</button>
+      <label for="recovery-user-receipt">申請コード</label>
+      <textarea id="recovery-user-receipt" rows="3" maxlength="64" autocomplete="off" spellcheck="false"></textarea>
+      <div class="actions">
+        <button id="recovery-copy" type="button">申請コードをコピー</button>
+        <button id="recovery-status-check" type="button">申請状態を確認</button>
+        <button id="recovery-cancel" class="danger" type="button">申請を取り消す</button>
+      </div>
+    </section>
+    <section id="recovery-pane-owner" aria-labelledby="recovery-tab-owner" hidden>
+      <h2>所有者の最終確認</h2>
+      <label for="recovery-owner-receipt">申請コード</label>
+      <textarea id="recovery-owner-receipt" rows="3" maxlength="64" autocomplete="off" spellcheck="false"></textarea>
+      <label for="recovery-owner-code">対象の社員番号</label>
+      <input id="recovery-owner-code" maxlength="32" autocomplete="off" spellcheck="false">
+      <label for="recovery-owner-name">現在の氏名</label>
+      <input id="recovery-owner-name" maxlength="80" autocomplete="off">
+      <button id="recovery-inspect" type="button">対象と申請を確認</button>
+      <label for="recovery-method">本人確認の方法</label>
+      <select id="recovery-method">
+        <option value="">未選択</option><option value="PHONE">電話</option>
+        <option value="VIDEO">ビデオ通話</option><option value="OTHER">その他の既知の連絡手段</option>
+      </select>
+      <label class="check"><input id="recovery-verified" type="checkbox">申請者が本人であることを確認しました</label>
+      <div class="actions">
+        <button id="recovery-approve" type="button" disabled>再連携を承認する</button>
+        <button id="recovery-reject" class="danger" type="button" disabled>申請を拒否する</button>
+      </div>
+    </section>
+    <p id="recovery-status" role="status" aria-live="polite">LINE本人確認を待っています。</p>
+    <iframe id="recovery-frame" name="tlhRecoveryFrame" title="復旧処理" hidden></iframe>
+  </main>
+</body>
+</html>

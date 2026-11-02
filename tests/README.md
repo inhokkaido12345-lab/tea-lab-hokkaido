@@ -1,5 +1,9 @@
 # Workforce画面の模擬テスト
 
+2026-11-02: account-recovery.test.mjsを11件追加。全体80件がローカル成功。
+実WebCryptoでiframe source/origin/nonce/action/HMAC、所有者確認、二重送信/応答喪失、取消し/拒否、pagehide消去を検査。
+recovery.html専用で既存indexの固定版は変更しません。実LINE/Google保存/端末表示の確認とは別です。
+
 このフォルダは架空DOM/LIFFと実際の暗号計算でcontrollerを検査します。
 実LINEへログインせず、実GASへHTTP送信も実社員登録も行いません。
 現役画面の地図は[workforce/README](../workforce/README.md)。GAS側テストは別のprivate repoです。
