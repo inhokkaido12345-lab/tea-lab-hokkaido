@@ -35,3 +35,15 @@ test('dedicated HTML has required controls and journal links to it without chang
   for(const k of ['mode','employee','group','day','in','out','break-start','break-end','reason','preview','commit','review','status','receipt','copy','frame'])assert.ok(ids.includes('change-'+k));
   assert.match(journal,/href="day-change.html"/);assert.match(html,/name="referrer" content="no-referrer"/);
 });
+
+test('native datetime-local values with seconds or fractional seconds are accepted without losing precision',()=>{
+  const h=dayChangeHarness();h.n('in').value='2026-11-01T09:00:00';h.n('out').value='2026-11-01T18:00:00.125';h.click('preview');
+  assert.equal(h.sent.length,1);assert.equal(h.sent[0].clockIn,'2026-11-01T00:00:00.000Z');assert.equal(h.sent[0].clockOut,'2026-11-01T09:00:00.125Z');
+});
+test('missing reason, mismatched day and incomplete or reversed breaks identify the exact field without sending',()=>{
+  for(const [patch,expected]of [[{reason:''},/理由/],[{day:'2026-11-02'},/出勤日/],
+    [{'break-end':''},/休憩終了/],[{'break-start':'2026-11-01T14:00'},/休憩/],[{out:'2026-11-01T08:00'},/退勤日時/]]){
+    const h=dayChangeHarness();for(const [key,value]of Object.entries(patch))h.n(key).value=value;h.click('preview');
+    assert.equal(h.sent.length,0);assert.match(h.n('status').textContent,expected);assert.equal(h.n('commit').disabled,true);
+  }
+});

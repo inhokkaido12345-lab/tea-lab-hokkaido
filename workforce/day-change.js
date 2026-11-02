@@ -17,9 +17,21 @@
     WORK_STATE_ACCOUNT_UNAVAILABLE:'アカウントを確認してください。',WORK_STATE_EMPLOYEE_REQUIRED:'有効な従業員登録がありません。',WORK_STATE_ROLE_REQUIRED:'有効な従業員権限がありません。',
     WORK_STATE_NOT_STARTED:'入社日前です。',WORK_STATE_BUSY:'別の処理中です。',ENROLLMENT_BUSY:'別の処理中です。',WORK_STATE_REVIEW_REQUIRED:'記録を確認してください。'});
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
-  /** datetime-localをJSTとして解釈。存在しない暦日をDateの自動補正で保存しない。 */
-  function utc(text){if(!text)return'';if(typeof text!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(text))throw Error('invalid');
-    const value=new Date(text+':00+09:00');if(!Number.isFinite(value.getTime())||new Date(value.getTime()+9*3600000).toISOString().slice(0,16)!==text)throw Error('invalid');return value.toISOString();}
+  /** datetime-localの分/秒/小数秒をJSTとして解釈。精度を保持し、暦日の自動補正は拒否する。 */
+  function utc(text){if(!text)return'';const m=typeof text==='string'&&text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/);if(!m)throw Error('invalid');
+    const local=m[1]+':'+(m[2]||'00')+'.'+(m[3]||'').padEnd(3,'0'),value=new Date(local+'+09:00');
+    if(!Number.isFinite(value.getTime())||new Date(value.getTime()+9*3600000).toISOString().slice(0,23)!==local)throw Error('invalid');return value.toISOString();}
+  const inputErrors=Object.freeze({
+    INPUT_MODE:{node:'mode',text:'操作を選んでください。'},INPUT_GROUP:{node:'group',text:'コピーした申請番号を入力してください。'},
+    INPUT_EMPLOYEE:{node:'employee',text:'対象の社員番号を半角英数字で入力してください。'},INPUT_DAY:{node:'day',text:'出勤日を年月日まで入力してください。'},
+    INPUT_IN:{node:'in',text:'出勤日時を日付と時刻まで入力してください。'},INPUT_OUT:{node:'out',text:'退勤日時を日付と時刻まで入力してください。'},
+    INPUT_BREAK_START:{node:'break-start',text:'休憩開始日時を入力してください。休憩なしの場合は開始・終了の両方を空欄にしてください。'},
+    INPUT_BREAK_END:{node:'break-end',text:'休憩終了日時を入力してください。休憩なしの場合は開始・終了の両方を空欄にしてください。'},
+    INPUT_DAY_MATCH:{node:'in',text:'出勤日時の日付を「出勤日」と同じ日にしてください。'},INPUT_ORDER:{node:'out',text:'退勤日時は出勤日時より後にしてください。'},
+    INPUT_DURATION:{node:'out',text:'出勤から退勤は48時間以内で入力してください。'},INPUT_FUTURE:{node:'out',text:'未来の退勤日時は入力できません。日付と年を確認してください。'},
+    INPUT_BREAK_ORDER:{node:'break-start',text:'休憩は出勤後・退勤前にし、休憩終了を開始より後にしてください。'},
+    INPUT_REASON:{node:'reason',text:'訂正・申請の理由を入力してください。'},INPUT_REASON_FORMAT:{node:'reason',text:'理由は500文字以内の1行で入力し、先頭に = + @ - を付けないでください。'}
+  });
   const stamp=s=>s?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(s)):'なし';
   function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
   async function verify(d,r){
@@ -48,10 +60,21 @@
       n.preview.disabled=!!pending||completed||stopped;n.commit.disabled=!!pending||!review||uncertain||completed||stopped;
       n.target.hidden=n.mode.value==='SELF';n.request.hidden=n.mode.value!=='REVIEW';n.inputs.hidden=n.mode.value==='REVIEW';}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
-    function input(){const mode=n.mode.value;if(!['SELF','DIRECT','REVIEW'].includes(mode))throw Error('invalid');
-      const groupId=mode==='REVIEW'?n.group.value.trim():draft?.groupId||'chg_'+random(16);if(!/^chg_[a-f0-9]{32}$/.test(groupId))throw Error('invalid');
-      const employeeCode=mode==='SELF'?'':n.employee.value.trim();if(mode!=='SELF'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))throw Error('invalid');
-      return{mode,groupId,employeeCode,...(mode==='REVIEW'?{}:{day:n.day.value,clockIn:utc(n.in.value),clockOut:utc(n.out.value),breakStart:utc(n['break-start'].value),breakEnd:utc(n['break-end'].value),reason:n.reason.value.trim()})};}
+    /** 送信前の案内だけ。サーバーの同じ検査・認可・時系列確認は省略しない。 */
+    function input(){const mode=n.mode.value;if(!['SELF','DIRECT','REVIEW'].includes(mode))throw Error('INPUT_MODE');
+      const groupId=mode==='REVIEW'?n.group.value.trim():draft?.groupId||'chg_'+random(16);if(!/^chg_[a-f0-9]{32}$/.test(groupId))throw Error('INPUT_GROUP');
+      const employeeCode=mode==='SELF'?'':n.employee.value.trim();if(mode!=='SELF'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))throw Error('INPUT_EMPLOYEE');
+      if(mode==='REVIEW')return{mode,groupId,employeeCode};
+      const day=n.day.value,parsedDay=new Date(day+'T00:00:00Z');if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(parsedDay.getTime())||parsedDay.toISOString().slice(0,10)!==day)throw Error('INPUT_DAY');
+      const read=(key,code,required=false)=>{if(required&&!n[key].value)throw Error(code);try{return utc(n[key].value);}catch(_e){throw Error(code);}};
+      const clockIn=read('in','INPUT_IN',true),clockOut=read('out','INPUT_OUT',true),breakStart=read('break-start','INPUT_BREAK_START'),breakEnd=read('break-end','INPUT_BREAK_END');
+      const start=Date.parse(clockIn),end=Date.parse(clockOut);
+      if(new Date(start+9*3600000).toISOString().slice(0,10)!==day)throw Error('INPUT_DAY_MATCH');
+      if(end<=start)throw Error('INPUT_ORDER');if(end-start>48*3600000)throw Error('INPUT_DURATION');if(end>Date.now())throw Error('INPUT_FUTURE');
+      if(breakStart&&!breakEnd)throw Error('INPUT_BREAK_END');if(breakEnd&&!breakStart)throw Error('INPUT_BREAK_START');
+      if(breakStart&&!(start<Date.parse(breakStart)&&Date.parse(breakStart)<Date.parse(breakEnd)&&Date.parse(breakEnd)<end))throw Error('INPUT_BREAK_ORDER');
+      const reason=n.reason.value.trim();if(!reason)throw Error('INPUT_REASON');if(reason.length>500||/^[=+@-]|[\u0000-\u001f\u007f]/.test(reason))throw Error('INPUT_REASON_FORMAT');
+      return{mode,groupId,employeeCode,day,clockIn,clockOut,breakStart,breakEnd,reason};}
     function send(command,fields){if(pending||stopped||completed)return;if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       const r={command,fields:Object.freeze({...fields}),nonce:random(16),key:random(32)};pending=r;clear();controls();n.status.textContent='処理中です。';
@@ -60,8 +83,9 @@
       Object.entries({...fields,action:ACTION,command,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const e=document.createElement('input');e.type='hidden';e.name=name;e.value=value;form.appendChild(e);});document.body.appendChild(form);
       try{form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
-    for(const key of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[key].addEventListener('input',()=>{if(uncertain||pending||completed||stopped)return;draft=null;clear();controls();});
-    n.preview.addEventListener('click',()=>{if(pending||completed||stopped)return;try{if(!uncertain)draft=Object.freeze(input());send('preview',draft);}catch(_e){n.status.textContent=messages.CHANGE_INVALID;}});
+    for(const key of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[key].addEventListener('input',()=>{if(uncertain||pending||completed||stopped)return;n[key].removeAttribute?.('aria-invalid');draft=null;clear();controls();});
+    n.preview.addEventListener('click',()=>{if(pending||completed||stopped)return;clear();try{if(!uncertain)draft=Object.freeze(input());send('preview',draft);}catch(error){
+      const detail=inputErrors[error&&error.message];n.status.textContent=detail?detail.text:messages.CHANGE_INVALID;if(detail){n[detail.node].setAttribute?.('aria-invalid','true');n[detail.node].focus?.();}controls();}});
     n.commit.addEventListener('click',()=>{if(n.commit.disabled||!review||!global.confirm(n.review.textContent+'\nこの内容で'+(draft.mode==='SELF'?'申請':'訂正を反映')+'しますか？'))return;send('commit',{...draft,revision:review.revision});});
     global.addEventListener('message',async e=>{const r=pending;if(!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
       let valid=false;try{valid=await verify(e.data,r);}catch(_e){}if(!valid||pending!==r)return;const d=e.data;
