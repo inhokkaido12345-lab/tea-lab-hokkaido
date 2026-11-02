@@ -46,7 +46,7 @@
   /** 直下Window/最大8段の子孫だけを許可。親参照失敗/別窓は拒否し、署名も別途必須。 */
   function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
   async function verifyResponse(d,r){
-    if(!d||d.type!==TYPE||d.action!==ACTION||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.journal!=='string'||
+    if(!d||d.type!==TYPE||d.action!==ACTION||d.nonce!==r.nonce||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||typeof d.journal!=='string'||
       typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac)||(d.code!=='JOURNAL_READY'&&d.journal!==''))return false;
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,d.nonce,d.action,d.code,d.journal].join('\n')));

@@ -31,6 +31,13 @@ test('admin query explicitly includes employee and displayed target changes clea
   assert.equal(h.sent[0].mode,'admin');assert.equal(h.sent[0].employeeCode,'EMP001');await h.reply(h.sent[0]);
   h.n('employee').events.input();assert.equal(h.n('table').hidden,true);assert.equal(h.n('rows').children.length,0);
 });
+test('completed work renders JST clock times, actual/planned break and one hour planned-work excess',async()=>{
+  const h=harness(),j=journal();Object.assign(j.days[0],{state:'COMPLETED',clockIn:'2026-11-01T00:00:00.000Z',clockOut:'2026-11-01T10:00:00.000Z',
+    breakMs:3600000,workedMs:9*3600000,plannedStart:'2026-11-01T00:00:00.000Z',plannedEnd:'2026-11-01T09:00:00.000Z',plannedBreakMinutes:60,plannedWorkedMs:8*3600000,excessMs:3600000});
+  h.click();await h.reply(h.sent[0],'JOURNAL_READY',j);const cells=h.n('rows').children[0].children.map(c=>c.textContent);
+  assert.match(cells[2],/09:00/);assert.match(cells[3],/19:00/);assert.equal(cells[4],'1時間00分');
+  assert.equal(cells[5],'9時間00分');assert.equal(cells[8],'60分');assert.equal(cells[9],'1時間00分');
+});
 test('wrong source/origin, forged signature, nonce and modified journal never display records',async()=>{
   const h=harness();h.click();const r=h.sent[0];
   for(const [patch,eventPatch] of [[{mac:'0'.repeat(64)},{}],[{nonce:'0'.repeat(32)},{}],[{journal:'{}'},{}],

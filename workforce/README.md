@@ -12,7 +12,7 @@ ShiftPlanへの予定入力は管理者の台帳工程で、新しい予定編�
 token/個人時刻/社員番号/応答鍵はURL・ログ・Storageへ出しません。読取開始時/対象変更/退場で古い表を消します。
 Service/Bridgeはprivate repoのAttendanceJournalService/BridgeAttendanceJournal。DTO/HMAC変更は両repo試験と同期。
 削除すると日別表示だけ停止し、既存打刻と保存済み原簿は残ります。
-追加画面6件を含め全UI88件、バックエンド559件が成功。新コードの公開/LINE実機/実社員打刻は未実施。
+追加画面7件を含め全UI89件、バックエンド559件、既存連結6件の計654件が成功。新コードの公開/LINE実機/実社員打刻は未実施。
 詳細はprivate repo docs/最小タイムカード-初日稼働.md。受付を勝手に開けず、実社員招待・日程を確認してから開始します。
 
 ## 遠隔LINE復旧の専用画面（2026-11-02・公開済み、受付OFF）
