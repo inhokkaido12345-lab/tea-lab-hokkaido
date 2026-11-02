@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- 日別タイムカード: attendance-journal.js→既存GASの読取専用入口。消しても打刻原簿は残る。
+     予定入力は管理者のShiftPlan台帳。日別記録を法定時間外/給与確定値として扱わない。 -->
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer"><title>日別タイムカード | TLH Workforce</title>
+  <link rel="stylesheet" href="recovery.css?v=20261102-1">
+  <style>.table-scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;white-space:nowrap}th,td{padding:.7rem;border:1px solid #ccc;text-align:left}caption{text-align:left;padding:.7rem 0}select,input{max-width:100%}</style>
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script defer src="attendance-journal.js?v=20261102-1" data-bootstrap="true"></script>
+</head>
+<body>
+  <header><strong>TLH Workforce</strong><a href="./">打刻画面へ戻る</a></header>
+  <main>
+    <h1>日別タイムカード</h1>
+    <button id="journal-login" type="button" hidden>LINEログイン</button>
+    <label for="journal-month">表示する月</label><input id="journal-month" type="month" required>
+    <label for="journal-mode">表示する人</label>
+    <select id="journal-mode"><option value="self">自分</option><option value="admin">管理者として従業員を確認</option></select>
+    <div id="journal-target" hidden><label for="journal-employee">社員番号</label><input id="journal-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
+    <button id="journal-check" type="button" disabled>日別記録を確認する</button>
+    <p id="journal-status" role="status" aria-live="polite">LINE本人確認を待っています。</p>
+    <p>時刻は日本時間です。予定超過は「実働 − シフトの予定実働」の正の差で、給与用の法定時間外判定ではありません。</p>
+    <p>「予定なし」「未打刻」「勤務中」は0時間と区別します。予定は管理者が登録したシフトを使用します。</p>
+    <div class="table-scroll"><table id="journal-table" hidden>
+      <caption id="journal-caption"></caption>
+      <thead><tr><th>日付</th><th>状態</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>予定開始</th><th>予定終了</th><th>予定休憩</th><th>予定超過</th></tr></thead>
+      <tbody id="journal-rows"></tbody>
+    </table></div>
+    <iframe id="journal-frame" name="tlhJournalFrame" title="日別記録の応答" hidden></iframe>
+  </main>
+</body>
+</html>

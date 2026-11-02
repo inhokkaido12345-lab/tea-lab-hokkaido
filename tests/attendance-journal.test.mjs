@@ -1,0 +1,61 @@
+/** Actual journal UI with fake DOM and real WebCrypto. No accounts or external requests. */
+import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import fs from 'node:fs';
+import {webcrypto,createHmac} from 'node:crypto';
+const source=fs.readFileSync(new URL('../workforce/attendance-journal.js',import.meta.url),'utf8');
+function journal(){return {month:'2026-11',days:Array.from({length:30},(_,i)=>({day:'2026-11-'+String(i+1).padStart(2,'0'),clockIn:'',clockOut:'',breakMs:0,workedMs:null,state:'NO_RECORD',plannedStart:'',plannedEnd:'',plannedBreakMinutes:null,plannedWorkedMs:null,excessMs:null}))};}
+function harness(){
+  const nodes=new Map(),handlers={},sent=[],timers=new Map();let id=0;
+  function el(){return {value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},
+    appendChild(n){this.children.push(n);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},remove(){},
+    submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
+  const n=k=>{if(!nodes.has(k))nodes.set(k,el());return nodes.get(k);};
+  const window={addEventListener(k,fn){handlers[k]=fn;}};window.top=window;
+  vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl,Date,
+    document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement:el,body:el()},
+    setTimeout(fn){timers.set(++id,fn);return id;},clearTimeout(k){timers.delete(k);}});
+  n('month').value='2026-11';n('mode').value='self';window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl});
+  async function reply(r,code='JOURNAL_READY',j=journal(),patch={},eventPatch={}){
+    const data={type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',nonce:r.nonce,action:r.action,code,journal:code==='JOURNAL_READY'?JSON.stringify(j):''};
+    data.mac=createHmac('sha256',r.responseKey).update([data.type,data.nonce,data.action,data.code,data.journal].join('\n')).digest('hex');Object.assign(data,patch);
+    await handlers.message({source:{parent:n('frame').contentWindow},origin:'null',data,...eventPatch});
+  }
+  return {n,sent,timers,handlers,window,reply,click:()=>n('check').events.click()};
+}
+test('init sends nothing, explicit self read excludes other employee, nested signed reply renders all days',async()=>{
+  const h=harness();assert.equal(h.sent.length,0);h.n('employee').value='OTHER';h.click();h.click();assert.equal(h.sent.length,1);
+  assert.equal(h.sent[0].employeeCode,'');await h.reply(h.sent[0]);assert.equal(h.n('rows').children.length,30);assert.equal(h.n('table').hidden,false);
+  assert.equal(h.timers.size,0);assert.equal(h.n('rows').children[0].children[1].textContent,'未打刻');
+});
+test('admin query explicitly includes employee and displayed target changes clear previous records',async()=>{
+  const h=harness();h.n('mode').value='admin';h.n('employee').value='EMP001';h.n('mode').events.input();h.click();
+  assert.equal(h.sent[0].mode,'admin');assert.equal(h.sent[0].employeeCode,'EMP001');await h.reply(h.sent[0]);
+  h.n('employee').events.input();assert.equal(h.n('table').hidden,true);assert.equal(h.n('rows').children.length,0);
+});
+test('wrong source/origin, forged signature, nonce and modified journal never display records',async()=>{
+  const h=harness();h.click();const r=h.sent[0];
+  for(const [patch,eventPatch] of [[{mac:'0'.repeat(64)},{}],[{nonce:'0'.repeat(32)},{}],[{journal:'{}'},{}],
+    [{},{source:{}}],[{},{origin:'https://fixture-script.googleusercontent.com.attacker.test'}]]){
+    await h.reply(r,'JOURNAL_READY',journal(),patch,eventPatch);assert.equal(h.n('table').hidden,true);
+  }
+  await h.reply(r);assert.equal(h.n('table').hidden,false);
+});
+test('signed malformed month/date/negative time or inconsistent plan fails DTO parsing',()=>{
+  const h=harness(),parse=h.window.TlhAttendanceJournal.parseJournal;
+  assert.ok(parse(JSON.stringify(journal()),'2026-11'));
+  for(const patch of [{day:'2026-11-31'},{workedMs:-1},{excessMs:0},{state:'<script>'},{clockIn:'not-a-date'},
+    {plannedStart:'2026-11-01T00:00:00.000Z'}]){
+    const j=journal();Object.assign(j.days[0],patch);assert.equal(parse(JSON.stringify(j),'2026-11'),null);
+  }
+  assert.equal(parse(JSON.stringify(journal()),'2026-10'),null);
+});
+test('timeout and departure clear records, late prior reply cannot fill another request, and no persisted secrets',async()=>{
+  const h=harness();h.click();const old=h.sent[0];[...h.timers.values()][0]();h.click();await h.reply(old);assert.equal(h.n('table').hidden,true);
+  await h.reply(h.sent[1]);assert.equal(h.n('table').hidden,false);h.handlers.pagehide();assert.equal(h.n('table').hidden,true);assert.equal(h.n('employee').value,'');
+  assert.doesNotMatch(source,/localStorage|sessionStorage|console\.|URLSearchParams/);
+});
+test('dedicated page has all controller fields, fixed connection matches current punch page and no automatic write',()=>{
+  const h=harness(),html=fs.readFileSync(new URL('../workforce/timecard-records.html',import.meta.url),'utf8'),main=fs.readFileSync(new URL('../workforce/index.html',import.meta.url),'utf8');
+  for(const key of ['month','mode','employee','target','check','status','table','caption','rows','frame','login'])assert.ok(html.includes('id="journal-'+key+'"'));
+  assert.ok(main.includes('timecard-records.html'));assert.ok(main.includes(h.window.TlhAttendanceJournal.config.gasUrl));
+  assert.match(html,/name="referrer" content="no-referrer"/);assert.doesNotMatch(source,/bridgeRecordPunch|bridgeRecoverySubmit|bridgeIssueStaffInvitation/);
+});
