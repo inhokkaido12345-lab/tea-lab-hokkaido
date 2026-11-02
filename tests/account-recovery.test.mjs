@@ -107,4 +107,5 @@ test('dedicated HTML has required unique controls, no embedded source changes, a
   assert.ok(main.includes(h.window.TlhAccountRecovery.config.liffId));
   for(const id of ['recovery-frame','recovery-approve','recovery-user-receipt','recovery-verified'])assert.ok(ids.includes(id));
   assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/account-recovery\.js/);
+  assert.match(html,/href="recovery\.css\?v=[^"]+"/);
 });
