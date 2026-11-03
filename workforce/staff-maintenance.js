@@ -67,7 +67,7 @@
       'maintenance-new-fields','maintenance-new-name','maintenance-new-date','maintenance-correct',
       'maintenance-stop','maintenance-reset','maintenance-status'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
-    let pending=null,review=null,draft=null,blocked=false;
+    let pending=null,review=null,draft=null,blocked=false,stopped=false;
     const status=n['maintenance-status'];
     function controls(){status.setAttribute?.('aria-busy',String(!!pending));
       n['maintenance-target-fields'].disabled=!!pending||!!review||!!draft||blocked;
@@ -95,13 +95,13 @@
       document.body.appendChild(form);
       try{form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();}finally{form.remove();}
     }
-    function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();});}
+    function invoke(action,fields){send(action,fields).catch(()=>{if(stopped)return;status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();});}
     global.addEventListener('message',async event=>{
       const request=pending;
-      if(!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
+      if(stopped||!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{
         const d=event.data,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
-        if(!await verifyResponse(data,request)||pending!==request)return;
+        if(!await verifyResponse(data,request)||pending!==request||stopped)return;
         status.textContent=messages[data.code];
         if(isReview(data.code)){
           review={...request.fields,revision:data.revision,code:data.code};
@@ -136,6 +136,13 @@
     n['maintenance-correct-form'].addEventListener('submit',event=>{event.preventDefault();perform('bridgeCorrectStaffDetails');});
     n['maintenance-stop'].addEventListener('click',()=>perform('bridgeStopStaffAccess'));
     n['maintenance-reset'].addEventListener('click',()=>{if(pending||blocked||draft)return;clearReview();status.textContent='';controls();});
+    // 退場後の遅延応答で対象や停止ボタンを復活させない。原簿/処理中の保存には触れない。
+    // 再表示はauto-read.jsが再起動し、対象を再読取する。revisionやoperationIdを次の操作へ流用しない。
+    global.addEventListener('pagehide',()=>{
+      stopped=true;blocked=true;draft=null;clearReview();
+      for(const id of ['maintenance-code','maintenance-old-name','maintenance-old-date','maintenance-new-name','maintenance-new-date'])n[id].value='';
+      status.textContent='画面を離れたため操作を停止しました。再表示後に対象の状態を確認してください。';finish();
+    });
     controls();
   }
   global.TlhStaffMaintenance=Object.freeze({init,verifyResponse});

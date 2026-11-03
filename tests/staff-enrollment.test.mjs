@@ -33,9 +33,24 @@ function harness() {
     Object.assign(data,changes);await handlers.message({origin,data});
   };
   function fill(){node('staff-employee-code').value='EMP011';node('staff-name').value='Test Worker';node('staff-hire-date').value='';}
-  return {node,click,submit,reply,fill,window,sent,timers};
+  return {node,click,submit,reply,fill,window,sent,timers,leave:()=>handlers.pagehide()};
 }
 async function admin(h){h.click('staff-check');await h.reply(h.sent[0],'STAFF_ADMIN_READY');h.fill();}
+
+test('departure during invitation verification clears secrets and cannot revive or resubmit the issue',async()=>{
+  const h=harness();await admin(h);h.submit('staff-issue-form');const r=h.sent[1];
+  const late=h.reply(r,'STAFF_INVITATION_READY');h.leave();await late;
+  assert.equal(h.timers.size,0);assert.equal(h.node('staff-admin').hidden,true);assert.equal(h.node('staff-invite-box').hidden,true);
+  for(const id of ['staff-issued-code','staff-name','staff-employee-code'])assert.equal(h.node(id).value,'');
+  h.submit('staff-issue-form');h.click('staff-check');h.click('staff-reset');assert.equal(h.sent.length,2);
+  assert.equal(h.node('staff-copy').disabled,true);assert.equal(h.node('staff-issue').disabled,true);
+});
+
+test('departure during claim never declares registration successful or repeats the operation',async()=>{
+  const h=harness();h.node('staff-claim-code').value='b'.repeat(64);h.submit('staff-claim-form');const r=h.sent[0];h.leave();
+  await h.reply(r,'STAFF_REGISTERED');h.submit('staff-claim-form');assert.equal(h.sent.length,1);
+  assert.equal(h.node('staff-claim-code').value,'');assert.equal(h.node('staff-claim').disabled,true);assert.match(h.node('staff-status').textContent,/再表示後/);
+});
 test('initial UI makes no requests; only signed admin response opens form',async()=>{
   const h=harness();assert.equal(h.sent.length,0);assert.equal(h.node('staff-admin').hidden,true);
   h.click('staff-check');await h.reply(h.sent[0],'STAFF_ADMIN_READY',{mac:'0'.repeat(64)});

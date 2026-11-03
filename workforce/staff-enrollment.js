@@ -66,7 +66,7 @@
       'staff-employee-code','staff-name','staff-hire-date','staff-claim-code','staff-issue','staff-claim',
       'staff-invite-box','staff-issued-code','staff-copy','staff-revoke','staff-reset','staff-status'];
     const nodes=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
-    let pending=null, draft=null, adminReady=false, issued=false, registered=false, blocked=false;
+    let pending=null, draft=null, adminReady=false, issued=false, registered=false, blocked=false, stopped=false;
     const status=nodes['staff-status'];
     function controls() {status.setAttribute?.('aria-busy',String(!!pending));
       for(const id of ['staff-check','staff-issue','staff-claim','staff-revoke','staff-reset']) {
@@ -104,14 +104,14 @@
       document.body.appendChild(form);
       try{form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     }
-    const invoke=(action,fields)=>send(action,fields).catch(()=>{status.textContent='安全な送信を開始できませんでした。';finish();});
+    const invoke=(action,fields)=>send(action,fields).catch(()=>{if(stopped)return;status.textContent='安全な送信を開始できませんでした。';finish();});
     global.addEventListener('message',async event=>{
       const request=pending;
-      if(!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
+      if(stopped||!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{
         const d=event.data;
         const data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,mac:d&&d.mac};
-        if(!await verifyResponse(data,request)||pending!==request)return;
+        if(!await verifyResponse(data,request)||pending!==request||stopped)return;
         status.textContent=messages[data.code];
         if(data.code==='STAFF_ADMIN_READY'){adminReady=true;nodes['staff-admin'].hidden=false;}
         if(data.code==='TLH_ADMIN_REQUIRED'){adminReady=false;nodes['staff-admin'].hidden=true;}
@@ -166,8 +166,16 @@
     });
     nodes['staff-copy'].addEventListener('click',async()=>{
       if(!issued||pending||blocked)return;
-      try{await global.navigator.clipboard.writeText(nodes['staff-issued-code'].value);status.textContent='招待コードをコピーしました。';}
-      catch(_error){nodes['staff-issued-code'].focus();nodes['staff-issued-code'].select();status.textContent='招待コードを選択しました。';}
+      try{await global.navigator.clipboard.writeText(nodes['staff-issued-code'].value);if(!stopped)status.textContent='招待コードをコピーしました。';}
+      catch(_error){if(stopped)return;nodes['staff-issued-code'].focus();nodes['staff-issued-code'].select();status.textContent='招待コードを選択しました。';}
+    });
+    // 退場は未完了のサーバー保存を取り消す操作ではない。返信/秘密表示/再送だけを停止する。
+    // bfcache復元時はauto-read.jsが新規起動。新しい操作の前に登録状態を読んで確認する。
+    global.addEventListener('pagehide',()=>{
+      stopped=true;blocked=true;adminReady=false;issued=false;draft=null;
+      nodes['staff-admin'].hidden=true;nodes['staff-invite-box'].hidden=true;
+      for(const id of ['staff-issued-code','staff-claim-code','staff-employee-code','staff-name','staff-hire-date'])nodes[id].value='';
+      status.textContent='画面を離れたため操作を停止しました。再表示後に登録状態を確認してください。';finish();
     });
     controls();
   }

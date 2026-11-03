@@ -12,7 +12,11 @@
     daily:['daily-summary-check','daily-summary-status'],monthly:['monthly-work-check','monthly-work-status'],account:['account-info-check','account-info-status'],
     pending:['pending-load','pending-status'],labor:['labor-policy-check','labor-policy-status'],enrollment:['staff-check','staff-status'],overview:[null,'admin-overview-status']});
   function init(){
-    let stopped=false,running=false,observer=null,release=null;const seen=new Set(),queue=[];
+    let stopped=false,running=false,observer=null,release=null,restoring=false;const seen=new Set(),queue=[];
+    // 戻る/進むのbfcacheはJSの停止状態や古い認可も復元する。再送せず新しいGETで起動し直す。
+    // persisted=trueだけが対象。通常起動/タブ切替はreloadしない。削除すると戻った画面が停止したままになる。
+    // 再起動後も自動化は下の読取許可リストだけ。未確認の登録/打刻/訂正は再実行しない。
+    global.addEventListener('pageshow',event=>{if(event.persisted&&!restoring){restoring=true;global.location.reload();}});
     async function idle(status){
       if(status.getAttribute('aria-busy')!=='true'||stopped)return;
       await new Promise(resolve=>{release=resolve;observer=new MutationObserver(()=>{if(status.getAttribute('aria-busy')!=='true'||stopped){observer.disconnect();observer=null;release=null;resolve();}});observer.observe(status,{attributes:true,attributeFilter:['aria-busy']});});

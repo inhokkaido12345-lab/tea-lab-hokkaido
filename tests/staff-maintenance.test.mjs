@@ -27,8 +27,21 @@ function harness(){
     Object.assign(data,changes);await handlers.message({origin,data});
   }
   async function review(code='STAFF_REVIEW_INVITED'){submit('maintenance-target-form');await reply(sent.at(-1),code,'b'.repeat(64));}
-  return {node,sent,timers,window,submit,click,reply,review};
+  return {node,sent,timers,window,submit,click,reply,review,leave:()=>handlers.pagehide()};
 }
+
+test('departure during review verification clears identity and never reopens stop controls',async()=>{
+  const h=harness();h.submit('maintenance-target-form');const late=h.reply(h.sent[0],'STAFF_REVIEW_ACTIVE','b'.repeat(64));h.leave();await late;
+  assert.equal(h.timers.size,0);assert.equal(h.node('maintenance-reviewed').hidden,true);assert.equal(h.node('maintenance-stop').disabled,true);
+  for(const id of ['maintenance-code','maintenance-old-name','maintenance-new-name'])assert.equal(h.node(id).value,'');
+  h.submit('maintenance-target-form');h.click('maintenance-stop');h.click('maintenance-reset');assert.equal(h.sent.length,1);
+});
+
+test('departure during a stop does not replay or treat an unobserved result as a confirmed save',async()=>{
+  const h=harness();await h.review();h.click('maintenance-stop');const r=h.sent[1];h.leave();await h.reply(r,'STAFF_ACCESS_STOPPED');
+  h.click('maintenance-stop');h.submit('maintenance-correct-form');assert.equal(h.sent.length,2);assert.equal(h.timers.size,0);
+  assert.equal(h.node('maintenance-reviewed').hidden,true);assert.equal(h.node('maintenance-target-fields').disabled,true);assert.match(h.node('maintenance-status').textContent,/再表示後/);
+});
 test('initialization does not send requests, write buttons unavailable until authenticated review',async()=>{
   const h=harness();assert.equal(h.sent.length,0);assert.equal(h.node('maintenance-stop').disabled,true);
   h.click('maintenance-stop');h.submit('maintenance-correct-form');assert.equal(h.sent.length,0);
