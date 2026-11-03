@@ -108,11 +108,12 @@
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">各操作の権限はサーバーで確認します。</p></div></div>
 <p><a href="admin-guide.html">管理画面の使い方・各機能の違いを見る →</a></p>
-<section id="labor-policy-section" class="card" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section>
-<section class="card"><h2>従業員の勤務記録</h2><p class="subtle">社員と月を選び、退勤記録をCSV保存・印刷して本社への提出に使います。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
+<section id="labor-policy-section" class="card management-section" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section>
+<section class="card management-section"><h2>従業員の勤務記録</h2><p class="subtle">社員と月を選び、退勤記録をCSV保存・印刷して本社への提出に使います。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
+<div class="menu-group management-section"><h2 class="group-label">訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2>
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
-<div class="menu-group"><h2 class="group-label">訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2><a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>
+<a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
       <details class="enrollment-details">
       <summary>招待による従業員登録</summary>
@@ -123,7 +124,7 @@
       </form>
       </details>
       </div>
-      <div id="manager-registration-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
+      <div id="manager-registration-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
       <h2>従業員登録</h2>
       <!-- 説明とカードは表示専用。id/hiddenは登録controllerとの契約なので維持する。
            削除すると招待方式の案内がなくなる。手順変更時はadmin-guide.htmlも同期する。 -->
@@ -154,7 +155,7 @@
       <!-- claim/発行/取消しは既存controllerの共通結果欄。tab切替で消去/再送しない。 -->
       <div id="staff-status" class="detail" role="status" aria-live="polite"></div>
     </section><div id="manager-maintenance-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
-    <section id="maintenance-section" class="staff-section" hidden>
+    <section id="maintenance-section" class="staff-section management-section" hidden>
       <h2>従業員の利用停止・訂正</h2>
       <p>登録済みの従業員の氏名・入社日を直す、または退職などで勤怠の利用を止めるときに使います。打刻時刻の訂正とは別の機能です。</p>
       <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="admin-guide.html#maintenance">訂正・停止の違いと手順</a></p>
@@ -182,7 +183,7 @@
       <div id="maintenance-status" class="detail" role="status" aria-live="polite"></div>
     </section>
     </div>
-<div id="manager-test-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><details><summary>管理者用の開発試験</summary>    <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
+<div id="manager-test-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><details><summary>管理者用の開発試験</summary>    <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
     <div id="admin-demo-panel" hidden>
     <section id="demo-section" class="demo-section" aria-live="polite" hidden>
       <h2>管理者用のダミー発行・解除試験</h2>

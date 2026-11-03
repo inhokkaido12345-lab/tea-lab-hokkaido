@@ -12,11 +12,11 @@
      削除影響: 管理タブの説明リンクが切れる。操作controllerやGASは変わらない。
      拡張: 実際の操作仕様を先に確認し、index.htmlの補足とこの手順を同期する。
      管理者が読めるページではなく、管理者向けの説明。読めても操作権限は得られない。 -->
-<body class="secondary-page">
+<body class="secondary-page admin-guide-page">
   <header class="secondary-header"><strong>TLH Workforce</strong><a href="index.html">アプリへ戻る</a></header>
   <main>
     <div class="page-heading"><div><p class="eyebrow">操作ガイド</p><h1>管理画面の使い方</h1><p>「人の登録情報」と「勤務の記録」は別の機能です。</p></div></div>
-    <section class="card"><h2>やりたいことから選ぶ</h2>
+    <section class="management-section"><h2>やりたいことから選ぶ</h2>
       <ul>
         <li><a href="#registration">新しい従業員に使ってもらう → 従業員登録</a></li>
         <li><a href="#maintenance">氏名・入社日の間違いを直す → 従業員の訂正</a></li>
@@ -25,7 +25,7 @@
       </ul>
       <p class="footnote">このページは説明だけです。実際の管理操作にはLINE本人確認と有効な管理者権限が必要です。</p>
     </section>
-    <section id="registration" class="card"><h2>従業員登録：招待を渡して本人が受け取る</h2>
+    <section id="registration" class="management-section"><h2>従業員登録：招待を渡して本人が受け取る</h2>
       <p>新しい従業員をタイムカードに登録するときに使います。「管理者用登録画面」という旧ボタン名は、管理者が操作する従業員登録フォームを意味していました。管理者権限を追加する機能ではありません。</p>
       <ol>
         <li>管理タブの「従業員の登録フォームを表示」を押します。権限を確認して入力欄を表示するだけで、この段階では登録しません。</li>
@@ -36,7 +36,7 @@
       <p>管理者が自分のLINEで代理受取りをすると、管理者本人のLINEに紐付いてしまいます。必ず登録する本人が受け取ってください。</p>
       <p class="footnote">「未使用招待を取り消す」は受取前のコードを無効にします。従業員情報そのものの削除や、利用停止とは別です。登録完了と打刻受付の開始も別の設定です。</p>
     </section>
-    <section id="maintenance" class="card"><h2>従業員の訂正：氏名・入社日を直す</h2>
+    <section id="maintenance" class="management-section"><h2>従業員の訂正：氏名・入社日を直す</h2>
       <ol>
         <li>管理タブの「従業員の利用停止・訂正」で社員番号（氏名）を選び、保存済みの現在の氏名・入社日を確認します。</li>
         <li>「対象を確認する」を押します。読取りだけで、まだ変更しません。停止済みの対象は変更できません。</li>
@@ -44,12 +44,12 @@
       </ol>
       <p>変更するのは氏名と入社日です。未使用の招待は取り消されます。社員番号の変更、LINEの紐付け変更、出退勤時刻の訂正には使えません。</p>
     </section>
-    <section id="stop" class="card"><h2>利用停止：勤怠の従業員利用を止める</h2>
+    <section id="stop" class="management-section"><h2>利用停止：勤怠の従業員利用を止める</h2>
       <p>退職などで利用を止めるときは、同じ欄で「対象を確認する」→対象を確かめる→「従業員の利用を停止する」の順で進めます。</p>
       <p>対象の従業員登録と勤怠の従業員権限を停止し、未使用招待を取り消します。TLHアカウント、管理者権限、過去の打刻や操作履歴は残します。アカウント削除の機能ではありません。</p>
       <p class="footnote">この画面に停止の取り消し機能はありません。対象を十分確認してください。停止後の過去記録も、権限のある管理者が月次提出画面で確認できます。</p>
     </section>
-    <section id="records" class="card"><h2>打刻の訂正・承認と本社提出</h2>
+    <section id="records" class="management-section"><h2>打刻の訂正・承認と本社提出</h2>
       <p>出退勤や休憩の時刻は、管理タブの「承認待ちの申請・勤務記録の直接訂正」で扱います。従業員情報の訂正欄では変えません。</p>
       <ul>
         <li>本人として訂正を申請する：従業員側の「記録」→「自分の打刻の訂正を申請する」。管理者本人もここから申請します。</li>

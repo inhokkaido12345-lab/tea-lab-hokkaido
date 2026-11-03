@@ -640,6 +640,10 @@ input:disabled {
 .menu-item:last-child {
   border-radius:0 0 12px 12px
 }
+/* 1件だけのメニューは上下とも丸める。複数件の末尾指定だけが勝つのを防ぐ。 */
+.menu-item:nth-child(2):last-child {
+  border-radius:12px
+}
 .menu-item>span:nth-child(2) {
   flex:1;
   min-width:0
@@ -959,17 +963,32 @@ dialog::backdrop {
   padding:0;
   margin:0
 }
-/* 登録だけの面を区切る。外側staff-sectionは「その他」と共用なのでカード化しない。
- * 改造: 面は--paper、境界は--line、左の目印は--teal。影だけに区切りを頼らない。
- * 削除影響: 登録欄が画面背景と同化する。hidden/disabledや権限には一切触れない。
+/* 管理は箱の積み重ねをやめ、上の区切り線→余白→見出し→内容で統一する。
+ * 外側staff-sectionは「その他」と共用。管理対象のclassだけに指定し、親は囲まない。
+ * 見出し上28px/前区間との間32px、見出し下12pxで所属が分かるようにする。
+ * 削除影響: 旧カード/メニューの面に戻る。hidden/disabledや権限には触れない。
+ * 拡張: 管理の新セクションにmanagement-sectionを付ける。guideの見本も同じCSS。
  */
-#manager-registration-panel {
-  background:var(--paper);
-  border:1px solid var(--line);
-  border-inline-start:4px solid var(--teal);
-  border-radius:var(--radius);
-  padding:22px;
-  margin-block:18px
+.home-page .management-section,.admin-guide-page .management-section {
+  background:none;
+  border:0;
+  border-top:1px solid #bac9c0;
+  border-radius:0;
+  box-shadow:none;
+  padding:28px 0 0;
+  margin:32px 0 0
+}
+.management-section h2,.management-section .group-label {
+  margin:0 0 12px;
+  font-size:18px;
+  color:var(--ink);
+  font-weight:700
+}
+.home-page .management-section .menu-item:nth-child(n) {
+  border:0;
+  border-radius:0;
+  background:none;
+  padding:12px 0
 }
 #manager-registration-panel p,#maintenance-section p {
   margin-block:10px 14px
