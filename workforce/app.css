@@ -959,6 +959,21 @@ dialog::backdrop {
   padding:0;
   margin:0
 }
+/* 登録だけの面を区切る。外側staff-sectionは「その他」と共用なのでカード化しない。
+ * 改造: 面は--paper、境界は--line、左の目印は--teal。影だけに区切りを頼らない。
+ * 削除影響: 登録欄が画面背景と同化する。hidden/disabledや権限には一切触れない。
+ */
+#manager-registration-panel {
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-inline-start:4px solid var(--teal);
+  border-radius:var(--radius);
+  padding:22px;
+  margin-block:18px
+}
+#manager-registration-panel p,#maintenance-section p {
+  margin-block:10px 14px
+}
 #staff-status:empty {
   display:none
 }

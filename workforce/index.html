@@ -48,7 +48,7 @@
   <script src="admin-access.js?v=20261103-loading1"></script>
   <script src="labor-policy.js?v=20261103-auto1"></script>
 
-  <link rel="stylesheet" href="app.css?v=20261103-report1">
+  <link rel="stylesheet" href="app.css?v=20261103-adminhelp1">
 </head>
 <body class="home-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
@@ -107,6 +107,7 @@
 <!-- 管理の画面: 一般利用の打刻から、登録/訂正/停止を離して誤操作を減らす。
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">各操作の権限はサーバーで確認します。</p></div></div>
+<p><a href="admin-guide.html">管理画面の使い方・各機能の違いを見る →</a></p>
 <section id="labor-policy-section" class="card" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section>
 <section class="card"><h2>従業員の勤務記録</h2><p class="subtle">社員と月を選び、退勤記録をCSV保存・印刷して本社への提出に使います。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
@@ -124,7 +125,12 @@
       </div>
       <div id="manager-registration-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
       <h2>従業員登録</h2>
-      <button id="staff-check" class="bridge-button" type="button">管理者用登録画面を開く</button>
+      <!-- 説明とカードは表示専用。id/hiddenは登録controllerとの契約なので維持する。
+           削除すると招待方式の案内がなくなる。手順変更時はadmin-guide.htmlも同期する。 -->
+      <p>新しく使う従業員の情報を事前登録し、本人に渡す招待コードを発行します。管理者を追加する機能ではありません。</p>
+      <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p>
+      <button id="staff-check" class="bridge-button" type="button">従業員の登録フォームを表示</button>
+      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a href="admin-guide.html#registration">登録手順の詳細</a></p>
       <div id="staff-admin" hidden>
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
@@ -150,6 +156,8 @@
     </section><div id="manager-maintenance-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
     <section id="maintenance-section" class="staff-section" hidden>
       <h2>従業員の利用停止・訂正</h2>
+      <p>登録済みの従業員の氏名・入社日を直す、または退職などで勤怠の利用を止めるときに使います。打刻時刻の訂正とは別の機能です。</p>
+      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="admin-guide.html#maintenance">訂正・停止の違いと手順</a></p>
       <form id="maintenance-target-form">
         <fieldset id="maintenance-target-fields" class="staff-fields">
           <label>対象の社員番号<select id="maintenance-code" required><option value="">従業員一覧を確認してください</option></select></label>
@@ -165,8 +173,10 @@
             <label>訂正後の入社日（任意）<input id="maintenance-new-date" type="date"></label>
           </fieldset>
           <button id="maintenance-correct" class="bridge-button" type="submit">氏名・入社日を訂正する</button>
+          <p class="footnote">氏名・入社日の変更です。未使用の招待は取り消されます。社員番号・LINE連携・打刻時刻は変更しません。</p>
         </form>
         <button id="maintenance-stop" class="bridge-button" type="button">従業員の利用を停止する</button>
+        <p class="footnote">対象の従業員登録と勤怠の従業員権限を停止します。TLHアカウント・管理者権限・過去の履歴は残ります。この画面に停止の取り消し機能はありません。</p>
       </div>
       <button id="maintenance-reset" class="bridge-button" type="button">対象を選び直す</button>
       <div id="maintenance-status" class="detail" role="status" aria-live="polite"></div>
