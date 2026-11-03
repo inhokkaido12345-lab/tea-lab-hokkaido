@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- 現役・本人情報の入口。account-info.js→公式LINE→本人限定Service→署名検証→表示。
+     削除すると本人情報の入口だけ停止し、登録/打刻/権限/履歴は消えない。保存フォームは置かない。
+     魔改造はACCOUNT-INFO.md、共通app.css、JSのDTO検査、GAS/両repoテストを同期。
+     本人情報をURL/Storage/ログへ出さず、管理者向け検索や連携解除へ転用しない。 -->
+<html lang="ja"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+  <title>自分のアカウント情報 | TLH Workforce</title>
+  <link rel="stylesheet" href="app.css?v=UI2-20261103-4">
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script defer src="account-info.js?v=20261103-1" data-bootstrap="true"></script>
+</head><body class="secondary-page">
+<header><strong>TLH Workforce</strong><a href="./">勤怠画面へ戻る</a></header>
+<main><h1>自分のアカウント情報</h1>
+  <p>ログイン中のあなたの登録情報を確認します。管理者の方も、ここではご自身の情報だけを表示します。</p>
+  <button id="account-info-login" type="button" hidden>LINEログイン</button>
+  <button id="account-info-check" type="button" disabled>自分のアカウント情報を確認する</button>
+  <p id="account-info-status" role="status" aria-live="polite">LINEログインを準備しています。</p>
+  <section id="account-info-result" class="card" hidden aria-labelledby="account-info-heading">
+    <h2 id="account-info-heading">登録情報</h2><dl id="account-info-fields" class="review-values"></dl>
+  </section>
+  <section class="card"><h2>内容に間違いがあるとき</h2>
+    <p>社員コードと、どの項目が違うかを管理者に伝えてください。この画面を見せて確認してもらうこともできます。</p>
+    <p>この画面は確認専用です。氏名・入社日などの訂正は管理者が行います。ここでログインの連携や権限は変更しません。</p>
+    <p class="footnote">現在のログインはLINEです。TLH独自のパスワード・メール認証・SMS認証はまだ利用できません。権限の表示は登録状態の確認であり、操作時は毎回サーバーで確認します。</p>
+  </section>
+  <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
+</main></body></html>
