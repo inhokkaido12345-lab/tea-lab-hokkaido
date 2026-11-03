@@ -167,9 +167,10 @@
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
       status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,cards:document.getElementById('journal-cards')});
       if(audience!=='admin')return;
+      const overview=global.TlhAdminOverview.init({liff:global.liff,gasUrl:config.gasUrl,select:document.getElementById('journal-employee')});
       // 管理者モードも起動時に一度確認。本人読取と独立させ、権限確認の失敗で本人機能まで止めない。
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);}});
+        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);overview.setAllowed(allowed);}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }

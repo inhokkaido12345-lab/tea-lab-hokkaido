@@ -63,9 +63,9 @@
           const card=document.createElement('article');card.className='record-item';const title=document.createElement('h3');title.textContent=row.employeeName+'（'+row.employeeCode+'）さんから申請が届いています。';card.appendChild(title);
           const day=document.createElement('p');day.className='subtle';day.textContent='対象日 '+row.day;card.appendChild(day);
           const button=document.createElement('button');button.type='button';button.textContent=row.canReview?'内容を確認する':'現在の従業員状態では承認できません';button.disabled=!row.canReview;
-          button.addEventListener('click',()=>{if(!allowed||stopped)return;if(options.onSelect(row.employeeCode,row.groupId)===false)n.status.textContent='処理中または結果確認中です。現在の操作を先に確認してください。';});card.appendChild(button);n.list.appendChild(card);seen.add(row.groupId);
+          button.addEventListener('click',()=>{if(!allowed||stopped)return;if(options.onSelect(row.employeeCode,row.groupId,row.employeeName)===false)n.status.textContent='処理中または結果確認中です。現在の操作を先に確認してください。';});card.appendChild(button);n.list.appendChild(card);seen.add(row.groupId);
         }
-        cursor=page.nextCursor;n.next.hidden=!cursor;n.status.textContent=page.totalCount===0?'承認待ちの申請はありません。':'承認待ち '+page.totalCount+'件（表示 '+seen.size+'件）';
+        options.onCount?.(page.totalCount);cursor=page.nextCursor;n.next.hidden=!cursor;n.status.textContent=page.totalCount===0?'承認待ちの申請はありません。':'承認待ち '+page.totalCount+'件（表示 '+seen.size+'件）';
       }else{
         invalidate();n.status.textContent=data.code==='CHANGE_PENDING_CHANGED'?'一覧が更新されています。先頭から確認し直してください。':data.code==='TLH_ADMIN_REQUIRED'?'管理者権限が必要です。':'一覧を取得できません。権限・申請の状態を確認してください。';
       }finish();

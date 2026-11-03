@@ -8,19 +8,21 @@
      CSSを差し替える時は3ページの参照版と固定hashを同期し、確認/実行の状態を上書きしない。 -->
 <html lang="ja"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-  <title>打刻の直接訂正・申請承認 | TLH Workforce</title><link rel="stylesheet" href="app.css?v=20261103-loading1">
-  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="admin-access.js?v=20261103-loading1"></script><script defer src="pending-approvals.js?v=20261103-loading1"></script><script defer src="day-change.js?v=20261103-loading1" data-bootstrap="true"></script>
+  <title>打刻の直接訂正・申請承認 | TLH Workforce</title><link rel="stylesheet" href="app.css?v=20261103-admin1">
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="admin-overview.js?v=20261103-admin1"></script><script defer src="admin-access.js?v=20261103-loading1"></script><script defer src="pending-approvals.js?v=20261103-admin1"></script><script defer src="day-change.js?v=20261103-admin1" data-bootstrap="true"></script>
 </head><body class="secondary-page" data-audience="admin">
 <header><strong>TLH Workforce</strong><a href="admin-timecard-records.html">日別記録へ戻る</a></header>
 <main><h1>打刻の直接訂正・申請承認</h1><button id="change-login" type="button" hidden>LINEログイン</button>
   <p>管理者として、従業員の勤務記録の直接訂正と申請の承認を行います。ご自身の打刻は従業員側の「打刻」「記録」から訂正を申請してください。</p>
   <p>日本時間で、確認できた実際の時刻を入力してください。元の打刻は残し、この日の訂正履歴を追加します。</p>
+<!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
+<section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
   <!-- 管理者だけに承認待ちを表示。カード選択は既存の内容確認へ進むだけで承認しない。 -->
   <section id="pending-section" class="card" hidden><h2>承認待ちの申請</h2><button id="pending-load" type="button" disabled>承認待ちを確認する</button>
   <p id="pending-status" role="status" aria-live="polite">管理者権限の確認後に利用できます。</p><div id="pending-list" class="record-list"></div>
   <button id="pending-next" type="button" hidden disabled>続きの申請を見る</button><iframe id="pending-frame" name="tlhPendingApprovalsFrame" title="承認待ち一覧の応答" hidden></iframe></section>
   <label for="change-mode">操作</label><select id="change-mode" disabled><option id="change-direct-option" value="DIRECT" selected disabled>管理者として直接訂正</option><option id="change-review-option" value="REVIEW" disabled>管理者として申請を承認</option></select>
-  <div id="change-target"><label for="change-employee">対象の社員番号</label><input id="change-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
+  <div id="change-target"><label for="change-employee">対象の社員番号</label><select id="change-employee" required><option value="">従業員一覧を確認してください</option></select></div>
   <div id="change-request" hidden><label for="change-group">申請番号</label><input id="change-group" maxlength="36" autocomplete="off" spellcheck="false"></div>
   <fieldset id="change-inputs"><legend>勤務1・この日の正しい時刻</legend><p class="footnote">この日を丸ごと訂正するので、残す勤務もすべて入力してください。中抜けがある日は、退勤した後の「勤務区間」を追加してください。区間の間の時間は実働に含めません。各区間の休憩は1回またはなし、最大10区間です。</p>
     <label for="change-day">出勤日</label><input id="change-day" type="date">
@@ -37,6 +39,7 @@
   <p id="change-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
   <p id="change-receipt"></p><button id="change-copy" type="button" hidden>申請番号をコピー</button>
   <iframe id="change-frame" name="tlhDayChangeFrame" title="訂正の応答" hidden></iframe>
+
 <p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理機能は権限確認後に利用できます。</p>
 <iframe id="admin-access-frame" name="tlhAdminAccessFrame" title="管理者権限の確認応答" hidden></iframe>
 </main></body></html>

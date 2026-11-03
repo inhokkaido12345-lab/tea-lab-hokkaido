@@ -10,10 +10,10 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer"><title>従業員の日別タイムカード | TLH Workforce</title>
-  <link rel="stylesheet" href="app.css?v=20261103-loading1">
+  <link rel="stylesheet" href="app.css?v=20261103-admin1">
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script defer src="admin-access.js?v=20261103-loading1"></script>
-  <script defer src="attendance-journal.js?v=20261103-loading1" data-bootstrap="true"></script>
+  <script defer src="admin-overview.js?v=20261103-admin1"></script><script defer src="admin-access.js?v=20261103-loading1"></script>
+  <script defer src="attendance-journal.js?v=20261103-admin1" data-bootstrap="true"></script>
 </head>
 <body class="secondary-page" data-audience="admin">
   <header><strong>TLH Workforce</strong><a href="./">打刻画面へ戻る</a></header>
@@ -21,10 +21,12 @@
     <h1>従業員の日別タイムカード</h1>
     <p><a href="admin-day-change.html">打刻の直接訂正・申請承認</a></p>
     <button id="journal-login" type="button" hidden>LINEログイン</button>
+<!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
+<section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
     <div class="filters"><label for="journal-month">表示する月</label><input id="journal-month" type="month" required>
     <label for="journal-mode">表示する人</label>
     <select id="journal-mode" disabled><option id="journal-admin-option" value="admin" selected disabled>管理者として従業員を確認</option></select>
-    <div id="journal-target"><label for="journal-employee">社員番号</label><input id="journal-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
+    <div id="journal-target"><label for="journal-employee">社員番号</label><select id="journal-employee" required><option value="">従業員一覧を確認してください</option></select></div>
     <button id="journal-check" type="button" disabled>日別記録を確認する</button></div>
     <p id="journal-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
     <p>時刻は日本時間です。予定超過は「実働 − シフトの予定実働」の正の差で、給与用の法定時間外判定ではありません。</p>
@@ -36,7 +38,8 @@
       <tbody id="journal-rows"></tbody>
     </table></div>
     <iframe id="journal-frame" name="tlhJournalFrame" title="日別記録の応答" hidden></iframe>
-  <p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理機能は権限確認後に利用できます。</p>
+
+<p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理機能は権限確認後に利用できます。</p>
 <iframe id="admin-access-frame" name="tlhAdminAccessFrame" title="管理者権限の確認応答" hidden></iframe>
 </main>
 </body>

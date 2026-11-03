@@ -25,7 +25,7 @@
     if(!Number.isFinite(value.getTime())||new Date(value.getTime()+9*3600000).toISOString().slice(0,23)!==local)throw Error('invalid');return value.toISOString();}
   const inputErrors=Object.freeze({
     INPUT_MODE:{node:'mode',text:'操作を選んでください。'},INPUT_GROUP:{node:'group',text:'コピーした申請番号を入力してください。'},
-    INPUT_EMPLOYEE:{node:'employee',text:'対象の社員番号を半角英数字で入力してください。'},INPUT_DAY:{node:'day',text:'出勤日を年月日まで入力してください。'},
+    INPUT_EMPLOYEE:{node:'employee',text:'対象の従業員を社員番号（氏名）から選択してください。'},INPUT_DAY:{node:'day',text:'出勤日を年月日まで入力してください。'},
     INPUT_IN:{node:'in',text:'出勤日時を日付と時刻まで入力してください。'},INPUT_OUT:{node:'out',text:'退勤日時を日付と時刻まで入力してください。'},
     INPUT_BREAK_START:{node:'break-start',text:'休憩開始日時を入力してください。休憩なしの場合は開始・終了の両方を空欄にしてください。'},
     INPUT_BREAK_END:{node:'break-end',text:'休憩終了日時を入力してください。休憩なしの場合は開始・終了の両方を空欄にしてください。'},
@@ -169,11 +169,12 @@
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
-      let list=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();}});
+      let list=null,overview=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();if(overview)overview.invalidateCount();}});
       if(audience!=='admin')return; // 本人申請ページに管理一覧/起動確認を作らない。
-      list=global.TlhPendingApprovals.init({liff:global.liff,gasUrl:config.gasUrl,onSelect:editor.selectRequest});
+      overview=global.TlhAdminOverview.init({liff:global.liff,gasUrl:config.gasUrl,select:document.getElementById('change-employee'),canRefresh:()=>!document.getElementById('change-employee').disabled&&document.getElementById('change-commit').disabled});
+      list=global.TlhPendingApprovals.init({liff:global.liff,gasUrl:config.gasUrl,onSelect:(code,group,name)=>overview.selectEmployee(code,name)&&editor.selectRequest(code,group),onCount:overview.setCount});
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);}});
+        onState:allowed=>{editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);overview.setAllowed(allowed);}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }

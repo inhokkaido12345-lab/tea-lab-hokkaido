@@ -20,7 +20,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: /\bdisabled\b/.test(attrs), value: '', textContent: '', events: {}, contentWindow:{},
       dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
       addEventListener(type, fn) { this.events[type] = fn; },
-      setAttribute(name, value) { this.attributes[name] = value; }, replaceChildren() {}, focus() { focused = id; } };
+      setAttribute(name, value) { this.attributes[name] = value; }, replaceChildren() {}, appendChild() {}, focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
   }
   const node = id => { assert.ok(nodes.has(id), 'missing actual DOM id: ' + id); return nodes.get(id); };
@@ -32,7 +32,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
     setTimeout(fn) { const id = ++timer; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { (handlers[type] ||= []).push(fn); },
     document: { getElementById: node,
-      querySelectorAll(selector) { assert.equal(selector, '[data-workforce-pane]'); return panes; },
+      querySelectorAll(selector) { if(selector==='[data-approval-badge]')return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
       body: { appendChild() {} }, createElement() { return { children: [],
         appendChild(child) { this.children.push(child); }, remove() {},
@@ -78,7 +78,7 @@ test('tabs change only wrapper visibility, not permissions, pending values, comm
   h.click('manager-tab'); assert.equal(h.node('manager-registration-panel').hidden, false);
   assert.equal(h.node('employee-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   assert.equal(h.node('staff-issued-code').value, 'fake-private-draft'); assert.equal(h.node('staff-check').disabled, true);
-  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 1);
+  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 2);assert.equal(h.sent[1].action,'bridgeGetAdminOverview');
 });
 test('arrow/Home/End navigation maintains selected tab, focus and tab stop; other keys are untouched', async () => {
   const h = await harness();await h.replyAccess(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'records-tab');
@@ -95,7 +95,7 @@ test('four destinations expose only their wrappers and keep read-only navigation
   h.click('more-tab');assert.equal(h.node('employee-registration-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,false);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('records-work-panel').hidden,true);
   h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
-  assert.equal(h.sent.length,1);
+  assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetAdminOverview');
 });
 
 test('developer demo also separates manager issue/release from personal invitation claim',async()=>{
@@ -104,7 +104,7 @@ test('developer demo also separates manager issue/release from personal invitati
   assert.match(admin,/id="demo-issue"/);assert.match(admin,/id="demo-release"/);assert.doesNotMatch(admin,/id="demo-claim"/);
   const personal=html.slice(html.indexOf('<section id="personal-demo-panel"'),html.indexOf('<section class="card" aria-live="polite">',html.indexOf('<section id="personal-demo-panel"')));
   assert.match(personal,/id="demo-claim"/);assert.doesNotMatch(personal,/id="demo-(?:issue|release)"/);
-  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,1);
+  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,2);
 });
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {
