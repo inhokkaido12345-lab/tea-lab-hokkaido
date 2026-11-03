@@ -17,11 +17,15 @@
    * tab移動で送信を再開/取消し/再認証しない理由は、固定retry情報と受付閉鎖を維持するため。
    */
   function init() {
+    // 情報設計: 実装ファイルの分類ではなく「利用者が今したいこと」で移動先を分ける。
+    // 配列の順がキーボード移動の順。HTMLの見た目の並び/aria-controlsも同時に合わせる。
     const names = ['employee', 'records', 'manager', 'more'];
     const tabs = names.map(name => document.getElementById(name + '-tab'));
     const panes = Array.from(document.querySelectorAll('[data-workforce-pane]'));
     if (tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
         panes.some(pane => !names.includes(pane.dataset.workforcePane))) throw Error('WORKFORCE_LAYOUT_MISSING');
+    // 表示と操作許可の分離: wrapperだけを隠す。中の入力/再送draft/確認結果はそのまま。
+    // 選択中は色だけで示さず、aria-selectedとtabIndexも合わせて読み上げ/キー操作へ伝える。
     function activate(name) {
       tabs.forEach((tab, index) => {
         const selected = names[index] === name;

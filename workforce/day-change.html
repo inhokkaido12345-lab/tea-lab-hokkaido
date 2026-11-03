@@ -1,6 +1,9 @@
 <!doctype html>
 <!-- day-change.js→既存GASの日単位訂正。削除で入力画面だけ停止、保存済み原簿/訂正履歴は残る。
      previewは読取、commitは明示確認後。実時刻を推測して入力しない。 -->
+<!-- デザインの読み方: DESIGN.md。app.cssの.secondary-pageでホームと同じ色/入力表現へ。
+     このページ専用の調整はbody classで範囲を限定する。id/fieldset disabled/hiddenは処理契約。
+     CSSを差し替える時は3ページの参照版と固定hashを同期し、確認/実行の状態を上書きしない。 -->
 <html lang="ja"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
   <title>打刻の訂正・申請 | TLH Workforce</title><link rel="stylesheet" href="app.css?v=UI2-20261103-2">

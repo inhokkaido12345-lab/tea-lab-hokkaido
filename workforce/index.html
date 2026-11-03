@@ -4,13 +4,17 @@
   コードの構成部位: headでLIFF SDKとD9〜D16 controller取得→bodyで勤務状態・打刻・日次/暦月集計・登録・停止/訂正・診断→start()でLIFF初期化。
   削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
   一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
-  魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はstyle、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
+  魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はapp.css、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
   検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary/monthly-work-summary.test.mjs→Actions→LINE実機。D14受付は初期閉鎖。
   改造の連動: D9以降の文言/検査は各controllerのmessages/verifyResponse。durationは日次/月次で共有。
   削除前: script読込/init/section/iframeを検索。GASの共有helperがあるD番号別ファイルは独立削除不可。
   再現: workforce/README.mdとprivate repo docs/現行再構築手順.md。GAS一時関数追加の旧案は使わない。
+  デザインの設計思想: 利用者の目的を打刻/記録/管理/その他へ分け、打刻の次の一手を先に見せる。
+  一般化: information architecture（情報の置き場所）/ progressive disclosure（必要な時だけ詳細を開く）。
+  デザイン改造MAP: workforce/DESIGN.md。classは表示、id/iframeは既存処理との契約として区別する。
+  変更時の影響: app.cssはこの画面と日別/訂正の3ページへ波及。recovery/sandboxには別CSSがある。
   UI2: layout.jsが新しいpane wrapperだけを切り替える。既存controllerのhidden/disabled/draftは触らない。
   初期表示: 打刻準備の状態とボタンを主役にし、D13単独照会は診断へ。一般登録/招待/受付の認可は従来のGASが担当。
 -->
@@ -45,6 +49,8 @@
 <body class="home-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
 <main><p id="staff-load-status" class="session-notice" role="status">LINEログインを準備しています。</p>
+<!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
+     列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
       <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p>
 
@@ -62,6 +68,8 @@
 <div hidden><input id="journal-month" type="month"><select id="journal-mode"><option value="self">自分</option></select><div id="journal-target" hidden><input id="journal-employee" autocomplete="off"></div></div>
 <div id="journal-cards"></div><div class="home-table" hidden><table id="journal-table" hidden><caption id="journal-caption"></caption><tbody id="journal-rows"></tbody></table></div>
 <iframe id="journal-frame" name="tlhJournalFrame" title="本日の記録の応答" hidden></iframe></section><p class="help-line"><a href="day-change.html">打刻を忘れたときは訂正を申請</a></p></div></div></div>
+<!-- 記録の画面: 日別への入口と完了分集計をまとめる。未終了を0時間へ見せない。
+     見出しを変えても、集計の意味/単位や日次・月次controllerの共有依存は変えない。 -->
 <div id="records-work-panel" data-workforce-pane="records" role="tabpanel" aria-labelledby="records-tab" hidden><div class="page-heading"><div><p class="eyebrow">勤務の振り返り</p><h1>勤務記録</h1></div></div><section class="card"><h2>日別の勤務とシフト</h2><p class="subtle">出退勤・休憩・予定との差を日ごとに確認します。</p><a class="button primary full" href="timecard-records.html">日別記録を開く →</a></section><section id="daily-summary-section" class="staff-section" hidden>
       <h2>今日の勤務（完了分）</h2>
       <div id="daily-summary-status" class="detail" role="status" aria-live="polite">未確認</div>
@@ -92,6 +100,8 @@
         <p id="monthly-work-open" class="detail"></p>
       </div>
     </section></div>
+<!-- 管理の画面: 一般利用の打刻から、登録/訂正/停止を離して誤操作を減らす。
+     タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><section class="card manager-intro"><p class="eyebrow">管理者用</p><h1>管理</h1><p class="subtle">各操作の権限はサーバーで確認します。</p></section>
 <section class="card"><h2>従業員の勤務記録</h2><p class="subtle">日別記録の「表示する人」で管理者を選び、社員番号を指定します。</p><a class="button primary full" href="timecard-records.html">従業員の記録を確認 →</a></section>
 <div class="menu-group"><h2 class="group-label">訂正と承認</h2><a class="menu-item" href="day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>勤務記録の直接訂正・申請承認</strong><small>操作を選び、対象と時刻を確認する</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>
@@ -253,6 +263,8 @@
     </section>
     </details></div>
 </main>
+<!-- ナビゲーション: 同じ場所に4つの目的を置く。アイコンは飾り、文言を主な手がかりにする。
+     表示名だけの変更と、画面追加（names/aria-controls/キー操作/テストが連動）は別の変更。 -->
 <nav id="workforce-tabs" class="bottom-nav view-tabs" role="tablist" aria-label="利用画面" hidden>
 <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel"><span aria-hidden="true">◷</span>打刻</button>
 <button id="records-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="records-work-panel"><span aria-hidden="true">▤</span>記録</button>

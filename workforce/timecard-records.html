@@ -1,6 +1,9 @@
 <!doctype html>
 <!-- 日別タイムカード: attendance-journal.js→既存GASの読取専用入口。消しても打刻原簿は残る。
      予定入力は管理者のShiftPlan台帳。日別記録を法定時間外/給与確定値として扱わない。 -->
+<!-- デザインの読み方: DESIGN.md。app.cssの.secondary-pageでホームと同じ色/入力表現へ。
+     このページ専用の調整はbody classで範囲を限定する。id/fieldset disabled/hiddenは処理契約。
+     CSSを差し替える時は3ページの参照版と固定hashを同期し、確認/実行の状態を上書きしない。 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

@@ -54,6 +54,9 @@
    * 削除影響: カード表示のみ停止。原簿は不変。変更はCSS/画面/署名拒否回帰と確認する。
    */
   function renderCards(container,journal,day){
+    // 一般化: 生データをHTMLへ直結せず、意味のある表示単位へ変換するview rendering。
+    // 一日を一枚へまとめ、日付→状態→実績→予定の順で比較。class名の見た目はapp.cssが担当。
+    // 他画面と共有する関数なので、日別だけの変更でもホーム本日の表示を確認する。
     container.replaceChildren();
     const node=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;};
     if(!day){
@@ -66,7 +69,9 @@
     const selected=journal.days.filter(row=>day?row.day===day:row.state!=='NO_RECORD'||row.plannedStart);
     if(!selected.length)container.appendChild(node('p','この期間の勤務・予定はありません。','empty-note'));
     for(const row of selected){
-      const card=node('article','','record-item'),head=node('div','','record-head');
+      // classは見た目のフック。stateLabels/単位/nullの意味を変える場合はDTO/テストも確認。
+      // 見た目の都合で文字列をinnerHTMLへ変えない。氏名や理由を将来足す場合もtextContentを維持。
+      const card=node('article' ,'','record-item'),head=node('div','','record-head');
       head.appendChild(node('strong',row.day));head.appendChild(node('span',stateLabels[row.state],'record-status'));card.appendChild(head);
       card.appendChild(node('p',row.clockIn?clock(row.clockIn)+' — '+(row.clockOut?clock(row.clockOut):'未退勤'):'まだ打刻はありません','record-times'));
       card.appendChild(node('p','実働 '+duration(row.workedMs)+' / 休憩 '+(row.state==='NO_RECORD'?'—':duration(row.breakMs)),'record-detail'));
