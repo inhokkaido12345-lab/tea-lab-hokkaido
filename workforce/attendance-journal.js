@@ -10,7 +10,7 @@
 (function(global){
   'use strict';
   const config=Object.freeze({liffId:'2011940133-JXUDzLnG',gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec'});
-  const TYPE='TLH_BRIDGE_ATTENDANCE_JOURNAL',ACTION='bridgeGetAttendanceJournal';
+  const TYPE='TLH_BRIDGE_ATTENDANCE_JOURNAL',ACTION='bridgeGetAttendanceJournalV2';
   const messages=Object.freeze({JOURNAL_READY:'日別記録を読み込みました。',INVALID_REQUEST:'月と社員番号を確認してください。',
     JOURNAL_EMPLOYEE_REQUIRED:'有効な従業員登録が見つかりません。',JOURNAL_UNAVAILABLE:'記録を取得できません。登録・管理者権限・台帳を確認してください。',
     WORK_STATE_ACCOUNT_REQUIRED:'TLHアカウントが未登録です。',WORK_STATE_ACCOUNT_UNAVAILABLE:'アカウントを管理者に確認してください。',
@@ -25,13 +25,14 @@
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
   /** 署名確認後もDTOの型・日付・集計整合を検証。不正データを部分表示しない。 */
   function parseJournal(text,month){
-    if(typeof text!=='string'||text.length>40000)return null;
+    if(typeof text!=='string'||text.length>250000)return null;
     let j;try{j=JSON.parse(text);}catch(_e){return null;}
     if(!j||Object.keys(j).sort().join(',')!=='days,month'||j.month!==month||!Array.isArray(j.days)||!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month))return null;
     const count=new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).getUTCDate();if(j.days.length!==count)return null;
     for(let i=0;i<count;i++){
       const r=j.days[i],int=v=>Number.isSafeInteger(v)&&v>=0,stamp=v=>typeof v==='string'&&(v===''||(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v));
-      if(!r||Object.keys(r).sort().join(',')!==fields.slice().sort().join(',')||r.day!==month+'-'+String(i+1).padStart(2,'0')||!Object.hasOwn(stateLabels,r.state)||
+      const keys=fields.concat(r&&Object.hasOwn(r,'sessions')?['sessions']:[]);
+      if(!r||Object.keys(r).sort().join(',')!==keys.sort().join(',')||r.day!==month+'-'+String(i+1).padStart(2,'0')||!Object.hasOwn(stateLabels,r.state)||
         !['clockIn','clockOut','plannedStart','plannedEnd'].every(k=>stamp(r[k]))||!int(r.breakMs)||
         !['workedMs','plannedBreakMinutes','plannedWorkedMs','excessMs'].every(k=>r[k]===null||int(r[k])))return null;
       if(r.state==='NO_RECORD'?(r.clockIn!==''||r.clockOut!==''||r.workedMs!==null||r.breakMs!==0):!r.clockIn)return null;
@@ -41,6 +42,26 @@
         if(!r.plannedEnd||!int(r.plannedBreakMinutes)||gross<=0||gross>48*3600000||r.plannedWorkedMs!==gross-r.plannedBreakMinutes*60000)return null;
       }else if(r.plannedEnd||r.plannedBreakMinutes!==null||r.plannedWorkedMs!==null)return null;
       if(r.excessMs!==(r.state==='COMPLETED'&&r.plannedWorkedMs!==null?Math.max(0,r.workedMs-r.plannedWorkedMs):null))return null;
+      if(Object.hasOwn(r,'sessions')){
+        if(!Array.isArray(r.sessions)||r.sessions.length>2500||!r.sessions.length&&r.state!=='NO_RECORD'||r.sessions.length&&r.state==='NO_RECORD')return null;
+        let previous=-Infinity,totalBreak=0,totalWorked=0;
+        for(const [index,s]of r.sessions.entries()){
+          if(!s||Object.keys(s).sort().join(',')!=='breakMs,breaks,clockIn,clockOut,workedMs'||!stamp(s.clockIn)||!s.clockIn||!stamp(s.clockOut)||!int(s.breakMs)||s.workedMs!==null&&!int(s.workedMs)||!Array.isArray(s.breaks)||s.breaks.length>2500)return null;
+          const start=Date.parse(s.clockIn),end=s.clockOut?Date.parse(s.clockOut):null;
+          if(start<=previous||new Date(start+9*3600000).toISOString().slice(0,10)!==r.day||end!==null&&end<=start||end===null&&index!==r.sessions.length-1)return null;
+          let lastBreak=start,breakMs=0;
+          for(const [bi,b]of s.breaks.entries()){
+            if(!b||Object.keys(b).sort().join(',')!=='end,start'||!stamp(b.start)||!b.start||!stamp(b.end))return null;
+            const bs=Date.parse(b.start),be=b.end?Date.parse(b.end):null;
+            if(bs<=lastBreak||end!==null&&bs>=end||be!==null&&(be<=bs||end!==null&&be>=end)||be===null&&(end!==null||bi!==s.breaks.length-1||r.state!=='BREAK'))return null;
+            if(be!==null)breakMs+=be-bs;lastBreak=be===null?Infinity:be;
+          }
+          if(breakMs!==s.breakMs||s.workedMs!==(end===null?null:end-start-breakMs))return null;
+          if(end===null&&(r.state==='COMPLETED'||r.state==='BREAK'&&(!s.breaks.length||s.breaks.at(-1).end!=='')))return null;
+          totalBreak+=s.breakMs;totalWorked+=s.workedMs||0;previous=end===null?Infinity:end;
+        }
+        if(r.sessions.length&&(r.clockIn!==r.sessions[0].clockIn||r.clockOut!==r.sessions.at(-1).clockOut||r.breakMs!==totalBreak||r.state==='COMPLETED'&&r.workedMs!==totalWorked))return null;
+      }
     }
     return j;
   }
@@ -73,10 +94,15 @@
       // 見た目の都合で文字列をinnerHTMLへ変えない。氏名や理由を将来足す場合もtextContentを維持。
       const card=node('article' ,'','record-item'),head=node('div','','record-head');
       head.appendChild(node('strong',row.day));head.appendChild(node('span',stateLabels[row.state],'record-status'));card.appendChild(head);
-      card.appendChild(node('p',row.clockIn?clock(row.clockIn)+' — '+(row.clockOut?clock(row.clockOut):'未退勤'):'まだ打刻はありません','record-times'));
+      card.appendChild(node('p',row.sessions&&row.sessions.length>1?row.sessions.length+'回の勤務（中抜けを除く）':row.clockIn?clock(row.clockIn)+' — '+(row.clockOut?clock(row.clockOut):'未退勤'):'まだ打刻はありません','record-times'));
       card.appendChild(node('p','実働 '+duration(row.workedMs)+' / 休憩 '+(row.state==='NO_RECORD'?'—':duration(row.breakMs)),'record-detail'));
       card.appendChild(node('p',row.plannedStart?'予定 '+clock(row.plannedStart)+' — '+clock(row.plannedEnd)+'\n予定休憩 '+row.plannedBreakMinutes+'分':'予定は登録されていません','record-plan'));
       card.appendChild(node('p','予定超過 '+duration(row.excessMs),'record-excess footnote'));container.appendChild(card);
+      if(row.sessions&&row.sessions.length){
+        const list=node('ol','','session-list');
+        row.sessions.forEach((s,i)=>{const item=node('li','');item.appendChild(node('strong','勤務 '+(i+1)));item.appendChild(node('p',clock(s.clockIn)+' — '+(s.clockOut?clock(s.clockOut):'未退勤')));item.appendChild(node('p','実働 '+duration(s.workedMs)+' / 休憩 '+duration(s.breakMs),'subtle'));
+          s.breaks.forEach(b=>item.appendChild(node('p','休憩 '+clock(b.start)+' — '+(b.end?clock(b.end):'休憩中'),'footnote')));list.appendChild(item);});card.appendChild(list);
+      }
     }
   }
   async function verifyResponse(d,r){

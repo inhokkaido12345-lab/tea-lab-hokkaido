@@ -1306,3 +1306,10 @@ pre {
   cursor:not-allowed;
   filter:grayscale(1);
 }
+
+/* 勤務の区間: 中抜けは区間の間、休憩は各区間内に表示。集計と個別時刻を混同しない。 */
+.session-list { margin:16px 0 0; padding-left:20px; font-size:13px; }
+.session-list li { padding:10px 0; border-top:1px solid var(--line); }
+.extra-session { margin-top:18px; padding:18px 0; border-top:1px solid var(--line); }
+.extra-session h3 { margin-bottom:14px; }
+.record-item h3 { overflow-wrap:anywhere; }

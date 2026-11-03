@@ -1,4 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {dayChangeHarness} from './helpers/day-change-harness.mjs';
+
+function addSecond(h){h.click('add-session');const card=h.n('sessions').children.at(-1),inputs=card.children.slice(1,5).map(label=>label.children[0]);
+ ['2026-11-01T15:00','2026-11-01T19:00','2026-11-01T16:00','2026-11-01T16:30'].forEach((value,i)=>inputs[i].value=value);return inputs;}
 test('JST local input converts exactly, invalid calendar dates reject without browser timezone assumptions',()=>{
   const h=dayChangeHarness(),utc=h.window.TlhDayChange.utc;assert.equal(utc('2026-11-01T09:00'),'2026-11-01T00:00:00.000Z');
   for(const s of ['2026-02-30T09:00','2026-11-01T24:00','2026-11-01 09:00'])assert.throws(()=>utc(s));
@@ -46,4 +49,15 @@ test('missing reason, mismatched day and incomplete or reversed breaks identify 
     const h=dayChangeHarness();for(const [key,value]of Object.entries(patch))h.n(key).value=value;h.click('preview');
     assert.equal(h.sent.length,0);assert.match(h.n('status').textContent,expected);assert.equal(h.n('commit').disabled,true);
   }
+});
+test('split-day request preserves all sessions in signed preview and immutable commit while gaps are explicit',async()=>{
+ const h=dayChangeHarness();h.n('out').value='2026-11-01T12:00';h.n('break-start').value='2026-11-01T10:00';h.n('break-end').value='2026-11-01T10:15';const extra=addSecond(h);
+ h.click('preview');const r=h.sent[0],parts=JSON.parse(r.sessions);assert.equal(parts.length,2);assert.equal(r.clockOut,'2026-11-01T10:00:00.000Z');assert.equal(r.action,'bridgeAttendanceDayChangeV2');
+ await h.reply(r);assert.equal(h.n('commit').disabled,false);assert.match(h.n('review').textContent,/勤務 2/);assert.match(h.n('review').textContent,/15:00/);extra[1].value='tampered';h.click('commit');assert.equal(h.sent[1].sessions,r.sessions);assert.equal(h.n('add-session').disabled,true);
+ await h.reply(h.sent[1],'CHANGE_APPLIED');assert.equal(h.n('sessions').children.length,0);
+});
+test('overlapping extra shifts or half a break are identified without any request; unknown commit cannot add sessions',async()=>{
+ const h=dayChangeHarness(),fields=addSecond(h);h.click('preview');assert.equal(h.sent.length,0);assert.match(h.n('status').textContent,/勤務 2/);
+ h.n('out').value='2026-11-01T12:00';h.n('break-start').value='';h.n('break-end').value='';fields[3].value='';h.click('preview');assert.equal(h.sent.length,0);assert.match(h.n('status').textContent,/休憩終了/);
+ fields[3].value='2026-11-01T16:30';h.click('preview');await h.reply(h.sent[0]);h.click('commit');[...h.timers.values()][0]();h.click('add-session');assert.equal(h.n('sessions').children.length,1);assert.equal(h.sent.length,2);
 });

@@ -83,3 +83,12 @@ test('home selects today at explicit read time and filters cards to the requeste
   const expected=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   assert.equal(h.n('cards').children[0].children[0].children[0].textContent,expected);
 });
+test('detailed cards display both shifts and their breaks without presenting the middle gap as work',async()=>{
+ const h=harness({cards:true}),j=journal(),sessions=[
+  {clockIn:'2026-11-01T00:00:00.000Z',clockOut:'2026-11-01T03:00:00.000Z',breakMs:15*60000,workedMs:165*60000,breaks:[{start:'2026-11-01T01:00:00.000Z',end:'2026-11-01T01:15:00.000Z'}]},
+  {clockIn:'2026-11-01T06:00:00.000Z',clockOut:'2026-11-01T10:00:00.000Z',breakMs:30*60000,workedMs:210*60000,breaks:[{start:'2026-11-01T07:00:00.000Z',end:'2026-11-01T07:30:00.000Z'}]}];
+ Object.assign(j.days[0],{state:'COMPLETED',clockIn:sessions[0].clockIn,clockOut:sessions[1].clockOut,breakMs:45*60000,workedMs:375*60000,sessions});
+ h.click();await h.reply(h.sent[0],'JOURNAL_READY',j);const card=h.n('cards').children[2];assert.match(card.children[1].textContent,/2回の勤務/);assert.match(card.children[2].textContent,/6時間15分/);assert.equal(card.children.at(-1).children.length,2);assert.match(card.children.at(-1).children[1].children[1].textContent,/15:00/);
+ const bad=structuredClone(j);bad.days[0].sessions[1].clockIn='2026-11-01T02:00:00.000Z';assert.equal(h.window.TlhAttendanceJournal.parseJournal(JSON.stringify(bad),'2026-11'),null);
+ const other=structuredClone(j);other.days[0].sessions[0].workedMs++;assert.equal(h.window.TlhAttendanceJournal.parseJournal(JSON.stringify(other),'2026-11'),null);
+});
