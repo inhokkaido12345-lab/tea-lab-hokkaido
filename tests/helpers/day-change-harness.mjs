@@ -2,7 +2,7 @@
 import vm from 'node:vm';import fs from 'node:fs';import {webcrypto,createHmac} from 'node:crypto';
 export function dayChangeHarness({onApplied,audience}={}){
   const source=fs.readFileSync(new URL('../../workforce/day-change.js',import.meta.url),'utf8'),nodes=new Map(),handlers={},sent=[],timers=new Map();let tick=0;
-  function el(){return{value:'',textContent:'',hidden:false,disabled:false,events:{},children:[],contentWindow:{},
+  function el(){return{value:'',textContent:'',hidden:false,disabled:false,events:{},children:[],contentWindow:{},attributes:{},setAttribute(k,v){this.attributes[k]=v;},
     replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},appendChild(e){this.children.push(e);},remove(){},submit(){sent.push(Object.fromEntries(this.children.map(e=>[e.name,e.value])));}};}
   const n=k=>{if(!nodes.has(k))nodes.set(k,el());return nodes.get(k);},window={confirm:()=>true,addEventListener(k,fn){handlers[k]=fn;}};window.top=window;
   vm.runInNewContext(source,{window,Intl,Date,crypto:webcrypto,Uint8Array,TextEncoder,navigator:{clipboard:{writeText:async()=>{}}},

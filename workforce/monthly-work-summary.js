@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D16 / 現役・本人の今月開始分の完了勤務表示】
  * 責務: 明示読取→月/日数/回数/合計のHMAC・型検査→本人集計だけ表示。
  * 構成: 独立controller/iframe。時間表示だけTlhDailySummary.durationを共有する。
@@ -75,14 +76,14 @@
     const button=document.getElementById('monthly-work-check'),status=document.getElementById('monthly-work-status'),result=document.getElementById('monthly-work-result');
     let pending=null,blocked=false;
     function clear(){result.hidden=true;for(const id of ['month','days','count','gross','break','worked','open'])document.getElementById('monthly-work-'+id).textContent='';}
-    function finish(){if(pending)clearTimeout(pending.timer);pending=null;button.disabled=blocked;}
+    function finish(){if(pending)clearTimeout(pending.timer);pending=null;status.setAttribute?.('aria-busy','false');button.disabled=blocked;}
     async function check(){
       if(pending||blocked)return;
       clear();
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       const proof=options.liff&&options.liff.getIDToken();
       if(typeof proof!=='string'||!proof){status.textContent='LINE本人確認情報がありません。';return;}
-      const request={action:ACTION,nonce:random(16),responseKey:random(32)};pending=request;button.disabled=true;status.textContent='確認中です。';
+      const request={action:ACTION,nonce:random(16),responseKey:random(32)};pending=request;status.setAttribute?.('aria-busy','true');button.disabled=true;status.textContent='確認中です。';
       request.timer=setTimeout(()=>{if(pending!==request)return;status.textContent='応答を確認できませんでした。もう一度確認してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhMonthlyWorkFrame';form.hidden=true;
       Object.entries({action:request.action,nonce:request.nonce,responseKey:request.responseKey,idToken:proof}).forEach(([name,value])=>{

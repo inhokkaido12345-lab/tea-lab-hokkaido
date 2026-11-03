@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D11 / 現役】責務: 管理者確認、事前登録/招待発行・取消し、本人の受取り。
  * 構成: 固定結果のHMAC検査→一回用request→明示操作と表示。
  * 削除影響: D11が使えない。D4-D10や保存済みデータは残る。
@@ -67,7 +68,7 @@
     const nodes=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
     let pending=null, draft=null, adminReady=false, issued=false, registered=false, blocked=false;
     const status=nodes['staff-status'];
-    function controls() {
+    function controls() {status.setAttribute?.('aria-busy',String(!!pending));
       for(const id of ['staff-check','staff-issue','staff-claim','staff-revoke','staff-reset']) {
         nodes[id].disabled=!!pending||blocked;
       }

@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 管理者の承認待ち一覧。起動時確認後の明示読取→署名/DTO検査→氏名+社員番号のカード。
  * 削除影響: 一覧の表示のみ停止。申請番号入力による承認と保存済み履歴は残る。
  * 概念: authenticated work queue / progressive disclosure。選択だけでは承認せず既存previewへ渡す。
@@ -37,7 +38,7 @@
   function init(options){
     const n=Object.fromEntries(['section','load','next','list','status','frame'].map(k=>[k,document.getElementById('pending-'+k)]));
     let allowed=false,stopped=false,pending=null,cursor='',seen=new Set();
-    function controls(){n.section.hidden=!allowed;n.load.disabled=!allowed||!!pending||stopped;n.next.disabled=!allowed||!!pending||!cursor||stopped;}
+    function controls(){n.status.setAttribute?.('aria-busy',String(!!pending));n.section.hidden=!allowed;n.load.disabled=!allowed||!!pending||stopped;n.next.disabled=!allowed||!!pending||!cursor||stopped;}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function invalidate(){finish();cursor='';seen=new Set();n.list.replaceChildren();n.next.hidden=true;n.status.textContent='承認待ちを確認してください。';controls();}
     function setAllowed(value){allowed=value===true;if(!allowed)invalidate();controls();}

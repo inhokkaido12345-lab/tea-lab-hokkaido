@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D9/D10 controller / 現役】責務: ダミー登録・招待受取り・解除の明示操作と応答認証。
  * 消すとD9/D10が使えない。古い診断・Sheetデータは変わらない。
  * 構成: 乱数→HMAC検証→一回用通信状態→画面更新。
@@ -82,6 +83,7 @@
     function finish() {
       if (pending) clearTimeout(pending.timer);
       pending = null;
+      managementStatus.setAttribute?.('aria-busy','false');personalStatus?.setAttribute?.('aria-busy','false');
       issue.disabled = ready || completed || released || blocked;
       claim.disabled = !ready || completed || released || blocked;
       release.disabled = released || blocked;
@@ -103,6 +105,7 @@
       if (!releasing && !token) token = randomHex(32);
       const request = { action: action, nonce: randomHex(16), responseKey: randomHex(32) };
       pending = request;
+      managementStatus.setAttribute?.('aria-busy','true');personalStatus?.setAttribute?.('aria-busy','true');
       issue.disabled = true;
       claim.disabled = true;
       release.disabled = true;

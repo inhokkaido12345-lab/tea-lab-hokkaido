@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 現役・管理者の労務設定要対応一覧。起動gate後の明示読取→署名/DTO検査→至急確定と解消条件を表示。
  * 削除影響: 管理の点検表示だけ停止。打刻/登録/賃金/会社設定を変更しない。
  * 概念: actionable unknown / authenticated admin read。閲覧/既読を解消として保存しない。
@@ -31,7 +32,7 @@
   function init(options){
     const n=Object.fromEntries(['section','check','status','list','source','frame'].map(k=>[k,document.getElementById('labor-policy-'+k)]));let allowed=false,pending=null,stopped=false;
     const clear=()=>{n.list.replaceChildren();n.source.textContent='';};
-    const controls=()=>{n.check.disabled=!allowed||!!pending||stopped;n.section.hidden=!allowed;};
+    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));n.check.disabled=!allowed||!!pending||stopped;n.section.hidden=!allowed;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function setAllowed(value){allowed=value===true;if(!allowed){clear();finish();}controls();}
     n.check.addEventListener('click',()=>{

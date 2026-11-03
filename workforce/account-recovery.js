@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 公開済み・受付OFFの復旧controller。本人申請 -> 所有者照合/別経路本人確認 -> 明示承認。
  * 流れ: 公式LIFF token -> POST iframe -> 直下/子孫source・origin・nonce/action/HMAC検査 -> 固定結果。
  * 削除影響: recovery.htmlだけ停止。既存勤怠/Account/保存済み履歴を変えない。
@@ -73,7 +74,7 @@
     const n = Object.fromEntries(names.map(name => [name, document.getElementById('recovery-' + name)]));
     let pending = null, review = null, userActive = false, uncertain = '', stopped = false;
     const writes = ['bridgeRecoverySubmit','bridgeRecoveryCancel','bridgeRecoveryApprove','bridgeRecoveryReject'];
-    function controls() {
+    function controls() {n.status.setAttribute?.('aria-busy',String(!!pending));
       for (const key of ['submit','status-check','cancel','inspect','approve','reject']) n[key].disabled = !!pending;
       n.submit.disabled ||= userActive || !!uncertain || stopped;
       n.cancel.disabled ||= !userActive || !!uncertain || stopped;
@@ -191,13 +192,14 @@
   }
   async function bootstrap() {
     const status = document.getElementById('recovery-status'), login = document.getElementById('recovery-login');
+    status.setAttribute?.('aria-busy','true');
     try {
       await global.liff.init({ liffId: config.liffId });
       login.hidden = global.liff.isLoggedIn();
       status.textContent = login.hidden ? 'LINE本人確認の準備ができました。' : 'LINEログインが必要です。';
       login.addEventListener('click', () => global.liff.login({ redirectUri: global.location.origin + global.location.pathname }));
       init({ liff: global.liff, gasUrl: config.gasUrl });
-    } catch (_error) { status.textContent = 'LINEログインを準備できません。ページを開き直してください。'; }
+    } catch (_error) { status.textContent = 'LINEログインを準備できません。ページを開き直してください。'; } finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAccountRecovery = Object.freeze({ init, verifyResponse, config });
   if (document.currentScript && document.currentScript.dataset.bootstrap === 'true') bootstrap();

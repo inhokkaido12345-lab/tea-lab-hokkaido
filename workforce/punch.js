@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D14 / 現役・打刻UI、受付は初期閉鎖】
  * 責務: 読取準備→状態別コマンド→本人確認/明示同意→固定打刻IDの再送。
  * 構成: HMAC付き状態/revision→immutable draft→form POST→結果検証。
@@ -63,7 +64,7 @@
     const check=document.getElementById('punch-check'),retry=document.getElementById('punch-retry'),status=document.getElementById('punch-status');
     const buttons=Object.fromEntries(Object.entries(commands).map(([type,c])=>[type,document.getElementById(c.id)]));
     let pending=null,ready=null,draft=null,blocked=false;
-    function controls(){
+    function controls(){status.setAttribute?.('aria-busy',String(!!pending));
       check.disabled=!!pending||!!draft||blocked;
       retry.hidden=!draft;retry.disabled=!!pending||blocked;
       for(const [type,button]of Object.entries(buttons)){

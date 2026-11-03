@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 日別記録の読取専用UI。LINE→POST→固定通信枠/子孫origin・nonce/action/HMAC→表へtextContent。
  * 消すと日別ページとホームの本日記録が停止。既存punch.jsと原簿は不変。端末時計で実働を足さない。
  * UI2: initのcards/todayは表示先と選択日の指定だけ。署名/DTO検査後にrenderCards、対象変更/退場で消去。
@@ -120,7 +121,7 @@
     const n=Object.fromEntries(['month','mode','employee','target','check','status','table','caption','rows','frame'].map(k=>[k,document.getElementById('journal-'+k)]));
     let pending=null,stopped=false;
     const clear=()=>{n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
-    const controls=()=>{for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||!adminAllowed;};
+    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||!adminAllowed;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     for(const key of ['month','mode','employee'])n[key].addEventListener('input',()=>{clear();n.target.hidden=n.mode.value!=='admin';});
     n.check.addEventListener('click',()=>{
@@ -160,6 +161,7 @@
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');
     document.getElementById('journal-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
+    status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
@@ -169,7 +171,7 @@
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
         onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);}});
       if(login.hidden)gate.start();
-    }catch(_e){status.textContent='LINEログインを準備できません。';}
+    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAttendanceJournal=Object.freeze({init,parseJournal,verifyResponse,renderCards,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();

@@ -8,9 +8,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>LINEの再連携 | TLH Workforce</title>
-  <link rel="stylesheet" href="recovery.css?v=20261102-1">
+  <link rel="stylesheet" href="recovery.css?v=20261103-loading1">
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script defer src="account-recovery.js?v=20261102-2" data-bootstrap="true"></script>
+  <script defer src="account-recovery.js?v=20261103-loading1" data-bootstrap="true"></script>
 </head>
 <body>
   <header><strong>TLH Workforce</strong><a href="./">勤怠へ戻る</a></header>
@@ -54,7 +54,7 @@
         <button id="recovery-reject" class="danger" type="button" disabled>申請を拒否する</button>
       </div>
     </section>
-    <p id="recovery-status" role="status" aria-live="polite">LINE本人確認を待っています。</p>
+    <p id="recovery-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
     <iframe id="recovery-frame" name="tlhRecoveryFrame" title="復旧処理" hidden></iframe>
   </main>
 </body>

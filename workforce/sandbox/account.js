@@ -100,6 +100,8 @@
       destination.dataset.error = String(error);
     };
     function controls() {
+      const pairBusy=!!pending&&['pairConfirm','pairStatus'].includes(pending.action);
+      status.setAttribute?.('aria-busy',String(!!pending&&!pairBusy));pairStatus.setAttribute?.('aria-busy',String(pairBusy));
       register.disabled = !ready || !!pending || attempted || disposed;
       check.disabled = !ready || !!pending || disposed;
       pairConfirm.disabled = !ready || !registered || !!pending || pairAttempted || disposed;
@@ -113,6 +115,7 @@
       controls();
     }
     function cleanup() {
+      status.setAttribute?.('aria-busy','false');pairStatus.setAttribute?.('aria-busy','false');
       disposed = true;
       sequence++;
       ready = false;
@@ -327,15 +330,17 @@
       text(messages.LINE_REJECTED, true);
       return;
     }
+    status.setAttribute?.('aria-busy','true');
     let expired = false;
     initTimer = global.setTimeout(() => {
-      expired = true;
+      expired = true;status.setAttribute?.('aria-busy','false');
       text('LINEの準備を確認できませんでした。開き直してください。', true);
     }, 15000);
     Promise.resolve()
       .then(() => global.liff.init({ liffId: options.liffId }))
       .then(() => {
         if (disposed || expired) return;
+        status.setAttribute?.('aria-busy','false');
         global.clearTimeout(initTimer);
         if (!global.liff.isLoggedIn()) {
           login.hidden = false;
@@ -349,6 +354,7 @@
       .catch(() => {
         if (disposed || expired) return;
         global.clearTimeout(initTimer);
+        status.setAttribute?.('aria-busy','false');
         text(messages.LINE_REJECTED, true);
       });
   }

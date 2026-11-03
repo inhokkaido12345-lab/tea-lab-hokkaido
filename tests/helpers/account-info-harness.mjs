@@ -4,7 +4,7 @@ export function sampleAccountInfo(){return{version:1,tlhAccountId:'usr_fixture',
  employee:{employeeCode:'INFO001',name:'架空スタッフ',status:'ACTIVE',hireDate:'2026-01-01',terminationDate:''},permissions:{workforceEmployee:true,globalAdmin:false}};}
 export function accountInfoHarness({proof='fake.jwt.proof',embedded=false,throwSubmit=false}={}){
  const nodes=new Map(),handlers={},sent=[],timers=new Map();let timer=0;
- function el(){return{value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},replaceChildren(){this.children=[];},
+ function el(){return{value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},attributes:{},setAttribute(k,v){this.attributes[k]=v;},replaceChildren(){this.children=[];},
   appendChild(child){this.children.push(child);},addEventListener(type,fn){this.events[type]=fn;},remove(){},submit(){if(throwSubmit)throw Error('submit');sent.push(Object.fromEntries(this.children.map(c=>[c.name,c.value])));}};}
  const n=k=>{if(!nodes.has(k))nodes.set(k,el());return nodes.get(k);};
  const window={addEventListener(type,fn){handlers[type]=fn;}};window.top=embedded?{}:window;

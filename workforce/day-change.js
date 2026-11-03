@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 日別訂正UI。本人申請/管理者直接訂正/管理者承認→署名付きpreview→明示確認→同じgroupで保存。
  * day-change.htmlは本人申請専用、admin-day-change.htmlは直接訂正/承認専用。同じ処理を共有。
  * ページのdata-audienceは表示/操作の分類で認可ではない。削除しても原簿/訂正履歴は残る。
@@ -78,7 +79,7 @@
     const clear=()=>{review=null;n.review.textContent='';n.review.hidden=true;};
     const locked=()=>!!pending||uncertain||completed||stopped;
     function clearExtras(){for(const row of extras)for(const field of Object.values(row.fields))field.value='';extras=[];n.sessions.replaceChildren?.();}
-    function controls(){for(const k of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[k].disabled=!!pending||uncertain||completed||stopped;
+    function controls(){n.status.setAttribute?.('aria-busy',String(!!pending));for(const k of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[k].disabled=!!pending||uncertain||completed||stopped;
       n.preview.disabled=!!pending||completed||stopped||!adminAllowed;n.commit.disabled=!!pending||!review||uncertain||completed||stopped||!adminAllowed;
       if(adminPage)n.mode.disabled=n.mode.disabled||!adminAllowed;
       n.target.hidden=n.mode.value==='SELF';n.request.hidden=n.mode.value!=='REVIEW';n.inputs.hidden=n.mode.value==='REVIEW';
@@ -162,6 +163,7 @@
   /** 管理者用の2操作はHTMLでもdisabled。起動時の署名付き確認後だけ選択できる。保存側は毎回GASが認可。 */
   async function bootstrap(){
     const status=document.getElementById('change-status'),login=document.getElementById('change-login');
+    status.setAttribute?.('aria-busy','true');
     try{
       await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
@@ -173,7 +175,7 @@
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
         onState:allowed=>{editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);}});
       if(login.hidden)gate.start();
-    }catch(_e){status.textContent='LINEログインを準備できません。';}
+    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhDayChange=Object.freeze({init,utc,verify,parseSummary,config});if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();
 })(window);

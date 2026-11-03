@@ -1313,3 +1313,14 @@ pre {
 .extra-session { margin-top:18px; padding:18px 0; border-top:1px solid var(--line); }
 .extra-session h3 { margin-bottom:14px; }
 .record-item h3 { overflow-wrap:anywhere; }
+
+/* 通信中の最小表示。実pendingのaria-busyだけで開始/停止し、文字から推測しない。
+ * 削除しても通信/権限/保存は不変。速度は.9s、サイズは1em。動きを減らす設定を尊重。
+ * app/recovery/sandboxの既存CSSへ同じ規則を置き、新しいCSS取得を増やさない。 */
+[aria-busy="true"]::after {
+  content:""; display:inline-block; width:1em; height:1em; margin-inline-start:.5em;
+  vertical-align:-.15em; border:2px solid currentColor; border-inline-end-color:transparent;
+  border-radius:50%; animation:tlh-network-wait .9s linear infinite;
+}
+@keyframes tlh-network-wait { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { [aria-busy="true"]::after { animation:none; } }

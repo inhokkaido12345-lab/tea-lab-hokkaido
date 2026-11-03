@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 現役・本人情報の表示。account-info.html→LINE証明をPOST→署名付きDTO→textContentで描画。
  * 削除影響: 本人情報の読取だけ停止。勤怠/アカウントの保存や認可は変えない。
  * 概念: authenticated read model / allowlist / request correlation。initだけでは通信しない。
@@ -48,7 +49,7 @@
   function init(options){
     const n=Object.fromEntries(['check','status','result','fields','frame'].map(k=>[k,document.getElementById('account-info-'+k)]));let pending=null,stopped=false;
     const clear=()=>{n.result.hidden=true;n.fields.replaceChildren();};
-    const controls=()=>{n.check.disabled=!!pending||stopped;};
+    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));n.check.disabled=!!pending||stopped;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     n.check.addEventListener('click',()=>{
       if(pending||stopped)return;clear();
@@ -71,9 +72,10 @@
   }
   async function bootstrap(){
     const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
+    status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       status.textContent=login.hidden?'確認ボタンで最新の登録情報を読み込みます。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});
-    }catch(_e){status.textContent='LINEログインを準備できません。';}
+    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAccountInfo=Object.freeze({init,parseInfo,verify,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();

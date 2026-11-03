@@ -33,24 +33,24 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="demo-invitation.js?v=20261103-roles1"></script>
-  <script src="staff-enrollment.js?v=D11-20261012"></script>
-  <script src="staff-maintenance.js?v=D12-20261012"></script>
-  <script src="work-state.js?v=D13-20261012"></script>
-  <script src="punch.js?v=D14-20261012"></script>
-  <script src="daily-summary.js?v=D15-20261012"></script>
-  <script src="monthly-work-summary.js?v=D16-20261012"></script>
-  <script src="attendance-journal.js?v=20261103-roles1"></script>
+  <script src="demo-invitation.js?v=20261103-loading1"></script>
+  <script src="staff-enrollment.js?v=20261103-loading1"></script>
+  <script src="staff-maintenance.js?v=20261103-loading1"></script>
+  <script src="work-state.js?v=20261103-loading1"></script>
+  <script src="punch.js?v=20261103-loading1"></script>
+  <script src="daily-summary.js?v=20261103-loading1"></script>
+  <script src="monthly-work-summary.js?v=20261103-loading1"></script>
+  <script src="attendance-journal.js?v=20261103-loading1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="layout.js?v=UI2-20261103-admin1"></script>
-  <script src="admin-access.js?v=20261103-1"></script>
-  <script src="labor-policy.js?v=20261103-1"></script>
+  <script src="admin-access.js?v=20261103-loading1"></script>
+  <script src="labor-policy.js?v=20261103-loading1"></script>
 
-  <link rel="stylesheet" href="app.css?v=UI2-20261103-4">
+  <link rel="stylesheet" href="app.css?v=20261103-loading1">
 </head>
 <body class="home-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
-<main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" class="session-notice" role="status">LINEログインを準備しています。</p>
+<main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" aria-busy="true" class="session-notice" role="status">LINEログインを準備しています。</p>
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
      列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
@@ -412,7 +412,8 @@
      * UI状態の更新はtextContentを使い、外部から得た文字列を
      * HTMLコードとして実行させない。
      */
-    function setStatus(title, detail, isError) {
+    function setStatus(title, detail, isError, busy = false) {
+      titleElement.setAttribute?.('aria-busy',String(busy));
       titleElement.textContent = title;
       detailElement.textContent = detail || '';
       detailElement.className = isError ? 'detail error' : 'detail';
@@ -497,6 +498,7 @@
       if (bridgeTimeout !== null) window.clearTimeout(bridgeTimeout);
       bridgeTimeout = null;
       bridgeNonce = null;
+      bridgeStatus.setAttribute?.('aria-busy','false');
       bridgeButton.disabled = false;
     }
 
@@ -526,6 +528,7 @@
     bridgeButton.addEventListener('click', function() {
       if (bridgeNonce) return;
       bridgeNonce = createBridgeNonce();
+      bridgeStatus.setAttribute?.('aria-busy','true');
       bridgeStartedAt = Date.now();
       bridgeButton.disabled = true;
       bridgeStatus.textContent =
@@ -592,6 +595,7 @@
       if (authTimeout !== null) window.clearTimeout(authTimeout);
       authTimeout = null;
       authNonce = null;
+      authStatus.setAttribute?.('aria-busy','false');
       authButton.disabled = false;
     }
 
@@ -647,6 +651,7 @@
       }
 
       authNonce = createBridgeNonce();
+      authStatus.setAttribute?.('aria-busy','true');
       authStartedAt = Date.now();
       authButton.disabled = true;
       authStatus.textContent =
@@ -718,6 +723,7 @@
       if (accountTimeout !== null) window.clearTimeout(accountTimeout);
       accountTimeout = null;
       accountNonce = null;
+      accountStatus.setAttribute?.('aria-busy','false');
       accountButton.disabled = false;
     }
 
@@ -778,6 +784,7 @@
       }
 
       accountNonce = createBridgeNonce();
+      accountStatus.setAttribute?.('aria-busy','true');
       accountStartedAt = Date.now();
       accountButton.disabled = true;
       accountStatusElement.textContent =
@@ -838,6 +845,7 @@
       if (signupTimeout !== null) window.clearTimeout(signupTimeout);
       signupTimeout = null;
       signupNonce = null;
+      signupStatus.setAttribute?.('aria-busy','false');
       signupButton.disabled = false;
     }
 
@@ -896,6 +904,7 @@
       }
 
       signupNonce = createBridgeNonce();
+      signupStatus.setAttribute?.('aria-busy','true');
       signupStartedAt = Date.now();
       signupButton.disabled = true;
       signupStatus.textContent =
@@ -962,6 +971,7 @@
       if (adminTimeout !== null) window.clearTimeout(adminTimeout);
       adminTimeout = null;
       adminNonce = null;
+      adminStatus.setAttribute?.('aria-busy','false');
       adminButton.disabled = false;
     }
 
@@ -1015,6 +1025,7 @@
       }
 
       adminNonce = createBridgeNonce();
+      adminStatus.setAttribute?.('aria-busy','true');
       adminStartedAt = Date.now();
       adminButton.disabled = true;
       adminStatus.textContent = 'GASがLINE本人確認と管理者ロールを照合中です。';
@@ -1062,7 +1073,7 @@
         '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
         'ページ: ' + getSafePagePath() + '\n' +
         'LIFF SDKを検査しています。',
-        false
+        false, true
       );
 
       try {
@@ -1077,7 +1088,7 @@
           '診断版: ' + DIAGNOSTIC_VERSION + '\n' +
           'ページ: ' + getSafePagePath() + '\n' +
           'liff.init() の完了を最大15秒待っています。',
-          false
+          false, true
         );
 
         await initializeLiffWithTimeout();
@@ -1090,7 +1101,7 @@
           'LINEアプリ内: ' + String(liff.isInClient()) + '\n' +
           'LINEログイン済み: ' + String(liff.isLoggedIn()) + '\n' +
           'ID tokenの取得可否を検査しています。',
-          false
+          false, true
         );
 
         /**
@@ -1171,7 +1182,7 @@
           safeErrorText(error),
           true
         );
-      }
+      } finally { document.getElementById('staff-load-status').setAttribute?.('aria-busy','false'); }
     }
 
     // スクリプトを起動した時点で必ず可視のメッセージが変わる。

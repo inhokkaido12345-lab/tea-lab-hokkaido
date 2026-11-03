@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D15 / 現役・本人の本日開始分の完了勤務表示】
  * 責務: 明示照会→HMAC/集計型検証→日付・完了回数・時間だけ表示する。
  * 構成: 独立controller/iframe。LINE証明と一回用nonce/鍵をPOST本文で送る。
@@ -84,14 +85,14 @@
       result=document.getElementById('daily-summary-result');
     let pending=null,blocked=false;
     function clear(){result.hidden=true;for(const id of ['date','count','gross','break','worked','open'])document.getElementById('daily-summary-'+id).textContent='';}
-    function finish(){if(pending)clearTimeout(pending.timer);pending=null;button.disabled=blocked;}
+    function finish(){if(pending)clearTimeout(pending.timer);pending=null;status.setAttribute?.('aria-busy','false');button.disabled=blocked;}
     async function check(){
       if(pending||blocked)return;
       clear();
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       const idToken=options.liff&&options.liff.getIDToken();
       if(typeof idToken!=='string'||!idToken){status.textContent='LINE本人確認情報がありません。';return;}
-      const request={action:ACTION,nonce:random(16),responseKey:random(32)};pending=request;button.disabled=true;status.textContent='確認中です。';
+      const request={action:ACTION,nonce:random(16),responseKey:random(32)};pending=request;status.setAttribute?.('aria-busy','true');button.disabled=true;status.textContent='確認中です。';
       request.timer=setTimeout(()=>{if(pending!==request)return;status.textContent='応答を確認できませんでした。もう一度確認してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhDailySummaryFrame';form.hidden=true;
       Object.entries({action:request.action,nonce:request.nonce,responseKey:request.responseKey,idToken}).forEach(([name,value])=>{

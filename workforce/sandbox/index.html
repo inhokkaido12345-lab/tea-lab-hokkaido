@@ -100,6 +100,17 @@
       [hidden] {
         display: none !important;
       }
+
+/* 通信中の最小表示。実pendingのaria-busyだけで開始/停止し、文字から推測しない。
+ * 削除しても通信/権限/保存は不変。速度は.9s、サイズは1em。動きを減らす設定を尊重。
+ * app/recovery/sandboxの既存CSSへ同じ規則を置き、新しいCSS取得を増やさない。 */
+[aria-busy="true"]::after {
+  content:""; display:inline-block; width:1em; height:1em; margin-inline-start:.5em;
+  vertical-align:-.15em; border:2px solid currentColor; border-inline-end-color:transparent;
+  border-radius:50%; animation:tlh-network-wait .9s linear infinite;
+}
+@keyframes tlh-network-wait { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { [aria-busy="true"]::after { animation:none; } }
     </style>
   </head>
   <body>
@@ -132,7 +143,7 @@
       </section>
     </main>
     <iframe name="sandboxAccountFrame" id="sandboxAccountFrame" title="試験用登録の応答" hidden></iframe>
-    <script src="account.js"></script>
+    <script src="account.js?v=20261103-loading1"></script>
     <script>
       // 試験専用の公開版1を5ソース/固定先/公開範囲まで実API照合済み。URL/query/保存値から差し替えない。
       TlhSandboxAccount.start({

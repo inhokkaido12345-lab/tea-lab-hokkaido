@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 現役・管理用UIの起動時確認。LIFF準備後のstart→既存署名付き読取→表示許可を一度通知。
  * 削除影響: 管理用UIは初期disabledのまま。GASの管理者権限や保存データは変わらない。
  * 一般化: fail closed / one-shot request / presentation gate。画面の利用制御とサーバー認可は別。
@@ -31,6 +32,7 @@
     if(!options||!options.frame||typeof options.onState!=='function')throw Error('ADMIN_ACCESS_CONFIG');
     let started=false,stopped=false,pending=null;
     function report(reason){
+      options.status?.setAttribute?.('aria-busy',String(reason==='checking'));
       const allowed=reason==='allowed';options.onState(allowed,reason);
       if(options.status)options.status.textContent={checking:'管理者権限を確認しています。',allowed:'管理者権限を確認しました。',
         denied:'管理機能は管理者専用です。',unavailable:'管理者権限を確認できません。管理機能は停止中です。画面を開き直してください。',

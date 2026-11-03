@@ -1,4 +1,5 @@
 /**
+ * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
  * 【D12 / 現役】責務: 対象の読取照合→管理者の明示確認→属性訂正/利用停止。
  * 構成: 入力snapshot→HMAC付きrevision→固定操作draft→form POST→固定結果。
  * 削除影響: D12だけ停止。D11登録・診断・保存済み履歴は残る。
@@ -68,7 +69,7 @@
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
     let pending=null,review=null,draft=null,blocked=false;
     const status=n['maintenance-status'];
-    function controls(){
+    function controls(){status.setAttribute?.('aria-busy',String(!!pending));
       n['maintenance-target-fields'].disabled=!!pending||!!review||!!draft||blocked;
       n['maintenance-new-fields'].disabled=!!pending||!!draft||blocked;
       n['maintenance-check'].disabled=!!pending||!!review||!!draft||blocked;

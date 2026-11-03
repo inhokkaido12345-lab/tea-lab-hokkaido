@@ -1,7 +1,7 @@
 /** 起動時確認の実controllerを架空DOM/LINE/時計/通信で試す。実tokenや外部通信は使わない。 */
 import fs from 'node:fs';import vm from 'node:vm';import {webcrypto,createHmac} from 'node:crypto';
 export function adminAccessHarness({proof='fake.worker.proof',embedded=false,onState=()=>{},throwSubmit=false}={}){
-  const sent=[],states=[],handlers={},timers=new Map(),frame={contentWindow:{}},status={textContent:''};let tick=0;
+  const sent=[],states=[],handlers={},timers=new Map(),frame={contentWindow:{}},status={textContent:'',attributes:{},setAttribute(k,v){this.attributes[k]=v;}};let tick=0;
   const window={addEventListener:(type,fn)=>handlers[type]=fn};window.top=embedded?{}:window;
   const create=()=>({children:[],appendChild(n){this.children.push(n);},remove(){},submit(){if(throwSubmit)throw Error('offline');sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}});
   vm.runInNewContext(fs.readFileSync(new URL('../../workforce/admin-access.js',import.meta.url),'utf8'),{
