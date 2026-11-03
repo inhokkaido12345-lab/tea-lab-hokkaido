@@ -41,14 +41,14 @@
   <script src="punch.js?v=20261103-auto1"></script>
   <script src="daily-summary.js?v=20261103-loading1"></script>
   <script src="monthly-work-summary.js?v=20261103-loading1"></script>
-  <script src="attendance-journal.js?v=20261103-auto1"></script>
+  <script src="attendance-journal.js?v=20261103-report1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261103-auto1"></script>
   <script src="layout.js?v=20261103-auto1"></script>
   <script src="admin-access.js?v=20261103-loading1"></script>
   <script src="labor-policy.js?v=20261103-auto1"></script>
 
-  <link rel="stylesheet" href="app.css?v=20261103-admin1">
+  <link rel="stylesheet" href="app.css?v=20261103-report1">
 </head>
 <body class="home-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
@@ -108,7 +108,7 @@
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">各操作の権限はサーバーで確認します。</p></div></div>
 <section id="labor-policy-section" class="card" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section>
-<section class="card"><h2>従業員の勤務記録</h2><p class="subtle">管理者用の日別記録で、対象の社員番号を指定します。</p><a class="button primary full" href="admin-timecard-records.html">従業員の記録を確認 →</a></section>
+<section class="card"><h2>従業員の勤務記録</h2><p class="subtle">社員と月を選び、退勤記録をCSV保存・印刷して本社への提出に使います。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
 <div class="menu-group"><h2 class="group-label">訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2><a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>

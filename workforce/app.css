@@ -1332,3 +1332,21 @@ pre {
 .admin-overview { margin:0 0 20px; }
 .bottom-nav .approval-badge { position:absolute; top:2px; right:3px; font-size:10px; font-weight:700; line-height:1.5; }
 .bottom-nav [role="tab"] { position:relative; }
+
+/* 本社提出用。画面の確認と印刷だけを担当し、元の打刻や受付設定を変更しない。
+ * 削除すると印刷に操作欄が混ざる。列を変える時はmonthly-report.js/theadと同期する。 */
+#monthly-report { margin:20px 0; }
+#monthly-report p { margin:8px 0; }
+#monthly-report td { white-space:pre-line; vertical-align:top; }
+@media print {
+  @page { size:A4 landscape; margin:12mm; }
+  body.monthly-report-page { background:#fff; color:#000; }
+  .monthly-report-page>header,.monthly-report-page main>* { display:none!important; }
+  .monthly-report-page #monthly-report:not([hidden]) { display:block!important; border:0; box-shadow:none; padding:0; }
+  .monthly-report-page main { max-width:none; width:auto; margin:0; padding:0; }
+  .monthly-report-page #monthly-report .table-scroll { overflow:visible; }
+  .monthly-report-page #monthly-report table { min-width:0!important; width:100%; font-size:9pt; border-collapse:collapse; }
+  .monthly-report-page #monthly-report th,.monthly-report-page #monthly-report td { padding:5px; border:1px solid #bbb; overflow-wrap:anywhere; }
+  #monthly-report thead { display:table-header-group; }
+  #monthly-report tr { break-inside:avoid; }
+}

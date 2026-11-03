@@ -1,5 +1,6 @@
 /**
  * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
+ * V3は管理者の月次提出: 同じ署名の社員情報/区間を検証後だけmonthly-report.jsへ。旧V2は互換。
  * 日別記録の読取専用UI。LINE→POST→固定通信枠/子孫origin・nonce/action/HMAC→表へtextContent。
  * 消すと日別ページとホームの本日記録が停止。既存punch.jsと原簿は不変。端末時計で実働を足さない。
  * UI2: initのcards/todayは表示先と選択日の指定だけ。署名/DTO検査後にrenderCards、対象変更/退場で消去。
@@ -12,7 +13,7 @@
 (function(global){
   'use strict';
   const config=Object.freeze({liffId:'2011940133-JXUDzLnG',gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec'});
-  const TYPE='TLH_BRIDGE_ATTENDANCE_JOURNAL',ACTION='bridgeGetAttendanceJournalV2';
+  const TYPE='TLH_BRIDGE_ATTENDANCE_JOURNAL',ACTION='bridgeGetAttendanceJournalV2',REPORT_ACTION='bridgeGetAttendanceReport';
   const messages=Object.freeze({JOURNAL_READY:'日別記録を読み込みました。',INVALID_REQUEST:'月と社員番号を確認してください。',
     JOURNAL_EMPLOYEE_REQUIRED:'有効な従業員登録が見つかりません。',JOURNAL_UNAVAILABLE:'記録を取得できません。登録・管理者権限・台帳を確認してください。',
     WORK_STATE_ACCOUNT_REQUIRED:'TLHアカウントが未登録です。',WORK_STATE_ACCOUNT_UNAVAILABLE:'アカウントを管理者に確認してください。',
@@ -67,6 +68,16 @@
     }
     return j;
   }
+  /** V3提出用。氏名/社員番号/停止状態/取得時刻も同じLock内で読み、全体を署名する。 */
+  function parseReport(text,month,employeeCode){
+    if(typeof text!=='string'||text.length>260000)return null;
+    let r;try{r=JSON.parse(text);}catch(_e){return null;}
+    if(!r||Object.keys(r).sort().join(',')!=='days,employeeCode,employeeName,employeeStatus,generatedAt,month,reportVersion'||r.reportVersion!==1||r.employeeCode!==employeeCode||
+      typeof r.employeeName!=='string'||!r.employeeName.trim()||r.employeeName.length>80||/[\u0000-\u001f\u007f]/.test(r.employeeName)||!['ACTIVE','INACTIVE'].includes(r.employeeStatus)||
+      typeof r.generatedAt!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(r.generatedAt)||!Number.isFinite(Date.parse(r.generatedAt))||new Date(r.generatedAt).toISOString()!==r.generatedAt||
+      !parseJournal(JSON.stringify({month:r.month,days:r.days}),month)||!r.days.every(day=>Array.isArray(day.sessions)))return null;
+    return r;
+  }
   /** 直下Window/最大8段の子孫だけを許可。親参照失敗/別窓は拒否し、署名も別途必須。 */
   function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
   /**
@@ -108,7 +119,7 @@
     }
   }
   async function verifyResponse(d,r){
-    if(!d||d.type!==TYPE||d.action!==ACTION||d.nonce!==r.nonce||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||typeof d.journal!=='string'||
+    if(!d||d.type!==TYPE||d.action!==(r.action||ACTION)||d.nonce!==r.nonce||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||typeof d.journal!=='string'||
       typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac)||(d.code!=='JOURNAL_READY'&&d.journal!==''))return false;
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,d.nonce,d.action,d.code,d.journal].join('\n')));
@@ -119,8 +130,8 @@
     const adminPage=options.audience==='admin',employeePage=options.audience==='employee';
     const modes=adminPage?['admin']:employeePage?['self']:['self','admin'];let adminAllowed=!adminPage;
     const n=Object.fromEntries(['month','mode','employee','target','check','status','table','caption','rows','frame'].map(k=>[k,document.getElementById('journal-'+k)]));
-    let pending=null,stopped=false;
-    const clear=()=>{n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
+    let pending=null,stopped=false;const action=options.report&&adminPage?REPORT_ACTION:ACTION;
+    const clear=()=>{options.exporter?.clear();n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
     const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||!adminAllowed;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     for(const key of ['month','mode','employee'])n[key].addEventListener('input',()=>{clear();n.target.hidden=n.mode.value!=='admin';});
@@ -132,18 +143,20 @@
       const proof=options.liff.getIDToken(),month=n.month.value,mode=n.mode.value,employeeCode=mode==='admin'?n.employee.value.trim():'';
       if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!modes.includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
-      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day};pending=r;controls();n.status.textContent='読み込み中です。';
+      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day,action,employeeCode};pending=r;controls();n.status.textContent='読み込み中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
-      Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
+      Object.entries({action,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
       document.body.appendChild(form);try{form.submit();}catch(_e){n.status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async e=>{
-      const r=pending;if(!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
-      let valid=false;try{valid=await verifyResponse(e.data,r);}catch(_e){}if(!valid||pending!==r)return;
+      const r=pending;if(!r||stopped||!adminAllowed||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
+      let valid=false;try{valid=await verifyResponse(e.data,r);}catch(_e){}if(!valid||pending!==r||stopped||!adminAllowed)return;
+      if(n.month.value!==r.month||n.mode.value!==r.mode||r.mode==='admin'&&n.employee.value.trim()!==r.employeeCode){clear();finish();return;}
       const d=e.data;
       if(d.code==='JOURNAL_READY'){
-        const j=parseJournal(d.journal,r.month);if(!j)return;
+        const j=r.action===REPORT_ACTION?parseReport(d.journal,r.month,r.employeeCode):parseJournal(d.journal,r.month);if(!j)return;
+        if(r.action===REPORT_ACTION)options.exporter?.setReport(j);
         for(const row of j.days){
           const tr=document.createElement('tr');
           const values=[row.day,stateLabels[row.state],clock(row.clockIn),clock(row.clockOut),duration(row.breakMs),duration(row.workedMs),
@@ -151,12 +164,13 @@
           for(const value of values){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}n.rows.appendChild(tr);
         }
         n.caption.textContent=j.month+' / '+(r.mode==='admin'?'指定した従業員':'自分')+' / 日本時間';n.table.hidden=false;
-        if(options.cards)renderCards(options.cards,j,r.day);
+        if(r.action===REPORT_ACTION)n.table.hidden=true; // 提出用の区間別表を表示し、旧日別表を二重に見せない。
+        else if(options.cards)renderCards(options.cards,j,r.day);
       }
       n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();n.employee.value='';finish();});controls();
-    return Object.freeze({setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed)clear();controls();}});
+    return Object.freeze({setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
   }
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');
@@ -165,7 +179,7 @@
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
-      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,cards:document.getElementById('journal-cards')});
+      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,report:audience==='admin',exporter:audience==='admin'?global.TlhMonthlyReport.init():null,cards:document.getElementById('journal-cards')});
       const autoReads=global.TlhAutoRead.init();let adminAllowed=false;
       const permitted=()=>login.hidden&&(audience!=='admin'||adminAllowed&&!!document.getElementById('journal-employee').value);
       for(const id of ['journal-month','journal-employee'])document.getElementById(id).addEventListener('change',()=>autoReads.again('journal',permitted));
@@ -177,6 +191,6 @@
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
-  global.TlhAttendanceJournal=Object.freeze({init,parseJournal,verifyResponse,renderCards,config});
+  global.TlhAttendanceJournal=Object.freeze({init,parseJournal,parseReport,verifyResponse,renderCards,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();
 })(window);
