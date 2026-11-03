@@ -1298,3 +1298,11 @@ pre {
 .record-head {
   flex-wrap:wrap
 }
+
+/* 起動時に確認できるまで管理ナビは操作不可。色だけでなくnative disabledをlayoutが設定する。
+ * 全ボタンを暗転させずナビだけに限定。保存ボタンの許可条件は既存controllerのまま。 */
+.bottom-nav button:disabled {
+  opacity:.38;
+  cursor:not-allowed;
+  filter:grayscale(1);
+}

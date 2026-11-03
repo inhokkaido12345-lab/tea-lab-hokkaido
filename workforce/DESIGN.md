@@ -16,6 +16,7 @@
 | 表示と許可を分ける | Separation of concerns（責務分離） | CSSは見た目、layoutは移動、controller/GASは操作と認可 |
 
 「管理タブへ移れた」ことと「管理者として実行できる」ことは別です。見た目の改造で権限を判断しないでください。
+現在は起動時の署名付き確認後だけ管理タブを有効にし、それまではnativeのdisabledとaria-disabledで暗転します。layout.jsがdisabledを変更してよい対象はこのナビだけです。保存ボタンやフォームのdisabledは元のcontrollerが担当します。本人の操作を行うタブは権限確認を待たずに使えます。
 
 ## 2. 変更したい内容から探すMAP
 

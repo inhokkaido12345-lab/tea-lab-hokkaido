@@ -101,6 +101,17 @@
     n.copy.addEventListener('click',async()=>{if(!completed||!draft)return;try{await navigator.clipboard.writeText(draft.groupId);}catch(_e){n.status.textContent='申請番号を選択してコピーしてください。';}});
     global.addEventListener('pagehide',()=>{stopped=true;if(pending)clearTimeout(pending.timer);pending=null;draft=null;clear();n.receipt.textContent='';n.copy.hidden=true;for(const k of ['employee','group','day','in','out','break-start','break-end','reason'])n[k].value='';controls();});controls();
   }
-  async function bootstrap(){const status=document.getElementById('change-status'),login=document.getElementById('change-login');try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});}catch(_e){status.textContent='LINEログインを準備できません。';}}
+  /** 管理者用の2操作はHTMLでもdisabled。起動時の署名付き確認後だけ選択できる。保存側は毎回GASが認可。 */
+  async function bootstrap(){
+    const status=document.getElementById('change-status'),login=document.getElementById('change-login');
+    try{
+      await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
+      login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
+      status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});
+      const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
+        onState:allowed=>{document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;}});
+      if(login.hidden)gate.start();
+    }catch(_e){status.textContent='LINEログインを準備できません。';}
+  }
   global.TlhDayChange=Object.freeze({init,utc,verify,parseSummary,config});if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();
 })(window);

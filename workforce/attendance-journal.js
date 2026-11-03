@@ -132,6 +132,10 @@
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,cards:document.getElementById('journal-cards')});
+      // 管理者モードも起動時に一度確認。本人読取と独立させ、権限確認の失敗で本人機能まで止めない。
+      const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
+        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;}});
+      if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';}
   }
   global.TlhAttendanceJournal=Object.freeze({init,parseJournal,verifyResponse,renderCards,config});

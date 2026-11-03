@@ -40,15 +40,16 @@
   <script src="punch.js?v=D14-20261012"></script>
   <script src="daily-summary.js?v=D15-20261012"></script>
   <script src="monthly-work-summary.js?v=D16-20261012"></script>
-  <script src="attendance-journal.js?v=UI2-20261103"></script>
+  <script src="attendance-journal.js?v=UI2-20261103-admin1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
-  <script src="layout.js?v=UI2-20261103"></script>
+  <script src="layout.js?v=UI2-20261103-admin1"></script>
+  <script src="admin-access.js?v=20261103-1"></script>
 
-  <link rel="stylesheet" href="app.css?v=UI2-20261103-2">
+  <link rel="stylesheet" href="app.css?v=UI2-20261103-3">
 </head>
 <body class="home-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
-<main><p id="staff-load-status" class="session-notice" role="status">LINEログインを準備しています。</p>
+<main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" class="session-notice" role="status">LINEログインを準備しています。</p>
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
      列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
@@ -176,6 +177,7 @@
     </section>
 
     <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
+    <div id="admin-demo-panel" hidden>
     <section id="demo-section" class="demo-section" aria-live="polite" hidden>
       <h2>ダミー従業員の登録・解除試験</h2>
       <div class="detail">対象：D9 ダミー従業員 / DEMO-D9</div>
@@ -187,6 +189,7 @@
       </div>
     </section>
 
+    </div>
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
       <div id="status-detail" class="detail">LIFFを初期化しています。</div>
@@ -268,7 +271,7 @@
 <nav id="workforce-tabs" class="bottom-nav view-tabs" role="tablist" aria-label="利用画面" hidden>
 <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel"><span aria-hidden="true">◷</span>打刻</button>
 <button id="records-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="records-work-panel"><span aria-hidden="true">▤</span>記録</button>
-<button id="manager-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel"><span aria-hidden="true">▦</span>管理</button>
+<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel"><span aria-hidden="true">▦</span>管理</button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
 </nav><footer class="app-footer">TLH Workforce <span>UI2</span></footer>
 </div>
@@ -277,6 +280,7 @@
     GAS HtmlService内のJavaScriptがtop.postMessageで結果を返す。
     postMessageの内容は今回も固定PONG + nonceのみ。
   -->
+  <iframe id="admin-access-frame" name="tlhAdminAccessFrame" title="管理者権限の確認応答" hidden aria-hidden="true"></iframe>
   <iframe id="tlhBridgeFrame" name="tlhBridgeFrame"
     title="TLH GAS通信テスト応答" hidden aria-hidden="true"></iframe>
   <!-- PINGと本人確認の結果が混線しないよう別iframeにする。 -->
@@ -334,7 +338,11 @@
       'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
     const BRIDGE_TIMEOUT_MS = 15000;
     // 独立controller。古い診断のnull-origin/nonceだけの受信を再利用しない。
-    TlhWorkforceLayout.init();
+    const layoutNavigation = TlhWorkforceLayout.init();
+    // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
+    const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,
+      frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
+      onState:allowed=>{layoutNavigation.setAdminAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;}});
     TlhWorkforceShell.init();
     const homeDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     document.getElementById('journal-month').value = homeDay.slice(0,7);
@@ -1142,6 +1150,7 @@
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
+        adminAccess.start();
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;
