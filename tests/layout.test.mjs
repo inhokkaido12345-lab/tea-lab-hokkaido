@@ -20,7 +20,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: false, value: '', textContent: '', events: {},
       dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
       addEventListener(type, fn) { this.events[type] = fn; },
-      setAttribute(name, value) { this.attributes[name] = value; }, focus() { focused = id; } };
+      setAttribute(name, value) { this.attributes[name] = value; }, replaceChildren() {}, focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
   }
   const node = id => { assert.ok(nodes.has(id), 'missing actual DOM id: ' + id); return nodes.get(id); };
@@ -76,11 +76,21 @@ test('tabs change only wrapper visibility, not permissions, pending values, comm
   assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 0);
 });
 test('arrow/Home/End navigation maintains selected tab, focus and tab stop; other keys are untouched', async () => {
-  const h = await harness(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'manager-tab');
-  assert.equal(h.node('manager-tab').attributes['aria-selected'], 'true'); assert.equal(h.node('employee-tab').tabIndex, -1);
+  const h = await harness(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'records-tab');
+  assert.equal(h.node('records-tab').attributes['aria-selected'], 'true'); assert.equal(h.node('employee-tab').tabIndex, -1);
   assert.equal(h.key('manager-tab', 'Home'), true); assert.equal(h.focused(), 'employee-tab');
-  assert.equal(h.key('employee-tab', 'End'), true); assert.equal(h.focused(), 'manager-tab');
+  assert.equal(h.key('employee-tab', 'End'), true); assert.equal(h.focused(), 'more-tab');
+  assert.equal(h.key('more-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'employee-tab');
+  assert.equal(h.key('employee-tab', 'ArrowLeft'), true); assert.equal(h.focused(), 'more-tab');
   assert.equal(h.key('manager-tab', 'Tab'), false);
+});
+test('four destinations expose only their wrappers and keep read-only navigation free of requests', async () => {
+  const h = await harness();
+  h.click('records-tab');assert.equal(h.node('records-work-panel').hidden,false);assert.equal(h.node('employee-work-panel').hidden,true);
+  h.click('more-tab');assert.equal(h.node('employee-registration-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,false);
+  assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('records-work-panel').hidden,true);
+  h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
+  assert.equal(h.sent.length,0);
 });
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {

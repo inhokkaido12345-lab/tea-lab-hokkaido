@@ -5,25 +5,25 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer"><title>日別タイムカード | TLH Workforce</title>
-  <link rel="stylesheet" href="recovery.css?v=20261102-1">
-  <style>.table-scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;white-space:nowrap}th,td{padding:.7rem;border:1px solid #ccc;text-align:left}caption{text-align:left;padding:.7rem 0}select,input{max-width:100%}</style>
+  <link rel="stylesheet" href="app.css?v=UI2-20261103">
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script defer src="attendance-journal.js?v=20261102-1" data-bootstrap="true"></script>
+  <script defer src="attendance-journal.js?v=UI2-20261103" data-bootstrap="true"></script>
 </head>
-<body>
+<body class="secondary-page">
   <header><strong>TLH Workforce</strong><a href="./">打刻画面へ戻る</a></header>
   <main>
     <h1>日別タイムカード</h1>
     <p><a href="day-change.html">打刻の訂正・申請</a></p>
     <button id="journal-login" type="button" hidden>LINEログイン</button>
-    <label for="journal-month">表示する月</label><input id="journal-month" type="month" required>
+    <div class="filters"><label for="journal-month">表示する月</label><input id="journal-month" type="month" required>
     <label for="journal-mode">表示する人</label>
     <select id="journal-mode"><option value="self">自分</option><option value="admin">管理者として従業員を確認</option></select>
     <div id="journal-target" hidden><label for="journal-employee">社員番号</label><input id="journal-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
-    <button id="journal-check" type="button" disabled>日別記録を確認する</button>
+    <button id="journal-check" type="button" disabled>日別記録を確認する</button></div>
     <p id="journal-status" role="status" aria-live="polite">LINE本人確認を待っています。</p>
     <p>時刻は日本時間です。予定超過は「実働 − シフトの予定実働」の正の差で、給与用の法定時間外判定ではありません。</p>
     <p>「予定なし」「未打刻」「勤務中」は0時間と区別します。予定は管理者が登録したシフトを使用します。</p>
+    <div id="journal-cards"></div>
     <div class="table-scroll"><table id="journal-table" hidden>
       <caption id="journal-caption"></caption>
       <thead><tr><th>日付</th><th>状態</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>予定開始</th><th>予定終了</th><th>予定休憩</th><th>予定超過</th></tr></thead>

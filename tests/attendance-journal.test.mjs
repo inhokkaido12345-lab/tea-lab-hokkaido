@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 import {webcrypto,createHmac} from 'node:crypto';
 const source=fs.readFileSync(new URL('../workforce/attendance-journal.js',import.meta.url),'utf8');
 function journal(){return {month:'2026-11',days:Array.from({length:30},(_,i)=>({day:'2026-11-'+String(i+1).padStart(2,'0'),clockIn:'',clockOut:'',breakMs:0,workedMs:null,state:'NO_RECORD',plannedStart:'',plannedEnd:'',plannedBreakMinutes:null,plannedWorkedMs:null,excessMs:null}))};}
-function harness(){
+function harness({cards=false,today=false}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let id=0;
   function el(){return {value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},
     appendChild(n){this.children.push(n);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},remove(){},
@@ -13,7 +13,7 @@ function harness(){
   vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl,Date,
     document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement:el,body:el()},
     setTimeout(fn){timers.set(++id,fn);return id;},clearTimeout(k){timers.delete(k);}});
-  n('month').value='2026-11';n('mode').value='self';window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl});
+  n('month').value='2026-11';n('mode').value='self';window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today});
   async function reply(r,code='JOURNAL_READY',j=journal(),patch={},eventPatch={}){
     const data={type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',nonce:r.nonce,action:r.action,code,journal:code==='JOURNAL_READY'?JSON.stringify(j):''};
     data.mac=createHmac('sha256',r.responseKey).update([data.type,data.nonce,data.action,data.code,data.journal].join('\n')).digest('hex');Object.assign(data,patch);
@@ -65,4 +65,21 @@ test('dedicated page has all controller fields, fixed connection matches current
   for(const key of ['month','mode','employee','target','check','status','table','caption','rows','frame','login'])assert.ok(html.includes('id="journal-'+key+'"'));
   assert.ok(main.includes('timecard-records.html'));assert.ok(main.includes(h.window.TlhAttendanceJournal.config.gasUrl));
   assert.match(html,/name="referrer" content="no-referrer"/);assert.doesNotMatch(source,/bridgeRecordPunch|bridgeRecoverySubmit|bridgeIssueStaffInvitation/);
+});
+test('cards show only signed validated records and clear old employee data at input change and departure',async()=>{
+  const h=harness({cards:true}),j=journal();Object.assign(j.days[0],{state:'COMPLETED',clockIn:'2026-11-01T00:00:00.000Z',clockOut:'2026-11-01T01:00:00.000Z',workedMs:3600000});
+  h.click();await h.reply(h.sent[0],'JOURNAL_READY',j,{mac:'0'.repeat(64)});assert.equal(h.n('cards').children.length,0);
+  await h.reply(h.sent[0],'JOURNAL_READY',j);assert.equal(h.n('cards').children.length,3);
+  const card=h.n('cards').children[2];assert.equal(card.children[0].children[0].textContent,'2026-11-01');assert.match(card.children[2].textContent,/1時間00分/);
+  assert.equal(h.n('cards').children[0].children[2].children[1].textContent,'予定未設定あり');
+  h.n('employee').events.input();assert.equal(h.n('cards').children.length,0);
+  h.click();await h.reply(h.sent[1],'JOURNAL_READY',j);h.handlers.pagehide();assert.equal(h.n('cards').children.length,0);
+});
+test('home selects today at explicit read time and filters cards to the requested JST date without extra requests',async()=>{
+  const h=harness({cards:true,today:true});assert.equal(h.sent.length,0);h.click();const r=h.sent[0];
+  const [year,month]=r.month.split('-').map(Number),count=new Date(Date.UTC(year,month,0)).getUTCDate();
+  const j={month:r.month,days:Array.from({length:count},(_,i)=>({...journal().days[0],day:r.month+'-'+String(i+1).padStart(2,'0')}))};
+  await h.reply(r,'JOURNAL_READY',j);assert.equal(h.n('cards').children.length,1);assert.equal(h.sent.length,1);
+  const expected=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+  assert.equal(h.n('cards').children[0].children[0].children[0].textContent,expected);
 });

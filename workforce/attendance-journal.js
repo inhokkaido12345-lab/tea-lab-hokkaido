@@ -1,6 +1,7 @@
 /**
  * 日別記録の読取専用UI。LINE→POST→固定通信枠/子孫origin・nonce/action/HMAC→表へtextContent。
- * 消すとtimecard-records.htmlだけ停止。既存punch.jsと原簿は不変。端末時計で実働を足さない。
+ * 消すと日別ページとホームの本日記録が停止。既存punch.jsと原簿は不変。端末時計で実働を足さない。
+ * UI2: initのcards/todayは表示先と選択日の指定だけ。署名/DTO検査後にrenderCards、対象変更/退場で消去。
  * 概念: authenticated DTO / read model。表示する人の選択は認可ではなく、GASが毎回検証する。
  * 改造: DTOはAttendanceJournalService/Bridge/両repo試験と同期。予定超過を法定時間外へ改称しない。
  * 個人時刻・token・社員番号・鍵はPOST/メモリ限定。URL/ログ/Storageへ保存しない。
@@ -45,6 +46,34 @@
   }
   /** 直下Window/最大8段の子孫だけを許可。親参照失敗/別窓は拒否し、署名も別途必須。 */
   function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
+  /**
+   * 来歴/署名/DTO検査を通った日別値だけをカード化。実働未確定と0を区別する。
+   * @param {HTMLElement} container 表示先。既存table/通信状態には触れない。
+   * @param {Object} journal parseJournalで検査済みの指定月。
+   * @param {string} day 本日表示ならJST日付、月表示なら空文字。
+   * 削除影響: カード表示のみ停止。原簿は不変。変更はCSS/画面/署名拒否回帰と確認する。
+   */
+  function renderCards(container,journal,day){
+    container.replaceChildren();
+    const node=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;};
+    if(!day){
+      const completed=journal.days.filter(row=>row.state==='COMPLETED'),metrics=node('div','','metric-grid');
+      for(const [label,value]of [['実働合計',duration(completed.reduce((sum,row)=>sum+row.workedMs,0))],['完了勤務日数',completed.length+'日'],['予定超過',completed.some(row=>row.excessMs===null)?'予定未設定あり':duration(completed.reduce((sum,row)=>sum+row.excessMs,0))]]){
+        const item=node('div','');item.appendChild(node('span',label));item.appendChild(node('strong',value));metrics.appendChild(item);
+      }container.appendChild(metrics);
+      container.appendChild(node('p','完了分のみ集計・時刻は日本時間','footnote'));
+    }
+    const selected=journal.days.filter(row=>day?row.day===day:row.state!=='NO_RECORD'||row.plannedStart);
+    if(!selected.length)container.appendChild(node('p','この期間の勤務・予定はありません。','empty-note'));
+    for(const row of selected){
+      const card=node('article','','record-item'),head=node('div','','record-head');
+      head.appendChild(node('strong',row.day));head.appendChild(node('span',stateLabels[row.state],'record-status'));card.appendChild(head);
+      card.appendChild(node('p',row.clockIn?clock(row.clockIn)+' — '+(row.clockOut?clock(row.clockOut):'未退勤'):'まだ打刻はありません','record-times'));
+      card.appendChild(node('p','実働 '+duration(row.workedMs)+' / 休憩 '+(row.state==='NO_RECORD'?'—':duration(row.breakMs)),'record-detail'));
+      card.appendChild(node('p',row.plannedStart?'予定 '+clock(row.plannedStart)+' — '+clock(row.plannedEnd)+'\n予定休憩 '+row.plannedBreakMinutes+'分':'予定は登録されていません','record-plan'));
+      card.appendChild(node('p','予定超過 '+duration(row.excessMs),'record-excess footnote'));container.appendChild(card);
+    }
+  }
   async function verifyResponse(d,r){
     if(!d||d.type!==TYPE||d.action!==ACTION||d.nonce!==r.nonce||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||typeof d.journal!=='string'||
       typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac)||(d.code!=='JOURNAL_READY'&&d.journal!==''))return false;
@@ -55,17 +84,19 @@
   function init(options){
     const n=Object.fromEntries(['month','mode','employee','target','check','status','table','caption','rows','frame'].map(k=>[k,document.getElementById('journal-'+k)]));
     let pending=null,stopped=false;
-    const clear=()=>{n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';};
+    const clear=()=>{n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
     const controls=()=>{for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     for(const key of ['month','mode','employee'])n[key].addEventListener('input',()=>{clear();n.target.hidden=n.mode.value!=='admin';});
     n.check.addEventListener('click',()=>{
       if(pending||stopped)return;clear();
+      // ホームの本日は操作時点で選ぶ。日跨ぎ後も起動時の月へ固定しない。保存時刻には使わない。
+      let day='';if(options.today){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(p=>p.type===k).value;day=get('year')+'-'+get('month')+'-'+get('day');n.month.value=day.slice(0,7);}
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken(),month=n.month.value,mode=n.mode.value,employeeCode=mode==='admin'?n.employee.value.trim():'';
       if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!['self','admin'].includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
-      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode};pending=r;controls();n.status.textContent='読み込み中です。';
+      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day};pending=r;controls();n.status.textContent='読み込み中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
@@ -84,6 +115,7 @@
           for(const value of values){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}n.rows.appendChild(tr);
         }
         n.caption.textContent=j.month+' / '+(r.mode==='admin'?'指定した従業員':'自分')+' / 日本時間';n.table.hidden=false;
+        if(options.cards)renderCards(options.cards,j,r.day);
       }
       n.status.textContent=messages[d.code];finish();
     });
@@ -94,9 +126,9 @@
     document.getElementById('journal-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
-      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});
+      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,cards:document.getElementById('journal-cards')});
     }catch(_e){status.textContent='LINEログインを準備できません。';}
   }
-  global.TlhAttendanceJournal=Object.freeze({init,parseJournal,verifyResponse,config});
+  global.TlhAttendanceJournal=Object.freeze({init,parseJournal,verifyResponse,renderCards,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();
 })(window);

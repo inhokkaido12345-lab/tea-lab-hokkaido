@@ -3,11 +3,12 @@
      previewは読取、commitは明示確認後。実時刻を推測して入力しない。 -->
 <html lang="ja"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-  <title>打刻の訂正・申請 | TLH Workforce</title><link rel="stylesheet" href="recovery.css?v=20261102-1">
+  <title>打刻の訂正・申請 | TLH Workforce</title><link rel="stylesheet" href="app.css?v=UI2-20261103">
   <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="day-change.js?v=20261103-2" data-bootstrap="true"></script>
-</head><body>
+</head><body class="secondary-page">
 <header><strong>TLH Workforce</strong><a href="timecard-records.html">日別記録へ戻る</a></header>
 <main><h1>打刻の訂正・申請</h1><button id="change-login" type="button" hidden>LINEログイン</button>
+  <p>管理者は「操作」で直接訂正または申請承認を選べます。</p>
   <p>日本時間で、確認できた実際の時刻を入力してください。元の打刻は残し、この日の訂正履歴を追加します。</p>
   <label for="change-mode">操作</label><select id="change-mode"><option value="SELF">自分の訂正を申請</option><option value="DIRECT">管理者として直接訂正</option><option value="REVIEW">管理者として申請を承認</option></select>
   <div id="change-target" hidden><label for="change-employee">対象の社員番号</label><input id="change-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>

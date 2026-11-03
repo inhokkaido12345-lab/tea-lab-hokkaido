@@ -1,5 +1,5 @@
 /**
- * 【現役UI1】責務: 従業員/管理者の表示だけを切り替える。認証/権限/通信/保存を担当しない。
+ * 【現役UI2】責務: 打刻/記録/管理/その他の表示だけを切り替える。認証/権限/通信/保存を担当しない。
  * 構成: index.htmlのinit→tab click/矢印キー→新設data-workforce-pane wrapperのhidden。
  * 削除影響: 管理者側のpaneが開けなくなる。既存controllerの認可/保存やGASの実データは消えない。
  * 概念: presentation controller / separation of concerns / accessible tabs。
@@ -17,7 +17,7 @@
    * tab移動で送信を再開/取消し/再認証しない理由は、固定retry情報と受付閉鎖を維持するため。
    */
   function init() {
-    const names = ['employee', 'manager'];
+    const names = ['employee', 'records', 'manager', 'more'];
     const tabs = names.map(name => document.getElementById(name + '-tab'));
     const panes = Array.from(document.querySelectorAll('[data-workforce-pane]'));
     if (tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
@@ -34,7 +34,7 @@
       tab.addEventListener('keydown', event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
-        const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : 1 - index;
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? names.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + names.length) % names.length;
         activate(names[next]); tabs[next].focus();
       });
     });
