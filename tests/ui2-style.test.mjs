@@ -8,7 +8,7 @@ test('self-hosted Japanese font distribution is intact and every CSS file refere
   assert.match(css,/font-display: swap/);assert.doesNotMatch(css,/url\(https?:|@import/);
   const referenced=[...css.matchAll(/url\(([^)]+)\)/g)].map(m=>m[1]);assert.equal(referenced.length,manifest.files.length);
   for(const file of manifest.files){assert.ok(referenced.includes(file.name));const bytes=fs.readFileSync(new URL(file.name,base));assert.equal(bytes.subarray(0,4).toString(),'wOF2');assert.equal(createHash('sha256').update(bytes).digest('hex'),file.sha256);}
-  const license=fs.readFileSync(new URL('OFL.txt',base));assert.equal(createHash('sha256').update(license).digest('hex'),manifest.licenseSha256);
+  const license=fs.readFileSync(new URL('OFL.txt',base),'utf8').replace(/\r\n/g,'\n');assert.equal(createHash('sha256').update(license).digest('hex'),manifest.licenseSha256);
 });
 test('shared stylesheet starts with a valid root variable block and every var reference is declared',()=>{
   const css=fs.readFileSync(new URL('../workforce/app.css',import.meta.url),'utf8').replace(/\/\*[\s\S]*?\*\//g,'').trim();
