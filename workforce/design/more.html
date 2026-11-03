@@ -9,4 +9,95 @@
       </form>
       </details>
       </div>
-      </main></div></body></html>
+      <div id="more-tools-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab">    <details class="diagnostics">
+      <summary>接続診断・開発用の試験</summary><p class="tool-intro">接続の確認や開発時の試験に使う補助機能です。普段の打刻・勤務記録の確認には使いません。</p>
+
+    <!-- D13単独照会は診断に保持。通常はD14の署名付き準備結果を勤務状態・打刻欄で読む。 -->
+    <section id="work-state-section" class="staff-section" hidden>
+      <h2>勤務状態の単独照会</h2>
+      <div id="work-state-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button disabled id="work-state-check" class="bridge-button" type="button">自分の勤務状態を確認する</button>
+    </section>
+
+    <!-- 試験でも自分の招待受取りは従業員側。発行/解除は管理タブに分離。秘密は共通controllerのメモリだけ。 -->
+    <section id="personal-demo-panel" hidden><h2>自分のダミー招待の受取り試験</h2>
+      <p>管理タブで試験用招待を発行した後、この画面で本人として受け取ります。実社員の登録には使いません。</p>
+        <button disabled id="demo-claim" class="bridge-button" type="button" disabled>自分のLINEで招待を受け取る</button>
+      <p id="demo-personal-status" role="status" aria-live="polite">未確認</p>
+    </section>
+    <section class="card" aria-live="polite">
+      <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
+      <div id="status-detail" class="detail">LIFFを初期化しています。</div>
+
+      <ol class="steps">
+        <li>GitHub Pages</li>
+        <li>LIFF初期化</li>
+        <li>ID token取得（値は非表示）</li>
+      </ol>
+    </section>
+
+    <!--
+      D4追加: LIFFが成功した場合だけ、GASへの疎通テストを表示する。
+      PING/PONGにLINEのID tokenや従業員データは含めない。
+    -->
+    <section id="bridge-section" class="card" aria-live="polite" hidden>
+      <strong>GAS通信テスト（PING/PONG）</strong>
+      <div id="bridge-status" class="detail">ボタンを押すと公開PINGだけを送信します。</div>
+      <button disabled id="bridge-button" class="bridge-button" type="button">GASにPINGを送る</button>
+    </section>
+
+    <!--
+      D5: 明示操作に限り、生ID tokenをHTTPS form POSTのbodyとしてGASへ送る。
+      画面へ表示・URLに付加・localStorageへ保存しない。
+      サーバーのLINE本人確認結果は真偽値のみ。従業員情報は扱わない。
+    -->
+    <section id="auth-section" class="card" aria-live="polite" hidden>
+      <strong>LINE本人確認テスト（GAS側）</strong>
+      <div id="auth-status" class="detail">
+        ボタンを押すとLINE ID tokenをGASへ安全なHTTPS POSTで送信し、
+        GASがLINE公式APIで検証します。値は表示しません。
+      </div>
+      <button disabled id="auth-button" class="bridge-button" type="button">LINE本人確認を試す</button>
+    </section>
+
+    <!--
+      D6: 既存TLH AccountとEmployeeProfileへの紐付け有無を読み取り専用で確認。
+      個人情報・ID・名前を画面に返さず、登録済み/未登録という状態だけを返す。
+      招待コードの発行・アカウント作成・Sheets書込みはここでは実行しない。
+    -->
+    <section id="account-section" class="card" aria-live="polite" hidden>
+      <strong>TLH Account登録状態テスト</strong>
+      <div id="account-status" class="detail">
+        LINE認証後、既存TLH Accountと従業員情報が登録されているか判定します。
+        新しいアカウントは作りません。
+      </div>
+      <button disabled id="account-button" class="bridge-button" type="button">登録状態を確認する</button>
+    </section>
+
+    <!-- D8は読み取り専用。表示された「管理者」は実際の管理APIの許可を意味しない。 -->
+    <section id="admin-section" class="card" aria-live="polite" hidden>
+      <strong>TLH管理者権限テスト（D8）</strong>
+      <div id="admin-status" class="detail">
+        LINE本人確認を行い、GASがRoleAssignmentsのTLH_ADMIN/GLOBALを確認します。
+        登録情報を変更しません。
+      </div>
+      <button disabled id="admin-button" class="bridge-button" type="button">自分の管理者権限を確認する</button>
+    </section>
+
+    <!--
+      D7: 自分の「一般TLH Account」を作成する、明示的な操作。
+      LINEで本人確認した人自身のアカウントだけを作る。
+      従業員・管理者権限はここでは付与しない。
+      Script Property「TLH_ACCOUNT_SIGNUP_ENABLED=true」が必要で、
+      初期状態では安全のため登録を許可しない。
+    -->
+    <section id="signup-section" class="card" aria-live="polite" hidden>
+      <strong>TLHアカウントの新規作成</strong>
+      <div id="signup-status" class="detail">
+        LINE本人確認を使い、あなた自身のTLHアカウントを作成します。
+        管理者・従業員権限は付与されません。
+      </div>
+      <button disabled id="signup-button" class="bridge-button" type="button">自分のTLHアカウントを作成する</button>
+    </section>
+    </details></div>
+</main></div></body></html>

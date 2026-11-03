@@ -17,13 +17,14 @@ parts = {
     'manager': source[source.index('<div id="manager-tools-panel"'):source.index('<section id="staff-section"')]
         + source[source.index('<div id="manager-registration-panel"'):source.index('<!-- claim/発行')]
         + source[source.index('<div id="manager-maintenance-panel"'):source.index('<div id="manager-test-panel"')],
-    'more': source[source.index('<div id="employee-registration-panel"'):source.index('<div id="manager-registration-panel"')],
+    'more': source[source.index('<div id="employee-registration-panel"'):source.index('<div id="manager-registration-panel"')]
+        + source[source.index('<div id="more-tools-panel"'):source.index('</main>')],
 }
 dest = root / 'design'
 dest.mkdir(exist_ok=True)
 for name, body in parts.items():
     body = re.sub(r'<(?:iframe|script)\b[\s\S]*?</(?:iframe|script)>', '', body)
-    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|manager-registration-panel|manager-maintenance-panel|maintenance-section|staff-admin)"[^>]*?)\s+hidden', r'\1', body)
+    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|manager-registration-panel|manager-maintenance-panel|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
     body = re.sub(r'<(button|input|select|textarea)\b', r'<\1 disabled', body)
     body = re.sub(r'href="[^"]*"', 'href="#preview-notice"', body)
     assert not re.search(r'<script|<iframe|action=|\bon\w+=', body)
