@@ -1,5 +1,9 @@
 # Workforceの恒常ルール
 
+## 現行デザイン（2026-11-03）
+
+所有者の指定パレット: 8E3F35/2F5452/7C908E/F3EFE7/252829/495C63。IBM Plex Sans JPを同一サイトfonts/配布、本文400・見出し/操作600、swap。Google Fonts/CDNへ実行時接続しない。app.cssの:rootと18節が現行。管理は番号/区切り線/短い説明/操作、その他はアカウント→招待→診断。長い補足はtool-helpのdetails、保存前の確認はcontrollerに残す。表示見本design/は操作無効・実データなし、scripts/build-workforce-design-preview.pyで再生成。見本のhidden解除を本番へコピーしない。DESIGN.md/fonts/README.mdとコメントを同期。
+
 ## 本人アカウント情報（2026-11-03）
 
 所有者の指示でその他→account-info.htmlを追加。ログイン中本人だけの読取。確認ボタンのみPOST、対象IDを受け取らず公式LINEから決定。AccountInfoService/BridgeAccountInfoとのDTO/HMACを同期し、provider_subject・秘密・行全体を返さない。管理タブに本人機能を混ぜず、登録なし/停止/不整合を区別。ACCOUNT-INFO.mdが現行。

@@ -34,8 +34,8 @@ test('departure clears fields and ignores late response, no proof or embedding s
 });
 test('personal entry is outside management, uses dedicated frame, and offers no editing or disconnection',()=>{
  const read=n=>fs.readFileSync(new URL('../workforce/'+n,import.meta.url),'utf8'),html=read('account-info.html'),main=read('index.html');
- const more=main.slice(main.indexOf('<div id="more-tools-panel"'));assert.match(more,/href="account-info.html"/);
- const manager=main.slice(main.indexOf('<div id="manager-tools-panel"'),main.indexOf('<div id="more-tools-panel"'));assert.doesNotMatch(manager,/href="account-info.html"/);
+ const more=main.slice(main.indexOf('<div id="employee-registration-panel"'),main.indexOf('<div id="manager-registration-panel"'));assert.match(more,/data-workforce-pane="more"/);assert.match(more,/href="account-info.html"/);
+ const manager=main.slice(main.indexOf('<div id="manager-tools-panel"'),main.indexOf('<section id="staff-section"'));assert.doesNotMatch(manager,/href="account-info.html"/);
  assert.match(html,/name="tlhAccountInfoFrame"/);assert.match(html,/name="referrer" content="no-referrer"/);assert.doesNotMatch(html,/<input|<textarea|admin-access\.js/);
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);
 });

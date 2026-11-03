@@ -12,30 +12,32 @@
  */
 :root {
   /* 本文。操作色とは分け、長文の読みやすさを守る。 */
-  --ink:#203436;
+  --ink:#252829;
   /* 補足。薄くしすぎると小さな説明が読めなくなる。 */
-  --muted:#637476;
+  --muted:#495C63;
   /* 主操作とリンク。変更時は白文字との見え方も確認。 */
-  --teal:#21635e;
+  --teal:#2F5452;
   /* 主操作のhover。主色と一緒に調整する。 */
-  --teal-dark:#184c48;
+  --teal-dark:#254542;
   /* 選択中や補足の淡い面。主色の文字との組合せで使う。 */
-  --soft:#edf4f1;
+  --soft:#E5EBE8;
   /* カード/ヘッダーの面。背景canvasとの差が区切りになる。 */
-  --paper:#fff;
+  --paper:#FFFDFA;
   /* 画面全体の背景。白いカードを浮かせる土台。 */
-  --canvas:#f4f6f4;
+  --canvas:#F3EFE7;
   /* カードや入力の境界。影だけに区切りを頼らない。 */
-  --line:#dde5e0;
+  --line:#CCD3CE;
   /* 注意/予定超過など。色だけでなく文言も併用。 */
-  --amber:#74501e;
+  --amber:#8E3F35;
   /* 利用停止などの強い注意。主操作の色へ安易に流用しない。 */
-  --danger:#9a4037;
+  --danger:#8E3F35;
+  /* 添付パレットの灰緑。小さい本文には薄いため、目印や境界の補助に使う。 */
+  --mist:#7C908E;
   /* 共通カードの角丸。ボタン/入力の直書き値までは変わらない。 */
   --radius:16px;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;
+  font-family:"IBM Plex Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--ink);
-  background:#e8edeb;
+  background:var(--canvas);
   line-height:1.6;
   font-synthesis:none
 }
@@ -43,7 +45,7 @@
  * border-box: paddingや枠を指定幅の内側へ含め、小さな画面の幅計算を単純にする。
  * hiddenは業務controllerが決める表示条件。!importantを外したり常時表示にしない。
  * focus-visibleはキーボードで現在位置を示す枠。outlineを消す場合は代替表示が必要。
- * system-uiは端末標準フォント。外部フォント通信を増やさず、日本語は代替候補へ流れる。
+ * IBM Plex Sans JPはfonts/の同一サイト配布。swapで本文を先に表示、失敗時は端末標準へ。
  */
 * {
   box-sizing:border-box
@@ -1366,6 +1368,208 @@ pre {
 .admin-overview { margin:0 0 20px; }
 .bottom-nav .approval-badge { position:absolute; top:2px; right:3px; font-size:10px; font-weight:700; line-height:1.5; }
 .bottom-nav [role="tab"] { position:relative; }
+
+/* 18. パレット版の現役画面。管理/その他は同じ情報階層を共有する。
+ * 責務: 色/文字/余白/入力面だけ。番号は見出しの目印で、操作の順番や認可ではない。
+ * 概念: 見出しと内容の近接、補足の段階的開示、主操作/補助/危険の意味による配色。
+ * 変更: :rootは全共有ページ、management-section/service-sectionは管理/その他だけ。
+ * 削除影響: 旧配色/余白へ戻るが原簿は残る。HTMLのid/hidden/disabledは維持する。
+ * 境界: CSSに社員情報/認証情報を置かない。DESIGN.mdと手動の表示見本を同期する。
+ * 検証: 全UI/連結に加え390px・PC・文字拡大で折返し、キーボードfocusを確認する。
+ */
+body {
+  font-size:14px;
+  line-height:1.8
+}
+h1,h2,h3,strong,b,summary,.brand {
+  font-weight:600
+}
+button,input,select,textarea {
+  font-family:inherit
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible {
+  outline-color:var(--teal)
+}
+.app,.app-header,.secondary-page header,.bottom-nav {
+  box-shadow:none;
+  border-color:var(--line)
+}
+.app-header,.secondary-page header,.bottom-nav {
+  background:var(--paper)
+}
+.page-heading h1 {
+  font-size:28px;
+  letter-spacing:.02em
+}
+.home-page .management-section,.home-page .service-section {
+  background:none;
+  border:0;
+  border-top:1px solid var(--line);
+  border-radius:0;
+  padding:28px 0 4px;
+  margin:28px 0 0
+}
+.home-page .management-section h2,.home-page .service-section h2 {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:19px;
+  font-weight:600;
+  margin:0 0 12px
+}
+.tool-step {
+  display:inline-grid;
+  place-items:center;
+  min-width:32px;
+  height:28px;
+  background:var(--teal);
+  color:var(--paper);
+  border-radius:5px;
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.03em
+}
+.tool-intro {
+  max-width:58ch;
+  color:var(--muted);
+  margin:0 0 18px;
+  font-size:14px
+}
+.guide-link {
+  display:inline-flex;
+  padding:9px 14px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--paper);
+  font-size:13px;
+  font-weight:600
+}
+.tool-help {
+  border-inline-start:2px solid var(--mist);
+  padding:6px 14px;
+  margin:14px 0 20px;
+  color:var(--muted)
+}
+.tool-help summary {
+  font-size:13px;
+  color:var(--teal)
+}
+.tool-help p,.tool-help ol {
+  font-size:13px;
+  margin:10px 0
+}
+.tool-help ol {
+  padding-inline-start:22px
+}
+.home-page .staff-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  padding:20px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:10px;
+  margin-block:20px
+}
+.home-page .staff-fields label {
+  margin:0;
+  font-size:13px
+}
+.home-page .staff-fields input,.home-page .staff-fields select {
+  margin:6px 0 0;
+  background:#fff;
+  border-color:var(--mist)
+}
+.home-page .management-section form,.home-page .service-section form {
+  max-width:760px
+}
+.home-page .management-section .menu-item:nth-child(n) {
+  padding:16px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:10px;
+  min-height:76px;
+  margin-top:14px
+}
+.menu-item strong {
+  font-size:15px;
+  font-weight:600
+}
+.menu-item small {
+  font-size:13px;
+  color:var(--muted)
+}
+.menu-symbol {
+  color:var(--teal)
+}
+.home-page .management-section .button.full,.home-page .service-section .button.full {
+  width:auto;
+  max-width:100%;
+  margin-top:4px
+}
+.home-page #staff-check,.home-page #staff-reset,.home-page #staff-revoke,.home-page #maintenance-reset,.home-page #admin-overview-check {
+  background:transparent;
+  color:var(--teal);
+  border:1px solid var(--mist)
+}
+.home-page #staff-revoke {
+  color:var(--danger);
+  border-color:var(--danger)
+}
+.home-page #maintenance-stop {
+  margin-top:20px
+}
+.home-page .enrollment-details>summary,.home-page .diagnostics>summary,#manager-test-panel>details>summary {
+  font-size:17px;
+  color:var(--ink);
+  padding:8px 0;
+  font-weight:600
+}
+.home-page .enrollment-details,.home-page .diagnostics {
+  background:none;
+  border:0;
+  border-top:1px solid var(--line);
+  border-radius:0;
+  padding:24px 0 4px;
+  margin:28px 0 0
+}
+.home-page .diagnostics .card,.home-page .diagnostics .staff-section,.home-page .diagnostics .demo-section,#manager-test-panel .demo-section {
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--paper)
+}
+.home-page .diagnostics p,.home-page .enrollment-details p {
+  margin-block:12px
+}
+.home-page .diagnostics .detail,.home-page .enrollment-details .detail {
+  color:var(--muted)
+}
+.session-notice,.secondary-page .filters,fieldset {
+  background:var(--paper);
+  border-color:var(--line)
+}
+.footnote {
+  font-size:13px;
+  line-height:1.8
+}
+@media(max-width:599px) {
+  .home-page .staff-fields {
+    grid-template-columns:1fr;
+    padding:16px
+  }
+  .home-page .management-section .button.full,.home-page .service-section .button.full {
+    width:100%
+  }
+  .home-page .management-section .demo-actions {
+    display:grid;
+    grid-template-columns:1fr
+  }
+  .page-heading h1 {
+    font-size:26px
+  }
+}
 
 /* 本社提出用。画面の確認と印刷だけを担当し、元の打刻や受付設定を変更しない。
  * 削除すると印刷に操作欄が混ざる。列を変える時はmonthly-report.js/theadと同期する。 */
