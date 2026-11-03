@@ -91,3 +91,7 @@ private repoの連結試験は公開画面のcommit/hashを固定します。JS/
 
 repoルートで `node --test tests/*.mjs`。整理前は画面97件、backend575件、連結8件の合計680件成功です。架空DOMの成功と実LINEの操作結果は分けて記録します。
 [全体設計・魔改造MAP](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/現行タイムカード-運用と設計.md)、[訂正の保存と失敗時設計](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/日別打刻訂正-直接編集と申請承認.md)、[従来の説明・開発記録](history/README-20261103.md)。private repoの閲覧権限が必要です。
+
+## 保存先と応答速度（2026-11-03）
+
+画面はGitHub Pages、本人確認/認可/保存処理はGAS、データはSheets。新しいシフト専用ファイルは会社Driveに作成していますが、シフトの保存/公開画面は未接続です。従業員にDriveファイルを直接共有せず、アプリで全員の確定シフトと本人の申請を分ける設計です。バックエンドは同じLock内の読取だけを再利用し、次の要求では権限を確認し直します。個人情報のブラウザStorageキャッシュや新サービスは追加しません。
