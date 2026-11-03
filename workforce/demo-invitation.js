@@ -2,6 +2,7 @@
  * 【D9/D10 controller / 現役】責務: ダミー登録・招待受取り・解除の明示操作と応答認証。
  * 消すとD9/D10が使えない。古い診断・Sheetデータは変わらない。
  * 構成: 乱数→HMAC検証→一回用通信状態→画面更新。
+ * 役割別UI: 発行/解除は管理タブ、本人受取りはその他。結果は両欄に同じ文を表示し、秘密や状態を複製保存しない。
  * 拡張: 実在従業員への招待共有/URL/個人情報表示は未対応。別設計にする。
  * tokenはメモリのみ。再読込は新規発行で旧PENDINGを失効。期限30分。
  * HMACは応答の偽装対策で認可ではない。GASが毎回LINEとroleを再検証する。
@@ -72,7 +73,10 @@
     const issue = document.getElementById('demo-issue');
     const claim = document.getElementById('demo-claim');
     const release = document.getElementById('demo-release');
-    const status = document.getElementById('demo-status');
+    const managementStatus = document.getElementById('demo-status');
+    const personalStatus = document.getElementById('demo-personal-status');
+    // 画面の配置を分けても一つの通信/招待状態を保つ。欄削除は結果の表示だけに影響する。
+    const status = {set textContent(value){managementStatus.textContent=value;if(personalStatus)personalStatus.textContent=value;}};
     let token = null, pending = null, ready = false, completed = false;
     let released = false, blocked = false;
     function finish() {

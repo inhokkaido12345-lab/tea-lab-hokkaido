@@ -97,6 +97,15 @@ test('four destinations expose only their wrappers and keep read-only navigation
   h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
   assert.equal(h.sent.length,1);
 });
+
+test('developer demo also separates manager issue/release from personal invitation claim',async()=>{
+  const h=await harness();await h.replyAccess();h.click('manager-tab');assert.equal(h.node('manager-test-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
+  const admin=html.slice(html.indexOf('<div id="manager-test-panel"'),html.indexOf('<div id="more-tools-panel"'));
+  assert.match(admin,/id="demo-issue"/);assert.match(admin,/id="demo-release"/);assert.doesNotMatch(admin,/id="demo-claim"/);
+  const personal=html.slice(html.indexOf('<section id="personal-demo-panel"'),html.indexOf('<section class="card" aria-live="polite">',html.indexOf('<section id="personal-demo-panel"')));
+  assert.match(personal,/id="demo-claim"/);assert.doesNotMatch(personal,/id="demo-(?:issue|release)"/);
+  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,1);
+});
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {
     const h = await harness(options); assert.equal(h.node('workforce-tabs').hidden, true);

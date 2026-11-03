@@ -2,6 +2,29 @@ import test from 'node:test';import assert from 'node:assert/strict';import fs f
 
 function addSecond(h){h.click('add-session');const card=h.n('sessions').children.at(-1),inputs=card.children.slice(1,5).map(label=>label.children[0]);
  ['2026-11-01T15:00','2026-11-01T19:00','2026-11-01T16:00','2026-11-01T16:30'].forEach((value,i)=>inputs[i].value=value);return inputs;}
+
+test('employee correction only submits SELF and cannot select the approval queue',async()=>{
+ const h=dayChangeHarness({audience:'employee'});assert.equal(h.editor.selectRequest('EMP030','chg_'+'c'.repeat(32)),false);
+ for(const mode of ['DIRECT','REVIEW']){h.n('mode').value=mode;h.n('group').value='chg_'+'c'.repeat(32);h.click('preview');assert.equal(h.sent.length,0);}
+ h.n('mode').value='SELF';h.click('preview');assert.equal(h.sent[0].mode,'SELF');assert.equal(h.sent[0].employeeCode,'');
+ await h.reply(h.sent[0]);h.click('commit');assert.equal(h.sent[1].mode,'SELF');await h.reply(h.sent[1],'CHANGE_REQUESTED');assert.match(h.n('status').textContent,/承認待ち/);
+});
+
+test('admin correction locks before verification, excludes SELF and retains DIRECT and REVIEW',async()=>{
+ const h=dayChangeHarness({audience:'admin'});h.click('preview');assert.equal(h.sent.length,0);assert.equal(h.n('preview').disabled,true);
+ h.editor.setAdminAllowed(true);h.n('mode').value='SELF';h.click('preview');assert.equal(h.sent.length,0);
+ h.n('mode').value='DIRECT';h.click('preview');await h.reply(h.sent[0]);h.click('commit');assert.equal(h.sent[1].mode,'DIRECT');
+ const r=dayChangeHarness({audience:'admin'});r.editor.setAdminAllowed(true);assert.equal(r.editor.selectRequest('EMP030','chg_'+'d'.repeat(32)),true);assert.equal(r.sent[0].mode,'REVIEW');
+ r.editor.setAdminAllowed(false);assert.equal(r.n('commit').disabled,true);assert.equal(r.n('review').hidden,true);
+});
+
+test('manager navigation leads only to dedicated management pages; employee URLs stay self-only',()=>{
+ const read=n=>fs.readFileSync(new URL('../workforce/'+n,import.meta.url),'utf8'),main=read('index.html');
+ const manager=main.slice(main.indexOf('<div id="manager-tools-panel"'),main.indexOf('<section id="staff-section"'));
+ assert.match(manager,/href="admin-day-change.html"/);assert.match(manager,/href="admin-timecard-records.html"/);assert.doesNotMatch(manager,/href="(?:day-change|timecard-records)\.html"/);
+ for(const page of ['day-change.html','timecard-records.html']){const html=read(page);assert.match(html,/data-audience="employee"/);assert.doesNotMatch(html,/<option[^>]+value="(?:DIRECT|REVIEW|admin)"/);}
+ for(const page of ['admin-day-change.html','admin-timecard-records.html']){const html=read(page);assert.match(html,/data-audience="admin"/);assert.doesNotMatch(html,/<option[^>]+value="(?:SELF|self)"/);assert.match(html,/data-bootstrap="true"/);}
+});
 test('JST local input converts exactly, invalid calendar dates reject without browser timezone assumptions',()=>{
   const h=dayChangeHarness(),utc=h.window.TlhDayChange.utc;assert.equal(utc('2026-11-01T09:00'),'2026-11-01T00:00:00.000Z');
   for(const s of ['2026-02-30T09:00','2026-11-01T24:00','2026-11-01 09:00'])assert.throws(()=>utc(s));

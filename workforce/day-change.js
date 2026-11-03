@@ -1,6 +1,7 @@
 /**
  * 日別訂正UI。本人申請/管理者直接訂正/管理者承認→署名付きpreview→明示確認→同じgroupで保存。
- * day-change.html専用。削除しても原簿/訂正履歴は残る。既存の打刻controllerは変更しない。
+ * day-change.htmlは本人申請専用、admin-day-change.htmlは直接訂正/承認専用。同じ処理を共有。
+ * ページのdata-audienceは表示/操作の分類で認可ではない。削除しても原簿/訂正履歴は残る。
  * 概念: immutable review / unknown outcome。通信ごとにnonce/鍵を更新、操作groupは保存結果確定まで固定。
  * 改造はBridgeAttendanceDayChange/Service/両repo試験と同期。時刻はJST入力→UTC、端末のTZを信じない。
  * token/氏名/時刻/理由/鍵はURL/ログ/Storageへ出さない。申請番号は明示コピーだけ。
@@ -67,6 +68,10 @@
     return s;
   }
   function init(options){
+    // 役割を混ぜないUI契約。管理者本人のSELFも従業員ページから行う。GASの最新認可は別途必須。
+    const adminPage=options.audience==='admin',employeePage=options.audience==='employee';
+    const modes=adminPage?['DIRECT','REVIEW']:employeePage?['SELF']:['SELF','DIRECT','REVIEW'];
+    let adminAllowed=!adminPage;
     const names=['mode','employee','target','group','request','inputs','day','in','out','break-start','break-end','reason','preview','commit','review','status','receipt','copy','frame','sessions','add-session'];
     const n=Object.fromEntries(names.map(k=>[k,document.getElementById('change-'+k)]));let pending=null,draft=null,review=null,uncertain=false,stopped=false,completed=false;
     let extras=[],sequence=0;
@@ -74,7 +79,8 @@
     const locked=()=>!!pending||uncertain||completed||stopped;
     function clearExtras(){for(const row of extras)for(const field of Object.values(row.fields))field.value='';extras=[];n.sessions.replaceChildren?.();}
     function controls(){for(const k of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[k].disabled=!!pending||uncertain||completed||stopped;
-      n.preview.disabled=!!pending||completed||stopped;n.commit.disabled=!!pending||!review||uncertain||completed||stopped;
+      n.preview.disabled=!!pending||completed||stopped||!adminAllowed;n.commit.disabled=!!pending||!review||uncertain||completed||stopped||!adminAllowed;
+      if(adminPage)n.mode.disabled=n.mode.disabled||!adminAllowed;
       n.target.hidden=n.mode.value==='SELF';n.request.hidden=n.mode.value!=='REVIEW';n.inputs.hidden=n.mode.value==='REVIEW';
       n['add-session'].disabled=locked()||extras.length>=9;for(const row of extras){row.remove.disabled=locked();for(const field of Object.values(row.fields))field.disabled=locked();}}
     function invalidateInput(){if(locked())return;draft=null;clear();controls();}
@@ -89,7 +95,7 @@
     });
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     /** 送信前の案内だけ。サーバーの同じ検査・認可・時系列確認は省略しない。 */
-    function input(){const mode=n.mode.value;if(!['SELF','DIRECT','REVIEW'].includes(mode))throw Error('INPUT_MODE');
+    function input(){const mode=n.mode.value;if(!modes.includes(mode))throw Error('INPUT_MODE');
       const groupId=mode==='REVIEW'?n.group.value.trim():draft?.groupId||'chg_'+random(16);if(!/^chg_[a-f0-9]{32}$/.test(groupId))throw Error('INPUT_GROUP');
       const employeeCode=mode==='SELF'?'':n.employee.value.trim();if(mode!=='SELF'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))throw Error('INPUT_EMPLOYEE');
       if(mode==='REVIEW')return{mode,groupId,employeeCode};
@@ -115,7 +121,7 @@
         }
         if(Date.parse(sessions.at(-1).clockOut)-start>48*3600000)throw Error('INPUT_DURATION');result.clockOut=sessions.at(-1).clockOut;result.sessions=JSON.stringify(sessions);
       }return result;}
-    function send(command,fields){if(pending||stopped||completed)return;if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
+    function send(command,fields){if(pending||stopped||completed||!adminAllowed||!fields||!modes.includes(fields.mode))return;if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       const r={command,fields:Object.freeze({...fields}),nonce:random(16),key:random(32)};pending=r;clear();controls();n.status.textContent='処理中です。';
       const unknown=()=>{if(pending!==r)return;if(command==='commit')uncertain=true;clear();n.status.textContent='応答を確認できません。「内容を確認する」で結果を読み直してください。';finish();};r.timer=setTimeout(unknown,30000);
@@ -144,13 +150,14 @@
     global.addEventListener('pagehide',()=>{stopped=true;if(pending)clearTimeout(pending.timer);pending=null;draft=null;clear();clearExtras();n.receipt.textContent='';n.copy.hidden=true;for(const k of ['employee','group','day','in','out','break-start','break-end','reason'])n[k].value='';controls();});controls();
     // 一覧からの選択も既存プレビューを通す。結果不明中や保存中に別申請へ切り替えない。
     function selectRequest(employeeCode,groupId){
-      if(pending||uncertain||stopped||completed&&(!draft||draft.mode!=='REVIEW'))return false;
+      if(!modes.includes('REVIEW')||!adminAllowed||pending||uncertain||stopped||completed&&(!draft||draft.mode!=='REVIEW'))return false;
       if(!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode)||!/^chg_[a-f0-9]{32}$/.test(groupId))return false;
       completed=false;draft=null;clear();clearExtras();n.receipt.textContent='';n.copy.hidden=true;
       n.mode.value='REVIEW';n.employee.value=employeeCode;n.group.value=groupId;controls();
       try{draft=Object.freeze(input());send('preview',draft);return true;}catch(_e){return false;}
     }
-    return Object.freeze({selectRequest});
+    function setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){review=null;clear();}controls();}
+    return Object.freeze({selectRequest,setAdminAllowed});
   }
   /** 管理者用の2操作はHTMLでもdisabled。起動時の署名付き確認後だけ選択できる。保存側は毎回GASが認可。 */
   async function bootstrap(){
@@ -159,10 +166,12 @@
       await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';
-      let list=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,onApplied:()=>{if(list)list.invalidate();}});
+      const audience=document.body.dataset.audience==='admin'?'admin':'employee';
+      let list=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();}});
+      if(audience!=='admin')return; // 本人申請ページに管理一覧/起動確認を作らない。
       list=global.TlhPendingApprovals.init({liff:global.liff,gasUrl:config.gasUrl,onSelect:editor.selectRequest});
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);}});
+        onState:allowed=>{editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';}
   }

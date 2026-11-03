@@ -3,7 +3,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 import {webcrypto,createHmac} from 'node:crypto';
 const source=fs.readFileSync(new URL('../workforce/attendance-journal.js',import.meta.url),'utf8');
 function journal(){return {month:'2026-11',days:Array.from({length:30},(_,i)=>({day:'2026-11-'+String(i+1).padStart(2,'0'),clockIn:'',clockOut:'',breakMs:0,workedMs:null,state:'NO_RECORD',plannedStart:'',plannedEnd:'',plannedBreakMinutes:null,plannedWorkedMs:null,excessMs:null}))};}
-function harness({cards=false,today=false}={}){
+function harness({cards=false,today=false,audience}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let id=0;
   function el(){return {value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},
     appendChild(n){this.children.push(n);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},remove(){},
@@ -13,14 +13,22 @@ function harness({cards=false,today=false}={}){
   vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl,Date,
     document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement:el,body:el()},
     setTimeout(fn){timers.set(++id,fn);return id;},clearTimeout(k){timers.delete(k);}});
-  n('month').value='2026-11';n('mode').value='self';window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today});
+  n('month').value='2026-11';n('mode').value=audience==='admin'?'admin':'self';const viewer=window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today,audience});
   async function reply(r,code='JOURNAL_READY',j=journal(),patch={},eventPatch={}){
     const data={type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',nonce:r.nonce,action:r.action,code,journal:code==='JOURNAL_READY'?JSON.stringify(j):''};
     data.mac=createHmac('sha256',r.responseKey).update([data.type,data.nonce,data.action,data.code,data.journal].join('\n')).digest('hex');Object.assign(data,patch);
     await handlers.message({source:{parent:n('frame').contentWindow},origin:'null',data,...eventPatch});
   }
-  return {n,sent,timers,handlers,window,reply,click:()=>n('check').events.click()};
+  return {n,sent,timers,handlers,window,viewer,reply,click:()=>n('check').events.click()};
 }
+
+test('role-specific journal rejects cross-role mode and locks admin reads until verified',()=>{
+  const employee=harness({audience:'employee'});employee.n('mode').value='admin';employee.n('employee').value='EMP001';employee.click();assert.equal(employee.sent.length,0);
+  const admin=harness({audience:'admin'});admin.n('employee').value='EMP001';admin.click();assert.equal(admin.sent.length,0);assert.equal(admin.n('check').disabled,true);
+  admin.viewer.setAdminAllowed(true);admin.n('mode').value='self';admin.click();assert.equal(admin.sent.length,0);
+  admin.n('mode').value='admin';admin.click();assert.equal(admin.sent[0].mode,'admin');assert.equal(admin.sent[0].employeeCode,'EMP001');
+  admin.viewer.setAdminAllowed(false);assert.equal(admin.n('check').disabled,true);assert.equal(admin.n('table').hidden,true);
+});
 test('init sends nothing, explicit self read excludes other employee, nested signed reply renders all days',async()=>{
   const h=harness();assert.equal(h.sent.length,0);h.n('employee').value='OTHER';h.click();h.click();assert.equal(h.sent.length,1);
   assert.equal(h.sent[0].employeeCode,'');await h.reply(h.sent[0]);assert.equal(h.n('rows').children.length,30);assert.equal(h.n('table').hidden,false);

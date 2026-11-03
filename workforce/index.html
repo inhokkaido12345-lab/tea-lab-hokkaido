@@ -33,14 +33,14 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="demo-invitation.js?v=D10-20261012"></script>
+  <script src="demo-invitation.js?v=20261103-roles1"></script>
   <script src="staff-enrollment.js?v=D11-20261012"></script>
   <script src="staff-maintenance.js?v=D12-20261012"></script>
   <script src="work-state.js?v=D13-20261012"></script>
   <script src="punch.js?v=D14-20261012"></script>
   <script src="daily-summary.js?v=D15-20261012"></script>
   <script src="monthly-work-summary.js?v=D16-20261012"></script>
-  <script src="attendance-journal.js?v=20261103-sessions1"></script>
+  <script src="attendance-journal.js?v=20261103-roles1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="layout.js?v=UI2-20261103-admin1"></script>
   <script src="admin-access.js?v=20261103-1"></script>
@@ -104,8 +104,8 @@
 <!-- 管理の画面: 一般利用の打刻から、登録/訂正/停止を離して誤操作を減らす。
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><section class="card manager-intro"><p class="eyebrow">管理者用</p><h1>管理</h1><p class="subtle">各操作の権限はサーバーで確認します。</p></section>
-<section class="card"><h2>従業員の勤務記録</h2><p class="subtle">日別記録の「表示する人」で管理者を選び、社員番号を指定します。</p><a class="button primary full" href="timecard-records.html">従業員の記録を確認 →</a></section>
-<div class="menu-group"><h2 class="group-label">訂正と承認</h2><a class="menu-item" href="day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>
+<section class="card"><h2>従業員の勤務記録</h2><p class="subtle">管理者用の日別記録で、対象の社員番号を指定します。</p><a class="button primary full" href="admin-timecard-records.html">従業員の記録を確認 →</a></section>
+<div class="menu-group"><h2 class="group-label">訂正と承認</h2><a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
       <details class="enrollment-details">
       <summary>招待による従業員登録</summary>
@@ -166,6 +166,20 @@
       <div id="maintenance-status" class="detail" role="status" aria-live="polite"></div>
     </section>
     </div>
+<div id="manager-test-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><details><summary>管理者用の開発試験</summary>    <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
+    <div id="admin-demo-panel" hidden>
+    <section id="demo-section" class="demo-section" aria-live="polite" hidden>
+      <h2>管理者用のダミー発行・解除試験</h2>
+      <div class="detail">対象：D9 ダミー従業員 / DEMO-D9</div>
+      <div id="demo-status" class="detail">未確認</div>
+      <div class="demo-actions">
+        <button id="demo-issue" class="bridge-button" type="button">ダミーを事前登録して招待を発行</button>
+        <button id="demo-release" class="bridge-button" type="button">試験用ダミーを解除する</button>
+      </div>
+    </section>
+
+    </div>
+</details></div>
 <div id="more-tools-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab" hidden><section class="card"><p class="eyebrow">アカウントとサポート</p><h2>アカウントの変更・接続確認</h2><p class="subtle">招待の受取りは上の登録欄をご利用ください。LINEアカウントを変更した場合は管理者へ連絡してください。再連携受付は停止中です。</p></section>    <details class="diagnostics">
       <summary>接続診断と試験用ダミー</summary>
 
@@ -176,20 +190,12 @@
       <button id="work-state-check" class="bridge-button" type="button">自分の勤務状態を確認する</button>
     </section>
 
-    <!-- D9は固定ダミー＋発行管理者本人限定。実際の社員募集には使わない。 -->
-    <div id="admin-demo-panel" hidden>
-    <section id="demo-section" class="demo-section" aria-live="polite" hidden>
-      <h2>ダミー従業員の登録・解除試験</h2>
-      <div class="detail">対象：D9 ダミー従業員 / DEMO-D9</div>
-      <div id="demo-status" class="detail">未確認</div>
-      <div class="demo-actions">
-        <button id="demo-issue" class="bridge-button" type="button">ダミーを事前登録して招待を発行</button>
+    <!-- 試験でも自分の招待受取りは従業員側。発行/解除は管理タブに分離。秘密は共通controllerのメモリだけ。 -->
+    <section id="personal-demo-panel" hidden><h2>自分のダミー招待の受取り試験</h2>
+      <p>管理タブで試験用招待を発行した後、この画面で本人として受け取ります。実社員の登録には使いません。</p>
         <button id="demo-claim" class="bridge-button" type="button" disabled>自分のLINEで招待を受け取る</button>
-        <button id="demo-release" class="bridge-button" type="button">試験用ダミーを解除する</button>
-      </div>
+      <p id="demo-personal-status" role="status" aria-live="polite">未確認</p>
     </section>
-
-    </div>
     <section class="card" aria-live="polite">
       <div id="status-title" class="status-title">GitHub Pagesを読み込みました</div>
       <div id="status-detail" class="detail">LIFFを初期化しています。</div>
@@ -271,7 +277,7 @@
 <nav id="workforce-tabs" class="bottom-nav view-tabs" role="tablist" aria-label="利用画面" hidden>
 <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel"><span aria-hidden="true">◷</span>打刻</button>
 <button id="records-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="records-work-panel"><span aria-hidden="true">▤</span>記録</button>
-<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel"><span aria-hidden="true">▦</span>管理</button>
+<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel manager-test-panel"><span aria-hidden="true">▦</span>管理</button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
 </nav><footer class="app-footer">TLH Workforce <span>UI2</span></footer>
 </div>
@@ -342,11 +348,11 @@
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{layoutNavigation.setAdminAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;}});
+      onState:allowed=>{layoutNavigation.setAdminAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;}});
     TlhWorkforceShell.init();
     const homeDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     document.getElementById('journal-month').value = homeDay.slice(0,7);
-    TlhAttendanceJournal.init({gasUrl:GAS_URL,liff:window.liff,cards:document.getElementById('journal-cards'),today:true});
+    TlhAttendanceJournal.init({gasUrl:GAS_URL,liff:window.liff,cards:document.getElementById('journal-cards'),today:true,audience:'employee'});
     TlhDemoInvitation.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });

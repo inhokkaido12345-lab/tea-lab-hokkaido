@@ -9,7 +9,7 @@ import { createHmac, webcrypto } from 'node:crypto';
 
 function harness() {
   const handlers={}, timers=new Map(), sent=[]; let timerSeq=0;
-  const nodes=Object.fromEntries(['demo-issue','demo-claim','demo-release','demo-status'].map(id=>[id,{
+  const nodes=Object.fromEntries(['demo-issue','demo-claim','demo-release','demo-status','demo-personal-status'].map(id=>[id,{
     disabled:id==='demo-claim', textContent:'', addEventListener(type,fn){this[type]=fn;},
   }]));
   const window={addEventListener(type,fn){handlers[type]=fn;},confirm(){return true;}};
@@ -36,9 +36,11 @@ test('issue keeps token in memory, inhibits double tap, verifies HMAC then enabl
   assert.equal(h.sent.length,1);assert.equal(h.nodes['demo-claim'].disabled,true);
   const request=h.sent[0];assert.match(request.inviteToken,/^[a-f0-9]{64}$/);
   await h.reply(request,'INVITATION_READY');assert.equal(h.nodes['demo-claim'].disabled,false);
+  assert.equal(h.nodes['demo-personal-status'].textContent,h.nodes['demo-status'].textContent);
   h.nodes['demo-claim'].click();assert.equal(h.sent[1].inviteToken,request.inviteToken);
   assert.notEqual(h.sent[1].responseKey,request.responseKey);
   await h.reply(h.sent[1],'DEMO_EMPLOYEE_LINKED');
+  assert.match(h.nodes['demo-personal-status'].textContent,/紐付けが完了/);
   assert.equal(h.nodes['demo-claim'].disabled,true);assert.equal(h.timers.size,0);
 });
 test('invalid MAC, tampered code/action and unknown codes cannot enable claim',async()=>{

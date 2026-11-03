@@ -32,8 +32,9 @@ test('missing LINE proof, embedded contexts and submit failure stay locked witho
 test('all entry pages are initially locked and use a dedicated read-only gate without storage',()=>{
   const root=new URL('../workforce/',import.meta.url),read=n=>fs.readFileSync(new URL(n,root),'utf8');
   assert.match(read('index.html'),/id="manager-tab"[^>]*\bdisabled\b/);
-  assert.match(read('timecard-records.html'),/id="journal-admin-option"[^>]*\bdisabled\b/);
-  for(const id of ['change-direct-option','change-review-option'])assert.ok(new RegExp('id="'+id+'"[^>]*\\bdisabled\\b').test(read('day-change.html')));
-  for(const page of ['index.html','timecard-records.html','day-change.html'])assert.ok(read(page).includes('name="tlhAdminAccessFrame"'));
+  assert.match(read('admin-timecard-records.html'),/id="journal-admin-option"[^>]*\bdisabled\b/);
+  for(const id of ['change-direct-option','change-review-option'])assert.ok(new RegExp('id="'+id+'"[^>]*\\bdisabled\\b').test(read('admin-day-change.html')));
+  for(const page of ['index.html','admin-timecard-records.html','admin-day-change.html'])assert.ok(read(page).includes('name="tlhAdminAccessFrame"'));
+  for(const page of ['day-change.html','timecard-records.html'])assert.doesNotMatch(read(page),/admin-access\.js|pending-approvals\.js/);
   assert.doesNotMatch(read('admin-access.js'),/localStorage|sessionStorage|console\.|bridgeRecordPunch|bridgeIssueStaffInvitation/);
 });

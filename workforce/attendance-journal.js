@@ -2,6 +2,7 @@
  * 日別記録の読取専用UI。LINE→POST→固定通信枠/子孫origin・nonce/action/HMAC→表へtextContent。
  * 消すと日別ページとホームの本日記録が停止。既存punch.jsと原簿は不変。端末時計で実働を足さない。
  * UI2: initのcards/todayは表示先と選択日の指定だけ。署名/DTO検査後にrenderCards、対象変更/退場で消去。
+ * 入口: timecard-records.htmlは本人専用、admin-timecard-records.htmlは従業員管理専用。bootstrapのaudienceとHTMLを同期。
  * 概念: authenticated DTO / read model。表示する人の選択は認可ではなく、GASが毎回検証する。
  * 改造: DTOはAttendanceJournalService/Bridge/両repo試験と同期。予定超過を法定時間外へ改称しない。
  * 個人時刻・token・社員番号・鍵はPOST/メモリ限定。URL/ログ/Storageへ保存しない。
@@ -113,20 +114,23 @@
   }
   /** initは通信しない。結果/対象変更/退場で表を消し、前の人の記録を残さない。 */
   function init(options){
+    // 専用HTMLから役割を固定。管理画面で自分へ切り替えず、本人記録は従業員側から読む。
+    const adminPage=options.audience==='admin',employeePage=options.audience==='employee';
+    const modes=adminPage?['admin']:employeePage?['self']:['self','admin'];let adminAllowed=!adminPage;
     const n=Object.fromEntries(['month','mode','employee','target','check','status','table','caption','rows','frame'].map(k=>[k,document.getElementById('journal-'+k)]));
     let pending=null,stopped=false;
     const clear=()=>{n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
-    const controls=()=>{for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped;};
+    const controls=()=>{for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||!adminAllowed;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     for(const key of ['month','mode','employee'])n[key].addEventListener('input',()=>{clear();n.target.hidden=n.mode.value!=='admin';});
     n.check.addEventListener('click',()=>{
-      if(pending||stopped)return;clear();
+      if(pending||stopped||!adminAllowed)return;clear();
       // ホームの本日は操作時点で選ぶ。日跨ぎ後も起動時の月へ固定しない。保存時刻には使わない。
       let day='';if(options.today){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(p=>p.type===k).value;day=get('year')+'-'+get('month')+'-'+get('day');n.month.value=day.slice(0,7);}
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken(),month=n.month.value,mode=n.mode.value,employeeCode=mode==='admin'?n.employee.value.trim():'';
       if(!proof){n.status.textContent='LINEログインが必要です。';return;}
-      if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!['self','admin'].includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
+      if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!modes.includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
       const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day};pending=r;controls();n.status.textContent='読み込み中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
@@ -151,16 +155,19 @@
       n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();n.employee.value='';finish();});controls();
+    return Object.freeze({setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed)clear();controls();}});
   }
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');
     document.getElementById('journal-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
-      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,cards:document.getElementById('journal-cards')});
+      const audience=document.body.dataset.audience==='admin'?'admin':'employee';
+      status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,cards:document.getElementById('journal-cards')});
+      if(audience!=='admin')return;
       // 管理者モードも起動時に一度確認。本人読取と独立させ、権限確認の失敗で本人機能まで止めない。
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;}});
+        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';}
   }
