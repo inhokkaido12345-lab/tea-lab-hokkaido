@@ -30,8 +30,8 @@
     <div id="journal-target"><label for="journal-employee">社員番号</label><select id="journal-employee" required><option value="">従業員一覧を確認してください</option></select></div>
     <button id="journal-check" type="button" disabled>日別記録を更新</button></div>
     <p id="journal-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
-    <p>時刻は日本時間です。予定超過は「実働 − シフトの予定実働」の正の差で、給与用の法定時間外判定ではありません。</p>
-    <p>「予定なし」「未打刻」「勤務中」は0時間と区別します。予定は管理者が登録したシフトを使用します。</p>
+    <p>時刻は日本時間です。承認済みの訂正を反映した出退勤の実績を表示します。シフト未設定でも出力できます。</p>
+    <p>記録なしは休日の確定ではありません。未退勤の実働は未確定です。給与計算・法定時間外の確定値ではありません。</p>
     <section class="report-actions card"><h2>本社提出用の月次記録</h2><p>社員と月を選ぶと、取得時点の出退勤・休憩を一覧にします。</p><button id="report-csv" type="button" disabled>月次記録をCSV保存</button><button id="report-print" type="button" disabled>印刷・PDF保存</button><p id="report-status" role="status">記録の取得後に出力できます。</p></section>
     <section id="monthly-report" class="card" hidden><h2>月次勤務記録</h2><p id="report-title"></p><p id="report-meta"></p><p id="report-summary"></p><p class="footnote">取得時点の記録です。記録なしは休日・勤務なしの確定ではありません。未退勤の実働は未確定です。給与計算・法定時間外の確定値ではありません。</p><div class="table-scroll"><table><thead><tr><th>勤務開始日</th><th>区間</th><th>出勤（日本時間）</th><th>退勤（日本時間）</th><th>休憩開始・終了</th><th>休憩時間</th><th>実働時間</th><th>状態</th></tr></thead><tbody id="report-rows"></tbody></table></div></section>
     <div id="journal-cards"></div>
