@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto, createHmac } from 'node:crypto';
-function harness(){
+function harness({onRecorded}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let seq=0;
   const node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:true,disabled:false,textContent:'',events:{},addEventListener(type,fn){this.events[type]=fn;}});return nodes.get(id);};
   const window={top:null,confirm:()=>true,addEventListener(type,fn){handlers[type]=fn;}};window.top=window;
@@ -14,7 +14,7 @@ function harness(){
     setTimeout(fn){const id=++seq;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},
   };
   vm.runInNewContext(fs.readFileSync(new URL('../workforce/punch.js',import.meta.url),'utf8'),context);
-  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff:{getIDToken:()=> 'fake.jwt.proof'}});
+  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff:{getIDToken:()=> 'fake.jwt.proof'},onRecorded});
   const click=id=>node(id).events.click();
   async function reply(r,code,revision='',changes={},origin='null'){
     const d={type:'TLH_BRIDGE_PUNCH',action:r.action,nonce:r.nonce,code,revision};
@@ -29,6 +29,11 @@ test('initial UI sends nothing; signed closed switch never opens command buttons
   h.click('punch-check');await h.reply(h.sent[0],'PUNCH_DISABLED');assert.equal(h.node('punch-in').hidden,true);
   assert.equal(h.node('punch-status').textContent,'打刻受付は停止中です。');
   assert.deepEqual(Object.keys(h.sent[0]).sort(),['action','idToken','nonce','responseKey']);
+});
+
+test('display refresh is notified only after a matching signed saved result, never on timeout or late replay',async()=>{
+ let calls=0;const h=harness({onRecorded:()=>calls++});await h.ready();assert.equal(calls,0);h.click('punch-in');const old=h.sent[1];await h.reply(old,'PUNCH_CLOCK_IN_DONE','',{mac:'0'.repeat(64)});assert.equal(calls,0);
+ [...h.timers.values()][0]();assert.equal(calls,0);h.click('punch-retry');await h.reply(h.sent[2],'PUNCH_CLOCK_IN_DONE');assert.equal(calls,1);await h.reply(old,'PUNCH_CLOCK_IN_DONE');assert.equal(calls,1);assert.equal(h.sent.length,3);
 });
 test('HMAC and revision must match; foreign origins, non-string codes and forged pointers are ignored',async()=>{
   const h=harness();h.click('punch-check');const r=h.sent[0];

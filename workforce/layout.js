@@ -11,12 +11,12 @@
 (function(global) {
   'use strict';
   /**
-   * 引数なし。対応tab/paneへ表示イベントを登録し、従業員側を初期選択する。
+   * 任意onActivate通知を受け取り、対応tab/paneへ表示イベントを登録し、従業員側を初期選択する。
    * @return {{setAdminAllowed:Function}} 署名検査担当から管理UI表示の可否だけを受け取る。
    * @throws {Error} 必須tab/pane欠落。HTMLを同時更新せずに配布してはならない。
-   * tab移動で送信を再開/取消し/再認証しない理由は、固定retry情報と受付閉鎖を維持するため。
+   * tab移動は表示通知のみ。呼出元の初回読取と保存retryは分け、固定retry情報と受付閉鎖を維持する。
    */
-  function init() {
+  function init(options = {}) {
     // 情報設計: 実装ファイルの分類ではなく「利用者が今したいこと」で移動先を分ける。
     // 配列の順がキーボード移動の順。HTMLの見た目の並び/aria-controlsも同時に合わせる。
     const names = ['employee', 'records', 'manager', 'more'];
@@ -35,6 +35,7 @@
         tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
       });
       panes.forEach(pane => { pane.hidden = pane.dataset.workforcePane !== name; });
+      options.onActivate?.(name); // 読取開始は呼出元へ通知するだけ。保存/再送はlayoutの責務外。
     }
     tabs.forEach((tab, index) => {
       tab.addEventListener('click', () => activate(names[index]));

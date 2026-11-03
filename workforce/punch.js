@@ -94,6 +94,7 @@
         else if(!['PUNCH_UNAVAILABLE','PUNCH_NOT_SAVED','PUNCH_BUSY','WORK_STATE_BUSY'].includes(data.code)){ready=null;draft=null;}
         if(['WRITE_REVIEW_REQUIRED','WORK_STATE_REVIEW_REQUIRED','WORK_STATE_STORAGE_NOT_READY','WORK_STATE_CORRECTIONS_PENDING'].includes(data.code))blocked=true;
         finish();
+        if(r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED'))options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
       }catch(_error){/* 未検証の応答を表示しない。 */}
     });
     check.addEventListener('click',()=>{if(pending||draft||blocked)return;ready=null;controls();invoke(READ);});

@@ -38,14 +38,15 @@
   <script src="admin-overview.js?v=20261103-admin1"></script>
   <script src="staff-maintenance.js?v=20261103-loading1"></script>
   <script src="work-state.js?v=20261103-loading1"></script>
-  <script src="punch.js?v=20261103-loading1"></script>
+  <script src="punch.js?v=20261103-auto1"></script>
   <script src="daily-summary.js?v=20261103-loading1"></script>
   <script src="monthly-work-summary.js?v=20261103-loading1"></script>
-  <script src="attendance-journal.js?v=20261103-admin1"></script>
+  <script src="attendance-journal.js?v=20261103-auto1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
-  <script src="layout.js?v=UI2-20261103-admin1"></script>
+  <script src="auto-read.js?v=20261103-auto1"></script>
+  <script src="layout.js?v=20261103-auto1"></script>
   <script src="admin-access.js?v=20261103-loading1"></script>
-  <script src="labor-policy.js?v=20261103-loading1"></script>
+  <script src="labor-policy.js?v=20261103-auto1"></script>
 
   <link rel="stylesheet" href="app.css?v=20261103-admin1">
 </head>
@@ -58,7 +59,7 @@
       <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。</p>
 
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="punch-check" class="bridge-button" type="button">勤務状態を確認する ↻</button>
+      <button id="punch-check" class="bridge-button" type="button">勤務状態を更新 ↻</button>
       <div class="demo-actions">
         <button id="punch-in" class="bridge-button" type="button" hidden>出勤する →</button>
         <button id="punch-out" class="bridge-button" type="button" hidden>退勤する</button>
@@ -66,8 +67,8 @@
         <button id="punch-break-end" class="bridge-button" type="button" hidden>休憩を終了する</button>
       </div>
       <button id="punch-retry" class="bridge-button" type="button" hidden>同じ打刻を再送する</button>
-    </section><div class="day-side"><section id="home-journal-section" class="card home-journal" aria-labelledby="home-journal-title" hidden><div class="section-heading"><h2 id="home-journal-title">本日の予定と打刻</h2><button id="journal-check" type="button">記録を確認</button></div>
-<p id="journal-status" class="subtle" role="status" aria-live="polite">確認すると登録済みの予定・出退勤を読み込みます。</p><p class="footnote">確認時点の記録です。打刻後はここで更新してください。</p>
+    </section><div class="day-side"><section id="home-journal-section" class="card home-journal" aria-labelledby="home-journal-title" hidden><div class="section-heading"><h2 id="home-journal-title">本日の予定と打刻</h2><button id="journal-check" type="button">記録を更新</button></div>
+<p id="journal-status" class="subtle" role="status" aria-live="polite">ログイン後、登録済みの予定・出退勤を順に読み込みます。</p><p class="footnote">取得時点の記録です。打刻成功後は自動更新し、手動でも更新できます。</p>
 <div hidden><input id="journal-month" type="month"><select id="journal-mode"><option value="self">自分</option></select><div id="journal-target" hidden><input id="journal-employee" autocomplete="off"></div></div>
 <div id="journal-cards"></div><div class="home-table" hidden><table id="journal-table" hidden><caption id="journal-caption"></caption><tbody id="journal-rows"></tbody></table></div>
 <iframe id="journal-frame" name="tlhJournalFrame" title="本日の記録の応答" hidden></iframe></section><p class="help-line"><a class="button secondary full" href="day-change.html">自分の打刻を訂正申請</a></p></div></div></div>
@@ -76,7 +77,7 @@
 <div id="records-work-panel" data-workforce-pane="records" role="tabpanel" aria-labelledby="records-tab" hidden><div class="page-heading"><div><p class="eyebrow">勤務の振り返り</p><h1>勤務記録</h1></div></div><section class="card"><h2>日別の勤務とシフト</h2><p class="subtle">出退勤・休憩・予定との差を日ごとに確認します。</p><a class="button primary full" href="timecard-records.html">日別記録を開く →</a><a class="button secondary full" href="day-change.html">自分の打刻の訂正を申請する</a><p class="footnote">従業員本人が申請し、管理者の承認後に反映します。</p></section><section id="daily-summary-section" class="staff-section" hidden>
       <h2>今日の勤務（完了分）</h2>
       <div id="daily-summary-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="daily-summary-check" class="bridge-button" type="button">今日の勤務時間を確認する</button>
+      <button id="daily-summary-check" class="bridge-button" type="button">今日の勤務時間を更新</button>
       <div id="daily-summary-result" hidden>
         <dl class="daily-summary-values">
           <dt>出勤日<br>（日本時間）</dt><dd id="daily-summary-date"></dd>
@@ -90,7 +91,7 @@
     </section><section id="monthly-work-section" class="staff-section" hidden>
       <h2>今月の勤務（完了分）</h2>
       <div id="monthly-work-status" class="detail" role="status" aria-live="polite">未確認</div>
-      <button id="monthly-work-check" class="bridge-button" type="button">今月の勤務時間を確認する</button>
+      <button id="monthly-work-check" class="bridge-button" type="button">今月の勤務時間を更新</button>
       <div id="monthly-work-result" hidden>
         <dl class="daily-summary-values">
           <dt>出勤月<br>（日本時間）</dt><dd id="monthly-work-month"></dd>
@@ -349,13 +350,22 @@
       'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
     const BRIDGE_TIMEOUT_MS = 15000;
     // 独立controller。古い診断のnull-origin/nonceだけの受信を再利用しない。
-    const layoutNavigation = TlhWorkforceLayout.init();
+    const autoReads=TlhAutoRead.init();
+    let homeReady=false,homeAdminAllowed=false,homePane='employee';
+    function loadVisiblePane(name){
+      homePane=name;if(!homeReady)return;
+      const visible=()=>homeReady&&homePane===name;
+      if(name==='employee'){autoReads.once('punch',visible);autoReads.once('today',visible);}
+      if(name==='records'){autoReads.once('daily',visible);autoReads.once('monthly',visible);}
+      if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);autoReads.once('labor',permitted);}
+    }
+    const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
     const laborPolicyUi = TlhLaborPolicy.init({gasUrl:GAS_URL,liff:window.liff});
     const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;}});
+      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed)loadVisiblePane(homePane);}});
     TlhWorkforceShell.init();
     const homeDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     document.getElementById('journal-month').value = homeDay.slice(0,7);
@@ -364,7 +374,10 @@
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
-    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff });
+    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff, onRecorded:()=>{
+      autoReads.again('punch',()=>homeReady&&homePane==='employee');autoReads.again('today',()=>homeReady&&homePane==='employee');
+      autoReads.again('daily',()=>homeReady&&homePane==='records');autoReads.again('monthly',()=>homeReady&&homePane==='records');
+    }});
     TlhDailySummary.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhMonthlyWorkSummary.init({ gasUrl: GAS_URL, liff: window.liff });
     const bridgeSection = document.getElementById('bridge-section');
@@ -1174,7 +1187,7 @@
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
-        adminAccess.start();
+        homeReady=true;adminAccess.start();loadVisiblePane(homePane);
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;

@@ -7,14 +7,14 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
   <title>自分のアカウント情報 | TLH Workforce</title>
   <link rel="stylesheet" href="app.css?v=20261103-admin1">
-  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script defer src="account-info.js?v=20261103-loading1" data-bootstrap="true"></script>
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261103-auto1"></script>
+  <script defer src="account-info.js?v=20261103-auto1" data-bootstrap="true"></script>
 </head><body class="secondary-page">
 <header><strong>TLH Workforce</strong><a href="./">勤怠画面へ戻る</a></header>
 <main><h1>自分のアカウント情報</h1>
   <p>ログイン中のあなたの登録情報を確認します。管理者の方も、ここではご自身の情報だけを表示します。</p>
   <button id="account-info-login" type="button" hidden>LINEログイン</button>
-  <button id="account-info-check" type="button" disabled>自分のアカウント情報を確認する</button>
+  <button id="account-info-check" type="button" disabled>アカウント情報を更新</button>
   <p id="account-info-status" aria-busy="true" role="status" aria-live="polite">LINEログインを準備しています。</p>
   <section id="account-info-result" class="card" hidden aria-labelledby="account-info-heading">
     <h2 id="account-info-heading">登録情報</h2><dl id="account-info-fields" class="review-values"></dl>

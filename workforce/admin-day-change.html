@@ -9,7 +9,7 @@
 <html lang="ja"><head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
   <title>打刻の直接訂正・申請承認 | TLH Workforce</title><link rel="stylesheet" href="app.css?v=20261103-admin1">
-  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="admin-overview.js?v=20261103-admin1"></script><script defer src="admin-access.js?v=20261103-loading1"></script><script defer src="pending-approvals.js?v=20261103-admin1"></script><script defer src="day-change.js?v=20261103-admin1" data-bootstrap="true"></script>
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261103-auto1"></script><script defer src="admin-overview.js?v=20261103-admin1"></script><script defer src="admin-access.js?v=20261103-loading1"></script><script defer src="pending-approvals.js?v=20261103-auto1"></script><script defer src="day-change.js?v=20261103-auto1" data-bootstrap="true"></script>
 </head><body class="secondary-page" data-audience="admin">
 <header><strong>TLH Workforce</strong><a href="admin-timecard-records.html">日別記録へ戻る</a></header>
 <main><h1>打刻の直接訂正・申請承認</h1><button id="change-login" type="button" hidden>LINEログイン</button>
@@ -18,7 +18,7 @@
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
   <!-- 管理者だけに承認待ちを表示。カード選択は既存の内容確認へ進むだけで承認しない。 -->
-  <section id="pending-section" class="card" hidden><h2>承認待ちの申請</h2><button id="pending-load" type="button" disabled>承認待ちを確認する</button>
+  <section id="pending-section" class="card" hidden><h2>承認待ちの申請</h2><button id="pending-load" type="button" disabled>承認待ちを更新</button>
   <p id="pending-status" role="status" aria-live="polite">管理者権限の確認後に利用できます。</p><div id="pending-list" class="record-list"></div>
   <button id="pending-next" type="button" hidden disabled>続きの申請を見る</button><iframe id="pending-frame" name="tlhPendingApprovalsFrame" title="承認待ち一覧の応答" hidden></iframe></section>
   <label for="change-mode">操作</label><select id="change-mode" disabled><option id="change-direct-option" value="DIRECT" selected disabled>管理者として直接訂正</option><option id="change-review-option" value="REVIEW" disabled>管理者として申請を承認</option></select>

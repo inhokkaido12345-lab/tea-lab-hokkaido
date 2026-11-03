@@ -169,12 +169,13 @@
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
-      let list=null,overview=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();if(overview)overview.invalidateCount();}});
+      const autoReads=global.TlhAutoRead.init();let adminAllowed=false;
+      let list=null,overview=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();if(overview)overview.invalidateCount();if(list)autoReads.again('pending',()=>adminAllowed);}});
       if(audience!=='admin')return; // 本人申請ページに管理一覧/起動確認を作らない。
       overview=global.TlhAdminOverview.init({liff:global.liff,gasUrl:config.gasUrl,select:document.getElementById('change-employee'),canRefresh:()=>!document.getElementById('change-employee').disabled&&document.getElementById('change-commit').disabled});
       list=global.TlhPendingApprovals.init({liff:global.liff,gasUrl:config.gasUrl,onSelect:(code,group,name)=>overview.selectEmployee(code,name)&&editor.selectRequest(code,group),onCount:overview.setCount});
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);overview.setAllowed(allowed);}});
+        onState:allowed=>{adminAllowed=allowed;editor.setAdminAllowed(allowed);document.getElementById('change-direct-option').disabled=!allowed;document.getElementById('change-review-option').disabled=!allowed;list.setAllowed(allowed);overview.setAllowed(allowed);if(allowed){autoReads.once('overview',()=>adminAllowed);autoReads.once('pending',()=>adminAllowed);}}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }

@@ -7,7 +7,7 @@
  * 概念: authenticated DTO / read model。表示する人の選択は認可ではなく、GASが毎回検証する。
  * 改造: DTOはAttendanceJournalService/Bridge/両repo試験と同期。予定超過を法定時間外へ改称しない。
  * 個人時刻・token・社員番号・鍵はPOST/メモリ限定。URL/ログ/Storageへ保存しない。
- * 検証: attendance-journal.test.mjs→全UI回帰→LINE本人/管理者読取。自動送信/打刻/申請をしない。
+ * 検証: attendance-journal.test.mjs→全UI回帰→LINE本人/管理者読取。自動実行は読取だけ、打刻/申請をしない。
  */
 (function(global){
   'use strict';
@@ -166,11 +166,14 @@
       login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
       status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,cards:document.getElementById('journal-cards')});
-      if(audience!=='admin')return;
+      const autoReads=global.TlhAutoRead.init();let adminAllowed=false;
+      const permitted=()=>login.hidden&&(audience!=='admin'||adminAllowed&&!!document.getElementById('journal-employee').value);
+      for(const id of ['journal-month','journal-employee'])document.getElementById(id).addEventListener('change',()=>autoReads.again('journal',permitted));
+      if(audience!=='admin'){if(login.hidden)autoReads.once('journal',permitted);return;}
       const overview=global.TlhAdminOverview.init({liff:global.liff,gasUrl:config.gasUrl,select:document.getElementById('journal-employee')});
       // 管理者モードも起動時に一度確認。本人読取と独立させ、権限確認の失敗で本人機能まで止めない。
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-        onState:allowed=>{document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);overview.setAllowed(allowed);}});
+        onState:allowed=>{adminAllowed=allowed;document.getElementById('journal-admin-option').disabled=!allowed;viewer.setAdminAllowed(allowed);overview.setAllowed(allowed);}});
       if(login.hidden)gate.start();
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }

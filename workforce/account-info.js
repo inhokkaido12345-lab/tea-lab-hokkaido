@@ -45,7 +45,7 @@
       ['退職日',e?(e.terminationDate||'未登録'):'未登録'],['勤怠の従業員権限',info.permissions.workforceEmployee?'登録あり':'登録なし'],['管理者権限',info.permissions.globalAdmin?'登録あり':'登録なし']];
     fields.replaceChildren();for(const [label,value]of rows){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;fields.appendChild(dt);fields.appendChild(dd);}
   }
-  /** 明示clickだけ読取。二重tap/timeout/別frame/退場後の遅延応答で情報を復活させない。 */
+  /** 既存click経路で読取。bootstrapの自動表示/更新ボタンが同じ経路を使う。二重tap/timeout/別frame/退場後の遅延応答で情報を復活させない。 */
   function init(options){
     const n=Object.fromEntries(['check','status','result','fields','frame'].map(k=>[k,document.getElementById('account-info-'+k)]));let pending=null,stopped=false;
     const clear=()=>{n.result.hidden=true;n.fields.replaceChildren();};
@@ -74,7 +74,7 @@
     const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
     status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
-      status.textContent=login.hidden?'確認ボタンで最新の登録情報を読み込みます。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});
+      status.textContent=login.hidden?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});if(login.hidden)global.TlhAutoRead.init().once('account');
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAccountInfo=Object.freeze({init,parseInfo,verify,config});

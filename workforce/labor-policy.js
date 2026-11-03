@@ -1,6 +1,6 @@
 /**
  * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
- * 現役・管理者の労務設定要対応一覧。起動gate後の明示読取→署名/DTO検査→至急確定と解消条件を表示。
+ * 現役・管理者の労務設定要対応一覧。起動gate後の管理タブ初回表示/更新で読取→署名/DTO検査→至急確定と解消条件を表示。
  * 削除影響: 管理の点検表示だけ停止。打刻/登録/賃金/会社設定を変更しない。
  * 概念: actionable unknown / authenticated admin read。閲覧/既読を解消として保存しない。
  * 改造: parse/renderの項目はprivate LaborPolicyService/Bridge/両repoテストと同期。

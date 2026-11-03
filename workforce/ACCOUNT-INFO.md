@@ -1,6 +1,6 @@
 # 自分のアカウント情報
 
-「その他」→「自分のアカウント情報を確認」→確認ボタンで、ログイン中の本人の登録情報を読みます。管理者も同じ入口です。管理タブに本人情報を混ぜません。
+「その他」→「自分のアカウント情報を確認」→ページ表示時に、ログイン中の本人の登録情報を読みます。管理者も同じ入口です。管理タブに本人情報を混ぜません。
 
 ## 表示するもの
 
@@ -19,7 +19,7 @@
 ## 責務・削除影響・魔改造MAP
 
 - `account-info.html`は本人向けの入口。削除しても保存情報は消えません。ホームのリンクと併せて変更します。
-- `account-info.js`のinitは明示読取/通信状態、verifyはHMAC、parseInfoは許可DTO、renderは項目順と文言を担当します。消すとこの画面だけ停止します。
+- `account-info.js`のinitは既存読取イベント/通信状態、bootstrapはLINE準備後の初回自動取得、verifyはHMAC、parseInfoは許可DTO、renderは項目順と文言を担当します。消すとこの画面だけ停止します。
 - private repoの`gas/workforce/AccountInfoService.gs`は共通Accountと従業員情報を読取専用で組み合わせ、`BridgeAccountInfo.gs`は公式LINE検証/許可入力/HMAC応答を担当します。共通Account層は従業員表へ依存させません。
 - 項目追加はServiceのDTO、Bridgeの署名契約、parseInfo、render、両repoのaccount-infoテストを同時更新します。DTO全体を無検査で表示したり、Sheet行をそのまま返したりしません。
 - 見た目は既存app.cssのsecondary-page/card/review-valuesを再利用します。氏名・長いIDは文字として折り返し、innerHTMLへ入れません。

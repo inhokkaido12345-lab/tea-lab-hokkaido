@@ -13,6 +13,7 @@ const html = fs.readFileSync(new URL('../workforce/index.html', import.meta.url)
 const layout = fs.readFileSync(new URL('../workforce/layout.js', import.meta.url), 'utf8');
 async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
   const nodes = new Map(), panes = [], handlers = {}, sent = [], timers = new Map(); let timer = 0, focused = '';
+  const observers=new Set();class Observer{constructor(fn){this.fn=fn;}observe(n){this.node=n;observers.add(this);}disconnect(){observers.delete(this);}}
   // 既知の二重引用ID属性をfixtureにするだけ。HTML構文/親子関係/描画の検証ではない。
   for (const match of html.matchAll(/<[a-z][a-z0-9-]*\b([^<>]*\bid="([^"]+)"[^<>]*)>/gi)) {
     const attrs = match[1], id = match[2]; assert.ok(!nodes.has(id), 'duplicate DOM id: ' + id);
@@ -20,12 +21,13 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: /\bdisabled\b/.test(attrs), value: '', textContent: '', events: {}, contentWindow:{},
       dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
       addEventListener(type, fn) { this.events[type] = fn; },
-      setAttribute(name, value) { this.attributes[name] = value; }, replaceChildren() {}, appendChild() {}, focus() { focused = id; } };
+      setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();}, replaceChildren() {}, appendChild() {}, focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
   }
   const node = id => { assert.ok(nodes.has(id), 'missing actual DOM id: ' + id); return nodes.get(id); };
+  node('journal-mode').value='self'; // 実HTMLの唯一のoptionが初期選択される。
   const diagnostics = { open: false };
-  const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,
+  const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,MutationObserver:Observer,
     location: { origin: 'https://tealabhokkaido.com', pathname: '/workforce/' },
     confirm: () => false,
     liff: { init: async () => {}, isLoggedIn: () => loggedIn, isInClient: () => true, getIDToken: () => proof },
@@ -61,12 +63,13 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
       data.mac = createHmac('sha256', request.responseKey).update(
         [data.type, data.nonce, data.action, data.code, data.revision].join('\n')).digest('hex');
       for (const fn of handlers.message) await fn({ origin: 'null', data });
+      await new Promise(resolve=>setImmediate(resolve));
     },
   };
 }
 
-test('LIFF-ready defaults to employee and sends exactly one read-only management check', async () => {
-  const h = await harness(); assert.equal(h.sent.length, 1);assert.equal(h.sent[0].action,'bridgeCheckStaffEnrollment');assert.equal(h.node('manager-tab').disabled,true); assert.equal(h.node('workforce-tabs').hidden, false);
+test('LIFF-ready defaults to employee, sends one role check and reads visible punch state automatically', async () => {
+  const h = await harness(); assert.equal(h.sent.length, 2);assert.equal(h.sent[0].action,'bridgeCheckStaffEnrollment');assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');assert.equal(h.node('manager-tab').disabled,true); assert.equal(h.node('workforce-tabs').hidden, false);
   assert.equal(h.node('punch-section').hidden, false); assert.equal(h.node('employee-work-panel').hidden, false);
   assert.equal(h.node('manager-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
@@ -78,7 +81,7 @@ test('tabs change only wrapper visibility, not permissions, pending values, comm
   h.click('manager-tab'); assert.equal(h.node('manager-registration-panel').hidden, false);
   assert.equal(h.node('employee-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   assert.equal(h.node('staff-issued-code').value, 'fake-private-draft'); assert.equal(h.node('staff-check').disabled, true);
-  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 2);assert.equal(h.sent[1].action,'bridgeGetAdminOverview');
+  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 3);assert.equal(h.sent[2].action,'bridgeGetAdminOverview');
 });
 test('arrow/Home/End navigation maintains selected tab, focus and tab stop; other keys are untouched', async () => {
   const h = await harness();await h.replyAccess(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'records-tab');
@@ -89,13 +92,13 @@ test('arrow/Home/End navigation maintains selected tab, focus and tab stop; othe
   assert.equal(h.key('employee-tab', 'ArrowLeft'), true); assert.equal(h.focused(), 'more-tab');
   assert.equal(h.key('manager-tab', 'Tab'), false);
 });
-test('four destinations expose only their wrappers and keep read-only navigation free of requests', async () => {
+test('four destinations expose only their wrappers and queue lazy reads without duplicating pending requests', async () => {
   const h = await harness();await h.replyAccess();
   h.click('records-tab');assert.equal(h.node('records-work-panel').hidden,false);assert.equal(h.node('employee-work-panel').hidden,true);
   h.click('more-tab');assert.equal(h.node('employee-registration-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,false);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('records-work-panel').hidden,true);
   h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
-  assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetAdminOverview');
+  assert.equal(h.sent.length,3);assert.equal(h.sent[2].action,'bridgeGetAdminOverview');
 });
 
 test('developer demo also separates manager issue/release from personal invitation claim',async()=>{
@@ -104,7 +107,7 @@ test('developer demo also separates manager issue/release from personal invitati
   assert.match(admin,/id="demo-issue"/);assert.match(admin,/id="demo-release"/);assert.doesNotMatch(admin,/id="demo-claim"/);
   const personal=html.slice(html.indexOf('<section id="personal-demo-panel"'),html.indexOf('<section class="card" aria-live="polite">',html.indexOf('<section id="personal-demo-panel"')));
   assert.match(personal,/id="demo-claim"/);assert.doesNotMatch(personal,/id="demo-(?:issue|release)"/);
-  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,2);
+  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,3);
 });
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {
@@ -118,7 +121,7 @@ test('signed closed-reception response stays closed through view changes and doe
   await h.replyPunch('PUNCH_DISABLED'); h.click('manager-tab'); h.click('employee-tab');
   assert.equal(h.node('punch-status').textContent, '打刻受付は停止中です。');
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
-  assert.equal(h.sent.length, 2); assert.equal(h.sent[1].action, 'bridgeGetPunchReadiness');
+  assert.equal(h.sent.length, 3); assert.equal(h.sent[1].action, 'bridgeGetPunchReadiness');assert.equal(h.sent[2].action,'bridgeGetAttendanceJournalV2');
 });
 test('layout source cannot send, store, authorize, expose secret values or overwrite controller controls', () => {
   assert.ok(!/\b(?:fetch|XMLHttpRequest|localStorage|sessionStorage|liff|crypto|submit|confirm)\s*[.(]/.test(layout));
@@ -133,5 +136,5 @@ test('employee cannot click or keyboard into management and a thousand tab attem
   for(let i=0;i<1000;i++){h.click('manager-tab');h.key('records-tab','ArrowRight');}
   assert.equal(h.node('manager-tab').disabled,true);assert.equal(h.node('manager-tools-panel').hidden,true);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('admin-demo-panel').hidden,true);
-  assert.equal(h.focused(),'more-tab');assert.equal(h.sent.length,1);
+  assert.equal(h.focused(),'more-tab');assert.equal(h.sent.length,2);
 });
