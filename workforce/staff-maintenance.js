@@ -93,10 +93,11 @@
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });
       document.body.appendChild(form);
-      try{form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();}finally{form.remove();}
     }
     function invoke(action,fields){send(action,fields).catch(()=>{if(stopped)return;status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();});}
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const request=pending;
       if(stopped||!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{

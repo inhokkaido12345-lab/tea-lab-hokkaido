@@ -107,7 +107,7 @@
         const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; form.appendChild(input);
       });
       document.body.appendChild(form);
-      try { form.submit(); } catch (_error) { unknown(); } finally { form.remove(); }
+      try { if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit(); } catch (_error) { unknown(); } finally { form.remove(); }
     }
     n.submit.addEventListener('click', () => {
       if (pending || userActive || uncertain || stopped) return;
@@ -153,6 +153,7 @@
       catch (_error) { n.status.textContent = 'コピーできませんでした。'; }
     });
     global.addEventListener('message', async event => {
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const request = pending;
       if (!request || !isResponseFrame(event.source, n.frame.contentWindow) ||
           !(['null','https://script.google.com','https://script.googleusercontent.com'].includes(event.origin) ||
@@ -197,7 +198,8 @@
       await global.liff.init({ liffId: config.liffId });
       login.hidden = global.liff.isLoggedIn();
       status.textContent = login.hidden ? 'LINE本人確認の準備ができました。' : 'LINEログインが必要です。';
-      login.addEventListener('click', () => global.liff.login({ redirectUri: global.location.origin + global.location.pathname }));
+      login.addEventListener('click', () => global.liff.login({ redirectUri: global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin + global.location.pathname }));
+      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       init({ liff: global.liff, gasUrl: config.gasUrl });
     } catch (_error) { status.textContent = 'LINEログインを準備できません。ページを開き直してください。'; } finally { status.setAttribute?.('aria-busy','false'); }
   }

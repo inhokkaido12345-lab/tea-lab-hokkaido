@@ -60,9 +60,10 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;clear();n.status.textContent='応答を確認できません。もう一度確認する場合は確認ボタンを押してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAccountInfoFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
-      document.body.appendChild(form);try{form.submit();}catch(_e){clear();n.status.textContent='登録情報を取得できませんでした。';finish();}finally{form.remove();}
+      document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='登録情報を取得できませんでした。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const r=pending;if(!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r)return;
       const d=event.data;if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;render(n.fields,info);n.result.hidden=false;}
@@ -73,7 +74,8 @@
   async function bootstrap(){
     const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
     status.setAttribute?.('aria-busy','true');
-    try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
+    try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname}));
+      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       status.textContent=login.hidden?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});if(login.hidden)global.TlhAutoRead.init().once('account');
     }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }

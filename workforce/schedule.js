@@ -157,10 +157,11 @@
       const r={...request,nonce:random(16),key:random(32)};pending=r;if(r.command==='read')clear();controls();n.status.textContent='通信中です。';
       const unknown=()=>{if(pending!==r)return;if(r.command!=='read')uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='read'?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhScheduleFrame';form.hidden=true;
-      Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{form.submit();}catch(_e){unknown();}finally{form.remove();}
+      Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     async function read(){if(pending||stopped)return;await send({command:'read',input:JSON.stringify({month:n.month.value,...(n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const r=pending,d=event.data;if(!r||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       if(!d||d.type!==TYPE||d.action!==ACTION||d.command!==r.command||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.data!=='string'||d.data.length>1500000||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac))return;
       let ok=false;try{const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.key),{name:'HMAC',hash:'SHA-256'},false,['verify']);ok=await crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),v=>parseInt(v,16)),enc.encode([TYPE,ACTION,d.command,d.nonce,d.code,d.data].join('\n')));}catch(_e){}if(!ok||pending!==r||stopped)return;
@@ -194,8 +195,9 @@
   global.TlhSchedule=Object.freeze({init,validate});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
     const login=document.getElementById('schedule-login'),status=document.getElementById('schedule-status');
-    login.addEventListener('click',()=>global.liff.login());
+    login.addEventListener('click',()=>global.liff.login({redirectUri:global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname}));
     try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){login.hidden=false;status.textContent='LINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
+      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       document.getElementById('schedule-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date());
       document.getElementById('schedule-scope').value=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',day:'numeric'}).format(new Date()))<=15?'FIRST':'SECOND';
       const ui=init({gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec',liff:global.liff,audience:document.body.dataset.audience});await ui.read();

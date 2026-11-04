@@ -102,10 +102,11 @@
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });
       document.body.appendChild(form);
-      try{form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     }
     const invoke=(action,fields)=>send(action,fields).catch(()=>{if(stopped)return;status.textContent='安全な送信を開始できませんでした。';finish();});
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const request=pending;
       if(stopped||!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{
@@ -123,6 +124,8 @@
         }
         if(data.code==='STAFF_REGISTERED'||data.code==='STAFF_ALREADY_REGISTERED'){
           registered=true;nodes['staff-claim-code'].value='';
+          // 成功codeで権限を昇格しない。明示的に店舗を開き直して公式本人＋最新所属を再検査。
+          global.TlhTenantSession?.enrollmentCompleted?.();
         }
         if(data.code==='WRITE_REVIEW_REQUIRED'||data.code==='STAFF_STORAGE_NOT_READY'){
           blocked=true;nodes['staff-issued-code'].value='';nodes['staff-invite-box'].hidden=true;

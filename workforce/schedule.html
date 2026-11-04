@@ -5,9 +5,15 @@
      改造はSCHEDULE.md/DESIGN.md、対のHTML、GAS Service/Bridge、両repoテストを同期。
      理由/予定/本人情報はURL・Storage・ログに出さず、返信は署名検査後にtextContentへ。 -->
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>シフト・希望の提出 | TLH Workforce</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261103-palette1"><link rel="stylesheet" href="schedule.css?v=20261104-periods">
-<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261104-periods"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261104-periods"></script><script defer src="schedule.js?v=20261104-periods" data-bootstrap="true"></script>
+<title>シフト・希望の提出 | TLH Workforce</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-company1"><link rel="stylesheet" href="schedule.css?v=20261104-periods">
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="tenant-session.js?v=20261105-company1"></script><script defer src="auto-read.js?v=20261104-periods"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261105-company1"></script><script defer src="schedule.js?v=20261105-company1" data-bootstrap="true"></script>
 </head><body class="secondary-page schedule-page" data-audience="employee"><header><strong>TLH Workforce</strong><a href="index.html">アプリへ戻る</a></header>
+<section id="workplace-banner" class="workplace-context" aria-label="利用する店舗" aria-busy="false">
+  <div><span class="workplace-eyebrow">タイムカードの店舗</span><strong id="workplace-name">店舗は本人確認後に表示します</strong><span id="workplace-company"></span></div>
+  <div class="workplace-chooser"><label for="workplace-select">店舗を選ぶ</label><select id="workplace-select"><option value="">店舗は未確認です</option></select><button id="workplace-switch" type="button" disabled>店舗を切り替える</button></div>
+  <p id="workplace-status" role="status" aria-live="polite">本人確認後に、利用できる店舗を確認します。</p>
+  <iframe id="workplace-frame" name="tlhCompanyContextFrame" title="利用できる店舗の確認応答" hidden></iframe>
+</section>
 <main><div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>シフト・希望の提出</h1></div></div>
 <button id="schedule-login" type="button" hidden>LINEログイン</button>
 <div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>対象の期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" disabled>最新の状態に更新</button></div>
