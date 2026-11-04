@@ -11,7 +11,8 @@ import { webcrypto, createHmac } from 'node:crypto';
 
 const html = fs.readFileSync(new URL('../workforce/index.html', import.meta.url), 'utf8');
 const layout = fs.readFileSync(new URL('../workforce/layout.js', import.meta.url), 'utf8');
-async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
+async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = true, initFailure = false, loginFailure = false } = {}) {
+  const loginCalls=[];let reloads=0;
   const nodes = new Map(), panes = [], handlers = {}, sent = [], timers = new Map(); let timer = 0, focused = '';
   const observers=new Set();class Observer{constructor(fn){this.fn=fn;}observe(n){this.node=n;observers.add(this);}disconnect(){observers.delete(this);}}
   // 既知の二重引用ID属性をfixtureにするだけ。HTML構文/親子関係/描画の検証ではない。
@@ -28,9 +29,10 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
   node('journal-mode').value='self'; // 実HTMLの唯一のoptionが初期選択される。
   const diagnostics = { open: false };
   const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,MutationObserver:Observer,
-    location: { origin: 'https://tealabhokkaido.com', pathname: '/workforce/' },
+    location: { origin: 'https://tealabhokkaido.com', pathname: '/workforce/',reload(){reloads++;} },
     confirm: () => false,
-    liff: { init: async () => {}, isLoggedIn: () => loggedIn, isInClient: () => true, getIDToken: () => proof },
+    liff: { init: async () => {if(initFailure)throw Error('fixture init failure');}, isLoggedIn: () => loggedIn, isInClient: () => inClient, getIDToken: () => proof,
+      login(options){loginCalls.push(JSON.parse(JSON.stringify(options)));if(loginFailure)throw Error('fixture login failure');} },
     setTimeout(fn) { const id = ++timer; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { (handlers[type] ||= []).push(fn); },
     document: { getElementById: node,
@@ -49,7 +51,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; assert.equal(inline.length, 1);
   vm.runInNewContext(inline[0][1], context);
   await new Promise(resolve => setImmediate(resolve));
-  return { node, panes, context, diagnostics, sent, timers, focused: () => focused,
+  return { node, panes, context, diagnostics, sent, timers,loginCalls,reloads:()=>reloads, focused: () => focused,
     depart(){for(const fn of handlers.pagehide||[])fn();},
     click(id) { node(id).events.click(); },
     key(id, key) { let prevented = false; node(id).events.keydown({ key, preventDefault() { prevented = true; } }); return prevented; },
@@ -74,6 +76,29 @@ test('LIFF-ready defaults to employee, sends one role check and reads visible pu
   assert.equal(h.node('punch-section').hidden, false); assert.equal(h.node('employee-work-panel').hidden, false);
   assert.equal(h.node('manager-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
+});
+
+test('external first launch offers explicit LINE login without loops, saved tokens, or business requests',async()=>{
+  const h=await harness({loggedIn:false,inClient:false});
+  assert.equal(h.node('home-line-login').hidden,false);assert.equal(h.node('home-line-login').disabled,false);
+  assert.equal(h.node('workforce-tabs').hidden,true);assert.equal(h.sent.length,0);assert.equal(h.loginCalls.length,0);
+  h.context.location.search='?code=private';h.context.location.hash='#private';
+  h.click('home-line-login');h.click('home-line-login');
+  assert.deepEqual(h.loginCalls,[{redirectUri:'https://tealabhokkaido.com/workforce/'}]);
+  assert.equal(h.sent.length,0);assert.equal(h.node('home-line-login').disabled,true);
+  h.depart();h.click('home-line-login');assert.equal(h.loginCalls.length,1);
+});
+
+test('login return uses normal startup; SDK failure and LIFF-internal state never offer unsupported login',async()=>{
+  const returned=await harness({inClient:false});
+  assert.equal(returned.node('home-line-login').hidden,true);assert.equal(returned.loginCalls.length,0);
+  assert.equal(returned.sent[0].action,'bridgeCheckStaffEnrollment');
+  assert.equal(returned.sent[1].action,'bridgeGetPunchReadiness');assert.equal(returned.node('manager-tab').disabled,true);
+  for(const options of [{loggedIn:false,inClient:true},{loggedIn:false,inClient:false,initFailure:true}]){
+    const h=await harness(options);assert.equal(h.node('home-line-login').hidden,true);h.click('home-line-login');assert.equal(h.loginCalls.length,0);assert.equal(h.sent.length,0);
+  }
+  const failed=await harness({loggedIn:false,inClient:false,loginFailure:true});failed.click('home-line-login');
+  assert.equal(failed.node('home-line-login').disabled,false);assert.equal(failed.sent.length,0);
 });
 test('tabs change only wrapper visibility, not permissions, pending values, command visibility or form content', async () => {
   const h = await harness();await h.replyAccess(); h.node('staff-issued-code').value = 'fake-private-draft'; h.node('staff-check').disabled = true;

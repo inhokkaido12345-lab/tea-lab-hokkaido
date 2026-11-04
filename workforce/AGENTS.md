@@ -1,5 +1,7 @@
 # Workforceの恒常ルール
 
+外部ホーム/PWAの未ログインはhome-line-loginを本人が押してliff.loginへ進む。SDK初期化成功・外部・未ログインのときだけ表示。自動redirect/独自認可URL/無限再試行は足さない。redirectUriはorigin+pathnameだけ、query/hash/tokenはコピーしない。pagehide後の押下を拒否。帰還後は同じstart/最新GAS認可。layout.testの未ログイン/復帰/SDK失敗/連打/離脱とPWA.mdを同期。
+
 このWorkの対象は従業員情報・出退勤・シフト管理Web。POS/顧客向けサイトは別プロジェクト。ホームはSTARTUP.mdの本文→18外部script→既存起動の順序を維持。PWA準備はmanifest/静的アイコンだけで、Service Worker/個人情報の端末保存/オフライン打刻は追加していない。PWA.mdとtests/pwa-preparation・startup-loadingで範囲を検査する。
 
 シフトタブはカレンダー/本人申請を直接表示。前半1〜15日・後半16日〜月末で締切/公開/版を独立管理します。ホームはLIFFを再初期化せず、既存auto-readのscheduleキーで読取だけを初回開始。受付状態はフォーム外へ説明し、確定後は変更案/本人同意/承認で編集できます。詳しくは[SCHEDULE.md](SCHEDULE.md)。
