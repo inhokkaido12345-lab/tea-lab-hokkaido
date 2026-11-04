@@ -18,7 +18,8 @@ test('timeout, revoked UI permission and departure clear business details and ig
  h.click();const fresh=h.sent[1];h.api.setAllowed(false);await h.reply(fresh);assert.equal(h.n('section').hidden,true);assert.equal(h.n('source').textContent,'');h.api.setAllowed(true);h.click();h.handlers.pagehide();await h.reply(h.sent[2]);assert.equal(h.n('list').children.length,0);
 });
 test('urgent card belongs to management and public source contains no company-specific answers or dismiss action',()=>{
- const h=laborPolicyHarness(),html=fs.readFileSync(new URL('../workforce/index.html',import.meta.url),'utf8'),manager=html.slice(html.indexOf('<div id="manager-tools-panel"'),html.indexOf('<section id="staff-section"'));
+ const h=laborPolicyHarness(),html=fs.readFileSync(new URL('../workforce/index.html',import.meta.url),'utf8'),manager=html.slice(html.indexOf('<div id="manager-support-panel"'),html.indexOf('<div id="more-tools-panel"'));
+ assert.match(manager,/data-workforce-pane="manager"/);assert.ok(html.indexOf('id="manager-support-panel"')>html.indexOf('id="manager-maintenance-panel"'));
  assert.match(manager,/id="labor-policy-section"/);assert.match(manager,/至急確認/);assert.match(manager,/name="tlhLaborPolicyFrame"/);
  assert.doesNotMatch(h.source,/NOT_CONCLUDED_OR_FILED|2026-11-03|localStorage|sessionStorage|console\.|innerHTML|bridgeRecordPunch/);
 });

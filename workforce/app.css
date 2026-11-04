@@ -1571,6 +1571,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   }
 }
 
+/* 管理の業務選択。色とaria-pressedで選択を示す。hidden/disabledの解除はCSSで行わない。
+ * 追加時はlayout.jsのcategories/groups、HTMLのaria-controls、配置テストと使い方を同期。 */
+.manager-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:24px 0; }
+#manager-sections button { min-width:0; padding:12px 8px; font:inherit; font-weight:600; background:var(--paper); color:var(--teal); border:1px solid var(--line); border-radius:8px; }
+#manager-sections button[aria-pressed="true"] { background:var(--teal); color:var(--paper); border-color:var(--teal); }
+#manager-sections button:focus-visible { outline:3px solid var(--muted); outline-offset:3px; }
+#manager-sections .approval-badge { vertical-align:middle; }
+@media(max-width:450px) { .manager-sections { gap:6px; }#manager-sections button { font-size:13px; padding:12px 4px; } }
+
 /* 本社提出用。画面の確認と印刷だけを担当し、元の打刻や受付設定を変更しない。
  * 削除すると印刷に操作欄が混ざる。列を変える時はmonthly-report.js/theadと同期する。 */
 #monthly-report { margin:20px 0; }
