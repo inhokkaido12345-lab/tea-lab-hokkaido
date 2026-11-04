@@ -14,10 +14,10 @@
   // periodsは予定休憩、workIntervalsは用事を含めて重複を除いた予定区間。両者を足して二重加算しない。
   // 空の日を推測で休日にしない。社員ごとの未設定日も、空欄から勤務なしと断定してはならない。
   if(!s||s.phase!=='PUBLISHED'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(s.month)||!s.publishedAt||!Number.isFinite(Date.parse(s.publishedAt))||!Array.isArray(s.plans)||!Array.isArray(s.events))throw Error('SCHEDULE_REPORT_INVALID');
-  const count=new Date(Date.UTC(Number(s.month.slice(0,4)),Number(s.month.slice(5)),0)).getUTCDate(),rows=[];
+  const range=global.TlhScheduleView.periodRange(s.month,s.period),first=Number(range.start.slice(8)),count=Number(range.end.slice(8)),rows=[];
   const plansByDay=global.TlhScheduleView.groupByDay(s.plans);
   const eventsByDay=global.TlhScheduleView.groupByDay(s.events);
-  for(let i=1;i<=count;i++){
+  for(let i=first;i<=count;i++){
    const day=s.month+'-'+String(i).padStart(2,'0');
    const label=day+'（'+'日月火水木金土'[new Date(day+'T00:00:00Z').getUTCDay()]+'）';
    const event=(eventsByDay.get(day)||[])
@@ -40,11 +40,11 @@
     ]);
    }
   }
-  return{month:s.month,publishedAt:s.publishedAt,rows};
+  return{month:s.month,period:s.period||'MONTH',rangeStart:range.start,rangeEnd:range.end,publishedAt:s.publishedAt,rows};
  }
  // CSVは引用符だけでは数式実行を防げない。氏名/公開メモにも式の開始文字が入り得る。
  function cell(v){let s=String(v);if(/^[\s\uFEFF]*[=+\-@]/u.test(s))s="'"+s;return'"'+s.replaceAll('"','""')+'"';}
- function csv(r){return'\uFEFF'+[['対象月','確定シフト最終更新（日本時間）',...headers],...r.rows.map(row=>[r.month,stamp(r.publishedAt),...row])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
+ function csv(r){return'\uFEFF'+[['対象月','対象期間','確定シフト最終更新（日本時間）',...headers],...r.rows.map(row=>[r.month,r.rangeStart+'〜'+r.rangeEnd,stamp(r.publishedAt),...row])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
  function init(){
   // build（純粋な列変換）とinit（ブラウザの保存/印刷）を分離し、Googleやプリンターなしで計算を検査する。
   // URLはCSVの一時メモリ参照。clear時に解放し、再読取/退場後に旧社員情報を持ち越さない。
@@ -53,7 +53,7 @@
   function clearTable(){tableReady=false;n.report.hidden=true;n['report-rows'].replaceChildren();}
   function setEnabled(yes){enabled=yes===true&&!stopped&&!!report;n.print.disabled=!enabled;n.csv.disabled=!enabled;if(!enabled)clearTable();}
   function clear(){report=null;setEnabled(false);clearTable();n['report-title'].textContent='';n['report-meta'].textContent='';if(url){URL.revokeObjectURL(url);url=null;}n['export-status'].textContent='確定シフトの取得後に出力できます。';}
-  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);n['report-title'].textContent='TLH 確定シフト '+report.month;n['report-meta'].textContent='最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
+  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);n['report-title'].textContent='TLH 確定シフト '+report.month+' '+({FIRST:'前半',SECOND:'後半',MONTH:'月全体'}[report.period]);n['report-meta'].textContent='対象期間：'+report.rangeStart+'〜'+report.rangeEnd+'／最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
    setEnabled(true);n['export-status'].textContent='確定公開済みの共有情報だけを出力します。PDF・CSVを保存してLINEやメールへ添付できます。';
   }
   function preparePrint(){
@@ -69,7 +69,7 @@
   global.addEventListener('beforeprint',preparePrint);
   global.addEventListener('afterprint',clearTable);
   n.print.addEventListener('click',()=>{if(!enabled)return;try{if(typeof global.print!=='function')throw Error('PRINT_UNAVAILABLE');preparePrint();global.print();}catch(_e){clearTable();n['export-status'].textContent='印刷を開けません。CSV保存、または印刷できるブラウザで開き直してPDF保存してください。';}});
-  n.csv.addEventListener('click',()=>{if(!enabled)return;try{if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(new Blob([csv(report)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='shift_'+report.month+'.csv';document.body.appendChild(a);a.click();a.remove();n['export-status'].textContent='CSVの保存を開始しました。保存先と内容を確認してください。';}catch(_e){n['export-status'].textContent='CSVを保存できません。印刷・PDF保存を試してください。';}});
+  n.csv.addEventListener('click',()=>{if(!enabled)return;try{if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(new Blob([csv(report)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='shift_'+report.month+(report.period==='MONTH'?'':'_'+report.period)+'.csv';document.body.appendChild(a);a.click();a.remove();n['export-status'].textContent='CSVの保存を開始しました。保存先と内容を確認してください。';}catch(_e){n['export-status'].textContent='CSVを保存できません。印刷・PDF保存を試してください。';}});
   global.addEventListener('pagehide',()=>{stopped=true;clear();});clear();return Object.freeze({clear,setShared,setEnabled});
  }
  global.TlhScheduleReport=Object.freeze({init,build,csv});

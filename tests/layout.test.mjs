@@ -147,6 +147,8 @@ test('shift tab contains viewing and personal requests; administration moves to 
  h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');
  assert.equal(h.node('manager-attendance-panel').hidden,false);h.click('manager-schedule-choice');assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,true);
  const shift=html.slice(html.indexOf('<div id="schedule-work-panel"'),html.indexOf('<div id="manager-tools-panel"'));assert.doesNotMatch(shift,/admin-schedule.html|schedule-admin-entry/);
+ assert.match(shift,/id="schedule-calendar"/);assert.match(shift,/id="schedule-editor"/);assert.match(shift,/id="schedule-scope"/);assert.doesNotMatch(shift,/href="schedule.html"/);
+ assert.match(html,/if\(name==='schedule'\)\{autoReads.once\('schedule',visible\);\}/);
 });
 
 test('leaving closes the shift administration entry; late authorization cannot reopen it',async()=>{

@@ -10,7 +10,7 @@
 (function(global){'use strict';
   const reads=Object.freeze({punch:['punch-check','punch-status'],today:['journal-check','journal-status'],journal:['journal-check','journal-status'],
     daily:['daily-summary-check','daily-summary-status'],monthly:['monthly-work-check','monthly-work-status'],account:['account-info-check','account-info-status'],
-    pending:['pending-load','pending-status'],labor:['labor-policy-check','labor-policy-status'],enrollment:['staff-check','staff-status'],overview:[null,'admin-overview-status']});
+    schedule:['schedule-refresh','schedule-status'],pending:['pending-load','pending-status'],labor:['labor-policy-check','labor-policy-status'],enrollment:['staff-check','staff-status'],overview:[null,'admin-overview-status']});
   function init(){
     let stopped=false,running=false,observer=null,release=null,restoring=false;const seen=new Set(),queue=[];
     // 戻る/進むのbfcacheはJSの停止状態や古い認可も復元する。再送せず新しいGETで起動し直す。

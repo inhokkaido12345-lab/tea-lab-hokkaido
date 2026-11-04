@@ -29,5 +29,11 @@
     }).join(separator);
   }
 
-  global.TlhScheduleView=Object.freeze({groupByDay,workText});
+  /** 前半/後半の表示範囲。MONTHは既存の月全体データを読む互換モード。 */
+  function periodRange(month,period='MONTH'){
+    const last=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5)),0)).getUTCDate();
+    return {start:month+(period==='SECOND'?'-16':'-01'),end:month+'-'+String(period==='FIRST'?15:last).padStart(2,'0')};
+  }
+
+  global.TlhScheduleView=Object.freeze({groupByDay,workText,periodRange});
 })(window);

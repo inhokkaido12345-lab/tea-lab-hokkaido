@@ -1,5 +1,24 @@
 import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{scheduleUiHarness,snapshot}from'./helpers/schedule-harness.mjs';
 
+test('period-bound employee form displays availability and sends selected half without a second open-page action',async()=>{
+ const h=scheduleUiHarness(),s={...h.snapshot(),period:'FIRST',rangeStart:'2026-11-01',rangeEnd:'2026-11-15'};h.n('scope').value='FIRST';await h.api.read();await h.reply(h.sent[0],s);
+ assert.equal(h.n('save').disabled,false);assert.match(h.n('availability').textContent,/送信できます/);assert.equal(h.n('calendar').children.filter(n=>n.className==='schedule-day').length,15);
+ h.n('day').value='2026-11-16';h.n('reason').value='希望';h.click('save');assert.equal(h.sent.length,1);assert.match(h.n('status').textContent,/期間に含まれる/);
+ h.n('day').value='2026-11-05';h.click('save');assert.equal(JSON.parse(h.sent[1].input).period,'FIRST');
+});
+test('unconfigured and closed periods explain disabled submission; annual leave remains separately available',async()=>{
+ for(const phase of ['NOT_OPEN','DRAFT','COLLECTING']){
+  const h=scheduleUiHarness(),s={...h.snapshot(),phase,deadline:phase==='COLLECTING'?'2026-11-03T00:00:00.000Z':''};await h.api.read();await h.reply(h.sent[0],s);
+  assert.equal(h.n('save').disabled,true);assert.match(h.n('availability').textContent,phase==='NOT_OPEN'?/未設定/:phase==='DRAFT'?/開始していません/:/締切済み/);
+  if(phase!=='NOT_OPEN'){h.n('leave').value='PAID';h.n('leave').events.change();assert.equal(h.n('save').disabled,false);}
+ }
+});
+test('a signed reply for another half is ignored and second-half calendar starts on the sixteenth',async()=>{
+ const h=scheduleUiHarness();h.n('scope').value='SECOND';await h.api.read();const s={...h.snapshot(),period:'FIRST',rangeStart:'2026-11-01',rangeEnd:'2026-11-15'};
+ await h.reply(h.sent[0],s);assert.equal(h.n('editor').disabled,true);await h.reply(h.sent[0],{...s,period:'SECOND',rangeStart:'2026-11-16',rangeEnd:'2026-11-30'});
+ assert.equal(h.n('day').min,'2026-11-16');assert.equal(h.n('day').value,'2026-11-16');assert.equal(h.n('calendar').children.filter(n=>n.className==='schedule-day').length,15);
+});
+
 test('admin can compose first draft with no collection; public/private notes stay distinct through submission and departure',async()=>{
  const h=scheduleUiHarness('admin'),s={...h.snapshot(),phase:'NOT_OPEN',monthRevision:0,deadline:''};await h.api.read();await h.reply(h.sent[0],s);assert.equal(h.n('editor').disabled,false);assert.equal(h.n('publish').disabled,true);
  h.n('employee').value='SCH001';h.n('public-note').value='地元に帰省';h.n('note').value='非公開の事情';h.click('save');const p=JSON.parse(h.sent[1].input).plan;assert.equal(p.publicNote,'地元に帰省');assert.equal(p.note,'非公開の事情');h.events.pagehide();assert.equal(h.n('public-note').value,'');

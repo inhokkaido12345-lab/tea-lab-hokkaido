@@ -44,3 +44,14 @@
  #schedule-report th,#schedule-report td{padding:5px;border:1px solid #bbb;white-space:pre-line;vertical-align:top;overflow-wrap:anywhere}
  #schedule-report thead{display:table-header-group}#schedule-report tr{break-inside:avoid}
 }
+
+/* ホーム内のシフトも専用共有表だけを印刷。打刻/管理/診断や本人の入力欄を混ぜない。 */
+@media print{
+ .schedule-host-page,.schedule-host-page .app{background:#fff;color:#000;box-shadow:none;border:0}
+ .schedule-host-page .app>:not(main){display:none!important}
+ .schedule-host-page main>*{display:none!important}
+ .schedule-host-page .app,.schedule-host-page main{max-width:none;width:auto;margin:0;padding:0}
+ .schedule-host-page main>#schedule-work-panel:not([hidden]){display:block!important}
+ .schedule-host-page #schedule-work-panel>*{display:none!important}
+ .schedule-host-page #schedule-report:not([hidden]){display:block!important}
+}
