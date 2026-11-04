@@ -50,6 +50,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof' } = {}) {
   vm.runInNewContext(inline[0][1], context);
   await new Promise(resolve => setImmediate(resolve));
   return { node, panes, context, diagnostics, sent, timers, focused: () => focused,
+    depart(){for(const fn of handlers.pagehide||[])fn();},
     click(id) { node(id).events.click(); },
     key(id, key) { let prevented = false; node(id).events.keydown({ key, preventDefault() { prevented = true; } }); return prevented; },
     async replyAccess(code='STAFF_ADMIN_READY') {
@@ -144,4 +145,10 @@ test('shift destination separates schedules from records and exposes administrat
  await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,false);
  const records=html.slice(html.indexOf('<div id="records-work-panel"'),html.indexOf('<div id="schedule-work-panel"'));assert.doesNotMatch(records,/href="(?:admin-)?schedule.html"/);
  h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');
+});
+
+test('leaving closes the shift administration entry; late authorization cannot reopen it',async()=>{
+ const h=await harness();await h.replyAccess();h.click('schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,false);
+ h.depart();assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-tab').disabled,true);const before=h.sent.length;
+ await h.replyAccess();h.click('manager-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,before);
 });

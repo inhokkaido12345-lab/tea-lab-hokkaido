@@ -15,6 +15,7 @@
   const time=v=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
   function validPlan(p){return p&&date(p.day)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.appointments)&&p.appointments.length<=20&&p.appointments.every(q=>text(q.title,200)&&text(q.location,200)&&(!q.start||time(q.start))&&(!q.end||time(q.end))&&typeof q.countsAsWork==='boolean')&&p.leave&&['NONE','PUBLIC_OFF','PAID','OTHER'].includes(p.leave.type)&&text(p.leave.note,500)&&text(p.note,1000)&&(p.publicNote===undefined||text(p.publicNote,1000));}
   function validate(s,month,admin){
+    // 署名が正しくても別の月/役割/本人のデータなら描画しない。HMACと業務DTO検査は両方必要。
     if(s&&s.publishedAt!==undefined&&!(s.publishedAt===''||s.phase==='PUBLISHED'&&iso(s.publishedAt)))return false;
     if(!s||s.version!==1||s.month!==month||s.admin!==admin||!Number.isSafeInteger(s.monthRevision)||s.monthRevision<0||!['NOT_OPEN','DRAFT','COLLECTING','PUBLISHED'].includes(s.phase)||!(s.deadline===''||iso(s.deadline))||!iso(s.serverNow)||!text(s.employeeCode,32))return false;
     if(!Array.isArray(s.employees)||s.employees.length>1000||!s.employees.every(p=>code(p.employeeCode)&&text(p.employeeName,80)))return false;
@@ -34,6 +35,7 @@
     const admin=options.audience==='admin',reportUi=global.TlhScheduleReport.init();let snapshot=null,pending=null,uncertain=null,stopped=false;const periods=[],appointments=[];
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function controls(){
+      // disabledは誤操作防止。操作の権限はGASが毎回決める。通信失敗を許可として扱わない。
       const locked=stopped||!!pending||!!uncertain||!snapshot;
       n.editor.disabled=locked||!admin&&snapshot?.phase==='NOT_OPEN';n['month-form'].disabled=locked;n['event-form'].disabled=locked||!admin;n.publish.disabled=locked||!admin||snapshot?.phase==='PUBLISHED'||snapshot?.phase==='NOT_OPEN'||snapshot?.phase==='DRAFT';
       n.month.disabled=stopped||!!pending||!!uncertain;n.refresh.disabled=stopped||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
@@ -58,12 +60,16 @@
     function selected(){return snapshot?.drafts.find(p=>p.employeeCode===n.employee.value&&p.day===n.day.value);}
     function loadEditor(){if(!snapshot||pending||uncertain)return;fill(admin?selected()?.plan:snapshot.ownPlans.find(p=>p.day===n.day.value)?.plan);}
     function inputPlan(){return{periods:periods.map(r=>({start:r.start.value,end:r.end.value,endNextDay:r.next.value==='true',breakMinutes:Number(r.rest.value)})),appointments:appointments.map(r=>({title:r.title.value,location:r.location.value,start:r.start.value,end:r.end.value,endNextDay:r.next.value==='true',countsAsWork:r.counts.value==='true',requiredByEmployer:r.required.value==='unknown'?null:r.required.value==='true',classificationReason:r.classification.value})),leave:{type:n.leave.value,unit:'DAY',minutes:null,note:''},note:n.note.value,...(n['public-note'].value?{publicNote:n['public-note'].value}:{})};}
+    // 魔改造: 入力欄追加はfill（読込/消去）・inputPlan（送信）・validPlan（応答検査）を一組で変える。
+    // 公開欄ならGASの許可項目と出力列も更新する。入力に足しただけで全員公開しない。
     function planText(p){return(p.periods.map(q=>q.start+'–'+q.end+(q.endNextDay?'（翌日）':'')+' / 休憩'+q.breakMinutes+'分').join('、')||({NONE:'勤務区間なし',PUBLIC_OFF:'公休・休み',PAID:'有給',OTHER:'その他休暇'}[p.leave.type]))+(p.appointments.length?' / 用事: '+p.appointments.map(a=>a.title+' '+a.start+'–'+a.end+(a.countsAsWork?'（勤務に含む）':'（算入外）')).join('、'):'')+(p.publicNote?' / 全員公開: '+p.publicNote:'')+(p.note?' / 非公開メモ: '+p.note:'');}
     function base(){return{month:n.month.value,audience:options.audience,expectedMonthRevision:snapshot.monthRevision};}
     function requestBase(command,r){return{...base(),requestId:r.requestId,expectedRequestRevision:r.revision};}
     function write(command,input,question){if(stopped||pending||uncertain||!snapshot||!global.confirm(question))return;void send({command,input:JSON.stringify(input),operationId:random(16)});}
     function button(parent,label,command,fields,question){const b=el('button',label,parent);b.type='button';b.addEventListener('click',()=>{if(pending||uncertain||stopped)return;try{write(command,fields(),question);}catch(error){if(error.message!=='CANCELLED')n.status.textContent='入力内容を確認してください。';}});return b;}
     function render(s){
+      // 一般化: 一つの保存モデルから複数の画面モデルを作る。管理画面のDOMを印刷へ流用しない。
+      // 出力担当へ渡すのは共有plans/eventsだけ。ownPlans/drafts/requestsは渡さない。
       snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
       reportUi.setShared({phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events});
       // 全員が見ている公開版の更新日。下書き/希望の保存では更新せず、署名済みサーバー時刻をJST表示。
@@ -103,6 +109,8 @@
       if(!s.requests.length)el('p','この月の申請はありません。',n.requests);loadEditor();controls();
     }
     async function send(request){
+      // 保存前に内容をJSON文字列へ固定。同じ操作の再確認では編集後の入力や新しいoperationIdを使わない。
+      // 「返信がない」は「未保存」とは限らない。未確定結果を自動再送すると二重登録の原因になる。
       if(pending||stopped)return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(typeof proof!=='string'||!proof){clear();n.status.textContent='LINEログインが必要です。';return;}

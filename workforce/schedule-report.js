@@ -12,6 +12,8 @@
  const local=v=>new Date(Date.parse(v)+32400000).toISOString();
  /** 検証済み共有DTOを列の許可リストでコピー。元DTOのspreadやprivate planの出力は禁止。 */
  function build(s){
+  // periodsは予定休憩、workIntervalsは用事を含めて重複を除いた予定区間。両者を足して二重加算しない。
+  // 空の日を推測で休日にしない。社員ごとの未設定日も、空欄から勤務なしと断定してはならない。
   if(!s||s.phase!=='PUBLISHED'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(s.month)||!s.publishedAt||!Number.isFinite(Date.parse(s.publishedAt))||!Array.isArray(s.plans)||!Array.isArray(s.events))throw Error('SCHEDULE_REPORT_INVALID');
   const count=new Date(Date.UTC(Number(s.month.slice(0,4)),Number(s.month.slice(5)),0)).getUTCDate(),rows=[];
   for(let i=1;i<=count;i++){
@@ -22,9 +24,12 @@
   }
   return{month:s.month,publishedAt:s.publishedAt,rows};
  }
+ // CSVは引用符だけでは数式実行を防げない。氏名/公開メモにも式の開始文字が入り得る。
  function cell(v){let s=String(v);if(/^[\s\uFEFF]*[=+\-@]/u.test(s))s="'"+s;return'"'+s.replaceAll('"','""')+'"';}
  function csv(r){return'\uFEFF'+[['対象月','確定シフト最終更新（日本時間）',...headers],...r.rows.map(row=>[r.month,stamp(r.publishedAt),...row])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
  function init(){
+  // build（純粋な列変換）とinit（ブラウザの保存/印刷）を分離し、Googleやプリンターなしで計算を検査する。
+  // URLはCSVの一時メモリ参照。clear時に解放し、再読取/退場後に旧社員情報を持ち越さない。
   const n=Object.fromEntries(['print','csv','report','report-title','report-meta','report-rows','export-status'].map(k=>[k,document.getElementById('schedule-'+k)]));let report=null,url=null,stopped=false,enabled=false;
   function setEnabled(yes){enabled=yes===true&&!stopped&&!!report;n.print.disabled=!enabled;n.csv.disabled=!enabled;}
   function clear(){report=null;setEnabled(false);n.report.hidden=true;n['report-rows'].replaceChildren();n['report-title'].textContent='';n['report-meta'].textContent='';if(url){URL.revokeObjectURL(url);url=null;}n['export-status'].textContent='確定シフトの取得後に出力できます。';}
