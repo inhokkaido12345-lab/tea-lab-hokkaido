@@ -1,5 +1,7 @@
 # Workforce画面の模擬テスト
 
+Workforceの今回の監査対象は従業員情報/出退勤/シフト。startup-loadingが本文と18外部script/起動順、pwa-preparationがmanifestの範囲/画像/秘密のない起動URLと未導入の保存境界を検査。従来の全UI・署名・失権・再送・離脱・出力試験は維持します。
+
 2026-11-02: account-recovery.test.mjsを11件追加。全体80件がローカル成功。
 実WebCryptoでiframe source/origin/nonce/action/HMAC、所有者確認、二重送信/応答喪失、取消し/拒否、pagehide消去を検査。
 recovery.html専用で既存indexの固定版は変更しません。実LINE/Google保存/端末表示の確認とは別です。

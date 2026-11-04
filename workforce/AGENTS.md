@@ -1,5 +1,7 @@
 # Workforceの恒常ルール
 
+このWorkの対象は従業員情報・出退勤・シフト管理Web。POS/顧客向けサイトは別プロジェクト。ホームはSTARTUP.mdの本文→18外部script→既存起動の順序を維持。PWA準備はmanifest/静的アイコンだけで、Service Worker/個人情報の端末保存/オフライン打刻は追加していない。PWA.mdとtests/pwa-preparation・startup-loadingで範囲を検査する。
+
 シフトタブはカレンダー/本人申請を直接表示。前半1〜15日・後半16日〜月末で締切/公開/版を独立管理します。ホームはLIFFを再初期化せず、既存auto-readのscheduleキーで読取だけを初回開始。受付状態はフォーム外へ説明し、確定後は変更案/本人同意/承認で編集できます。詳しくは[SCHEDULE.md](SCHEDULE.md)。
 
 シフト表示の索引/JST表記はschedule-view.js、画面のカレンダー/申請はschedule.jsの別関数、共有出力はschedule-report.js。表示専用の共通計算にDOM/認可/通信を混ぜない。詳しくは[保守ガイド](SHIFT-MAINTENANCE.md)のコード整理節へ。

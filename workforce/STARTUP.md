@@ -1,0 +1,21 @@
+# 起動処理・重さ・魔改造の入口
+
+このWorkの対象は従業員情報・出退勤・シフトのWebです。POS/顧客向けサイトは別プロジェクトです。
+
+## 現在の起動順
+
+本文DOM → LINE公式LIFF SDK → 各controller → index.html末尾の起動処理 → LINE初期化 → 表示対象の読取。
+
+ホームの外部script18本をheadから本文の後へ移しました。HTMLの先頭でJS取得/実行待ちをせず、画面の骨組みとCSSを先に解析できます。相手GASの処理時間を短縮した、という変更ではありません。秒数の改善は未計測です。
+
+## 自分で変更するとき
+
+- scriptを追加する場所：index.html末尾の外部script群。依存元を先に置き、起動処理の前に読み込む。schedule-view/report→schedule、auto-read→layout等の順序を維持。
+- asyncは順序を保証しません。deferだけを追加すると、末尾の即時起動がcontroller定義より先に実行されるため、そのまま付けないでください。
+- 起動処理を削除するとLINE初期化・タブ・各フォームが動きません。controllerを削除するとその機能が未定義になります。DOM idやinitの参照も検索してから変更。
+- 自動化してよいもの：auto-read.jsの固定した読取だけ。登録/打刻/申請/承認/停止/再送は追加しない。
+- キャッシュしてよいもの：現時点では既存の静的配信の範囲のみ。token/応答鍵/従業員名簿/打刻/未送信draftをStorageへ追加しない。
+
+検査は`node --test tests/*.mjs`。startup-loading.test.mjsが本文とscriptの順序を、layout等の試験が実際のcontrollerと起動処理を検査します。GAS側の固定UI参照/hashと連結試験も更新します。実LINE端末・描画速度・印刷の受入れは別です。
+
+[API/通信の変更方法](README.md)と[デザインの改造](DESIGN.md)も併読してください。PWAの起動範囲・個人情報の扱いは[PWA準備](PWA.md)へ。
