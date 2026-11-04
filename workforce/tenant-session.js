@@ -144,6 +144,12 @@
     if(eventChecks.has(event))return eventChecks.get(event);
     const check=(async()=>{
       const d=event.data,r=d&&requests.get(d.nonce),scope=current;
+      if(['SCOPED','INVITATION'].includes(state)&&scope&&!stopped&&r&&d.action===r.action&&d.type==='TLH_TENANT_ERROR'&&originAllowed(event.origin)&&related(event.source,r.frame.contentWindow)){
+        if(await mac(JSON.stringify([d.type,d.action,d.nonce,d.code]),d.mac,r.key)&&current===scope&&!stopped){
+          // 境界拒否は通常の業務返信と別形式。署名確認後に全送信を止め、待ち続ける表示を避ける。
+          state='FAILED';clearTimeout(r.timer);n.status.textContent='店舗の設定を確認できません。操作を再送せず、画面を開き直して管理者に確認してください。';paint();
+        }return false;
+      }
       if(!['SCOPED','INVITATION'].includes(state)||!scope||stopped||!r||d.action!==r.action||!originAllowed(event.origin)||!related(event.source,r.frame.contentWindow)||
         d.organizationId!==scope.organizationId||d.workplaceId!==scope.workplaceId||d.bindingId!==scope.bindingId)return false;
       if(!await mac(JSON.stringify(['TLH_TENANT_REPLY_V1',d.organizationId,d.workplaceId,d.bindingId,d.mac]),d.tenantMac,r.key)||current!==scope||stopped)return false;

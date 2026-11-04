@@ -101,3 +101,11 @@ test('valid tenant MAC from another frame is refused; same operation retry relea
   assert.equal(await h.api.acceptEvent({data:h.response(retry,scopes[0],'PUNCH_CLOCK_IN_DONE'),origin:'null',source:h.nodes.frame.contentWindow}),true);
   h.nodes.select.value='siteB';h.nodes.select.events.change();assert.equal(h.nodes.switch.disabled,false);
 });
+
+test('signed boundary rejection stops further sends and shows a fixed configuration error instead of waiting for timeout',async()=>{
+  const h=harness('?organizationId=orgA&workplaceId=siteA');await h.scoped();h.api.submit(h.form());const r=h.sent.at(-1);
+  const d={type:'TLH_TENANT_ERROR',action:r.action,nonce:r.nonce,code:'TENANT_UNAVAILABLE'};
+  d.mac=createHmac('sha256',r.responseKey).update(JSON.stringify([d.type,d.action,d.nonce,d.code])).digest('hex');
+  assert.equal(await h.api.acceptEvent({data:d,origin:'null',source:h.nodes.frame.contentWindow}),false);assert.match(h.nodes.status.textContent,/店舗の設定/);
+  assert.throws(()=>h.api.submit(h.form('bridgeRecordPunch')),/WORKPLACE_NOT_READY/);assert.equal(h.nodes.switch.disabled,true);
+});
