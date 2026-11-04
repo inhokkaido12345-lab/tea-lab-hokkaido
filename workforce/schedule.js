@@ -77,24 +77,46 @@
       const state={NOT_OPEN:'未作成（希望受付前でも下書き作成できます）',DRAFT:'下書き作成中・希望受付は未開始',COLLECTING:Date.parse(s.serverNow)>=Date.parse(s.deadline)?'初回希望締切済み・下書き作成':'希望受付中・下書き作成',PUBLISHED:'確定公開済み'}[s.phase];n.summary.textContent=s.month+'：'+state+(s.deadline?' / 初回希望締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
       n.employee.replaceChildren();for(const p of s.employees){const o=el('option',p.employeeCode+'（'+p.employeeName+'）',n.employee);o.value=p.employeeCode;}
       if(s.deadline)n.deadline.value=new Date(Date.parse(s.deadline)+32400000).toISOString().slice(0,16);
+      renderCalendar(s);
+      renderRequests(s);
+      loadEditor();
+      controls();
+    }
+
+    /** 日別索引はこの描画中だけ有効。本人用の索引は共有出力へ渡さない。 */
+    function renderCalendar(s){
       const count=new Date(Date.UTC(Number(s.month.slice(0,4)),Number(s.month.slice(5)),0)).getUTCDate(),source=admin?s.drafts:s.plans;
+      const plansByDay=global.TlhScheduleView.groupByDay(source);
+      const eventsByDay=global.TlhScheduleView.groupByDay(admin?s.draftEvents:s.events);
+      const ownByDay=global.TlhScheduleView.groupByDay(s.ownPlans);
       for(const name of '日月火水木金土')el('div',name,n.calendar).className='schedule-weekday';
       for(let i=0;i<new Date(s.month+'-01T00:00:00Z').getUTCDay();i++){const blank=el('div','',n.calendar);blank.className='schedule-blank';blank.setAttribute('aria-hidden','true');}
       n.save.textContent=admin?(s.phase==='PUBLISHED'?'変更案を本人へ送る':'この予定を下書き保存'):'希望・申出を提出する';
       for(let i=1;i<=count;i++){
         const day=s.month+'-'+String(i).padStart(2,'0'),card=el('article',undefined,n.calendar);card.className='schedule-day';const week=new Date(day+'T00:00:00Z').getUTCDay();
         el('h3',i+'日（'+'日月火水木金土'[week]+'）',card);card.dataset.weekday=String(week);
-        const events=(admin?s.draftEvents:s.events).filter(e=>e.day===day);for(const e of events)el('p',e.title+(e.note?' / '+e.note:''),card).className='schedule-event';
-        const plans=source.filter(p=>p.day===day);if(!plans.length)el('p','予定未設定',card).className='subtle';
+        const events=eventsByDay.get(day)||[];for(const e of events)el('p',e.title+(e.note?' / '+e.note:''),card).className='schedule-event';
+        const plans=plansByDay.get(day)||[];if(!plans.length)el('p','予定未設定',card).className='subtle';
         for(const p of plans){const line=el('div',undefined,card);el('strong',p.employeeName+'（'+p.employeeCode+'）',line);
-          const local=iso=>new Date(Date.parse(iso)+32400000).toISOString();
-          el('p',admin?planText(p.plan):(p.workIntervals.map(q=>local(q.startAtUtc).slice(11,16)+'–'+local(q.endAtUtc).slice(11,16)+(local(q.endAtUtc).slice(0,10)!==p.day?'（翌日）':'')).join('、')||(p.leaveType==='PUBLIC_OFF'?'公休':p.leaveType==='LEAVE'?'休暇':'勤務区間なし'))+' / 予定休憩 '+p.periods.reduce((sum,q)=>sum+q.breakMinutes,0)+'分 / 予定実働 '+p.plannedMinutes+'分',line);
+          el('p',admin?planText(p.plan):sharedPlanText(p),line);
           if(!admin&&p.publicNote)el('p','共有事項：'+p.publicNote,line).className='schedule-public-note';
           // 共通のカレンダーへ他人の用事を混ぜない。署名済みの本人限定DTOだけを別の詳細欄へ。
-          if(!admin&&p.employeeCode===s.employeeCode){const mine=s.ownPlans.find(q=>q.day===p.day);if(mine){const detail=el('details',undefined,line);detail.className='tool-help';el('summary','自分の用事・特記事項',detail);el('p',planText(mine.plan),detail);}}
+          if(!admin&&p.employeeCode===s.employeeCode){const mine=ownByDay.get(p.day)?.[0];if(mine){const detail=el('details',undefined,line);detail.className='tool-help';el('summary','自分の用事・特記事項',detail);el('p',planText(mine.plan),detail);}}
           if(admin){const edit=el('button','この予定を編集',line);edit.type='button';edit.className='text-button';edit.addEventListener('click',()=>{if(pending||uncertain)return;n.employee.value=p.employeeCode;n.day.value=p.day;loadEditor();n.day.focus();});}
         }
       }
+    }
+
+    /** 共有DTO専用の表示。本人の用事詳細や希望理由をこの関数へ混ぜない。 */
+    function sharedPlanText(plan){
+      const work=global.TlhScheduleView.workText(plan.workIntervals,plan.day);
+      const rest=plan.periods.reduce((sum,period)=>sum+period.breakMinutes,0);
+      const fallback={PUBLIC_OFF:'公休',LEAVE:'休暇'}[plan.leaveType]||'勤務区間なし';
+      return (work||fallback)+' / 予定休憩 '+rest+'分 / 予定実働 '+plan.plannedMinutes+'分';
+    }
+
+    /** 申請/同意/承認の操作を表示。ボタン押下時の版検査と保存は従来のwrite/GASへ任せる。 */
+    function renderRequests(s){
       for(const r of s.requests){const card=el('article',undefined,n.requests);card.className='record-item';el('h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);el('p',({SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'管理者からの変更案'}[r.kind])+' / '+({PENDING:'管理者確認待ち',AWAITING_CONSENT:'本人同意待ち',APPROVED:'承認済み',REJECTED:'見送り・同意なし',CANCELLED:'取消済み'}[r.status]),card);el('p',planText(r.payload.plan),card);el('p','理由：'+r.payload.reason,card);if(r.payload.decisionReason)el('p','判断理由：'+r.payload.decisionReason,card);
         if(admin&&r.status==='PENDING'){
           const reasonLabel=el('label','判断理由',card),reasonField=el('textarea',undefined,reasonLabel);reasonField.maxLength=500;reasonField.rows=2;
@@ -106,7 +128,7 @@
         if(!admin&&r.status==='PENDING'&&r.kind!=='ADMIN_CHANGE')button(card,'この申請を取り消す','cancel',()=>requestBase('cancel',r),'この未処理申請を取り消しますか？確定予定は変更しません。');
         if(!admin&&r.status==='AWAITING_CONSENT')for(const accept of [true,false])button(card,accept?'この変更案に同意する':'同意しない','consent',()=>({...requestBase('consent',r),accept}),planText(r.payload.plan)+'\n'+(accept?'この変更内容に同意しますか？管理者の承認後に反映します。':'同意しないと回答しますか？'));
       }
-      if(!s.requests.length)el('p','この月の申請はありません。',n.requests);loadEditor();controls();
+      if(!s.requests.length)el('p','この月の申請はありません。',n.requests);
     }
     async function send(request){
       // 保存前に内容をJSON文字列へ固定。同じ操作の再確認では編集後の入力や新しいoperationIdを使わない。

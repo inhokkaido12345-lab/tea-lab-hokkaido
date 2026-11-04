@@ -25,16 +25,24 @@
     const categories=['employees','attendance','schedule'];let category='attendance';
     const choices=categories.map(name=>document.getElementById('manager-'+name+'-choice'));
     const groups={employees:['manager-registration-panel','manager-maintenance-panel'],attendance:['manager-attendance-panel'],schedule:['schedule-admin-entry']};
+    // wrapperは起動時に取得する。切替のたびに同じIDを引き直さず、入力要素には触れない。
+    const groupPanels=Object.fromEntries(Object.entries(groups).map(([name,ids])=>[
+      name,ids.map(id=>document.getElementById(id)),
+    ]));
     const statusHost=document.getElementById('staff-status-host');
     const tabs = names.map(name => document.getElementById(name + '-tab'));
     const panes = Array.from(document.querySelectorAll('[data-workforce-pane]'));
-    if (choices.some(button=>!button)||!statusHost||Object.values(groups).flat().some(id=>!document.getElementById(id))||tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
+    if (choices.some(button=>!button)||!statusHost||Object.values(groupPanels).flat().some(panel=>!panel)||tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
         panes.some(pane => !names.includes(pane.dataset.workforcePane))) throw Error('WORKFORCE_LAYOUT_MISSING');
     // 表示と操作許可の分離: wrapperだけを隠す。中の入力/再送draft/確認結果はそのまま。
     // 選択中は色だけで示さず、aria-selectedとtabIndexも合わせて読み上げ/キー操作へ伝える。
     function show(){
       panes.forEach(pane=>{pane.hidden=pane.dataset.workforcePane!==active;});
-      for(const [name,ids]of Object.entries(groups))for(const id of ids)document.getElementById(id).hidden=active!=='manager'||!adminAllowed||name!==category;
+      for(const [name,panels]of Object.entries(groupPanels)){
+        for(const panel of panels){
+          panel.hidden=active!=='manager'||!adminAllowed||name!==category;
+        }
+      }
       choices.forEach((button,i)=>button.setAttribute('aria-pressed',String(categories[i]===category)));
       // 招待受取と発行の共通結果欄は保持し、管理中は従業員カテゴリでだけ見せる。
       statusHost.hidden=active==='manager'&&category!=='employees';

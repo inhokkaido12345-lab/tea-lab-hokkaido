@@ -10,6 +10,7 @@ export function scheduleUiHarness(audience='employee'){
  const window={top:null,confirm:()=>true,prompt:()=> '判断を確認',addEventListener(k,fn){const previous=events[k];events[k]=previous?(...args)=>{previous(...args);return fn(...args);}:fn;}};window.top=window;
  const document={currentScript:null,getElementById:id=>n(id.replace('schedule-','')),createElement:make,body:make('body')};
  const runtime={window,document,crypto:webcrypto,Uint8Array,TextEncoder,Date,Intl,Blob,URL,setTimeout(fn){const id=++seq;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);}};
+ vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-view.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-report.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule.js',import.meta.url),'utf8'),runtime);
  const api=window.TlhSchedule.init({audience,gasUrl:'https://offline.invalid/exec',liff:{getIDToken:()=> 'fake.jwt.proof'}});
