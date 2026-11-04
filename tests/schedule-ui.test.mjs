@@ -18,3 +18,9 @@ test('role pages preserve disabled forms and direct-write separation, and source
  const read=name=>fs.readFileSync(new URL('../workforce/'+name,import.meta.url),'utf8');for(const page of ['schedule.html','admin-schedule.html']){const html=read(page);assert.match(html,/name="tlhScheduleFrame"/);assert.match(html,/id="schedule-editor" disabled/);assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/fonts\/ibm-plex-sans-jp.css/);}
  assert.match(read('schedule.html'),/data-audience="employee"/);assert.match(read('admin-schedule.html'),/data-audience="admin"/);assert.doesNotMatch(read('schedule.js'),/\bfetch\(|localStorage|sessionStorage|console\.|innerHTML/);
 });
+test('personal calendar details use only the matching verified employee, and mismatched private plans refuse rendering',async()=>{
+ const h=scheduleUiHarness(),s=h.snapshot(),plan={day:'2026-11-05',periods:[],appointments:[{title:'本人だけの打合せ',location:'架空の場所',start:'09:00',end:'10:00',endNextDay:false,countsAsWork:true}],leave:{type:'NONE',unit:'DAY',minutes:null,note:''},note:'自分の特記事項'};
+ s.phase='PUBLISHED';s.plans=[{employeeCode:'SCH001',employeeName:'架空社員',day:plan.day,revision:1,periods:[],workIntervals:[{startAtUtc:'2026-11-05T00:00:00.000Z',endAtUtc:'2026-11-05T01:00:00.000Z'}],plannedMinutes:60,leaveType:'NONE'}];s.ownPlans=[{...s.plans[0],plan}];
+ assert.equal(h.module.validate({...s,ownPlans:[{...s.ownPlans[0],employeeCode:'OTHER001'}]},s.month,false),false);
+ await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('calendar')),/本人だけの打合せ/);assert.match(text(h.n('calendar')),/自分の用事・特記事項/);
+});

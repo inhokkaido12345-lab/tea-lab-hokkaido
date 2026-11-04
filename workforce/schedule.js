@@ -21,7 +21,7 @@
     if(!admin&&(s.employees.length||s.drafts.length||s.draftEvents.length))return false;
     const identity=p=>p&&code(p.employeeCode)&&text(p.employeeName,80)&&date(p.day)&&p.day.startsWith(month+'-')&&Number.isSafeInteger(p.revision)&&p.revision>0;
     if(!s.plans.every(p=>identity(p)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.workIntervals)&&p.workIntervals.every(q=>iso(q.startAtUtc)&&iso(q.endAtUtc))&&Number.isInteger(p.plannedMinutes)&&p.plannedMinutes>=0&&['NONE','PUBLIC_OFF','LEAVE'].includes(p.leaveType)))return false;
-    if(![...s.ownPlans,...s.drafts].every(p=>identity(p)&&validPlan(p.plan)))return false;
+    if(![...s.ownPlans,...s.drafts].every(p=>identity(p)&&validPlan(p.plan))||!s.ownPlans.every(p=>p.employeeCode===s.employeeCode))return false;
     if(!s.requests.every(r=>r&&/^[-A-Za-z0-9_]{1,100}$/.test(r.requestId)&&code(r.employeeCode)&&text(r.employeeName,80)&&Number.isSafeInteger(r.revision)&&r.revision>0&&['PENDING','APPROVED','REJECTED','CANCELLED','AWAITING_CONSENT'].includes(r.status)&&['SHIFT_PREFERENCE','ANNUAL_LEAVE','STATUTORY_LEAVE','ADMIN_CHANGE'].includes(r.kind)&&r.payload&&validPlan(r.payload.plan)&&text(r.payload.reason,500)&&(!r.payload.decisionReason||text(r.payload.decisionReason,500))&&iso(r.submittedAt)&&(!admin?r.employeeCode===s.employeeCode:true)))return false;
     return [...s.events,...s.draftEvents].every(e=>date(e.day)&&e.day.startsWith(month+'-')&&text(e.title,200)&&text(e.note,500));
   }
@@ -78,6 +78,8 @@
         for(const p of plans){const line=el('div',undefined,card);el('strong',p.employeeName+'（'+p.employeeCode+'）',line);
           const local=iso=>new Date(Date.parse(iso)+32400000).toISOString();
           el('p',admin?planText(p.plan):(p.workIntervals.map(q=>local(q.startAtUtc).slice(11,16)+'–'+local(q.endAtUtc).slice(11,16)+(local(q.endAtUtc).slice(0,10)!==p.day?'（翌日）':'')).join('、')||(p.leaveType==='PUBLIC_OFF'?'公休':p.leaveType==='LEAVE'?'休暇':'勤務区間なし'))+' / 予定休憩 '+p.periods.reduce((sum,q)=>sum+q.breakMinutes,0)+'分 / 予定実働 '+p.plannedMinutes+'分',line);
+          // 共通のカレンダーへ他人の用事を混ぜない。署名済みの本人限定DTOだけを別の詳細欄へ。
+          if(!admin&&p.employeeCode===s.employeeCode){const mine=s.ownPlans.find(q=>q.day===p.day);if(mine){const detail=el('details',undefined,line);detail.className='tool-help';el('summary','自分の用事・特記事項',detail);el('p',planText(mine.plan),detail);}}
           if(admin){const edit=el('button','この予定を編集',line);edit.type='button';edit.className='text-button';edit.addEventListener('click',()=>{if(pending||uncertain)return;n.employee.value=p.employeeCode;n.day.value=p.day;loadEditor();n.day.focus();});}
         }
       }
