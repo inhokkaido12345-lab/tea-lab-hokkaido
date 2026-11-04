@@ -39,3 +39,20 @@ test('personal entry is outside management, uses dedicated frame, and offers no 
  assert.match(html,/name="tlhAccountInfoFrame"/);assert.match(html,/name="referrer" content="no-referrer"/);assert.doesNotMatch(html,/<input|<textarea|admin-access\.js/);
  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(m=>m[1]);assert.equal(ids.length,new Set(ids).size);
 });
+
+test('signed login rejection exposes deliberate re-login even when SDK still considers session logged in',async()=>{
+ const h=accountInfoHarness();h.click();await h.reply(h.sent[0],'ACCOUNT_INFO_LOGIN_REQUIRED');
+ assert.equal(h.n('login').hidden,false);assert.equal(h.n('check').disabled,true);assert.equal(h.logoutCalls(),0);assert.equal(h.loginCalls.length,0);
+ h.click();assert.equal(h.sent.length,1);h.login();h.login();assert.equal(h.logoutCalls(),1);assert.equal(h.loginCalls.length,1);
+ assert.equal(h.loginCalls[0].redirectUri,'https://tealabhokkaido.com/workforce/account-info.html');assert.equal(h.sent.length,1);
+});
+
+test('forged login rejection never logs out; missing proof offers recovery and departure stops it',async()=>{
+ const h=accountInfoHarness();h.click();await h.reply(h.sent[0],'ACCOUNT_INFO_LOGIN_REQUIRED',null,{mac:'0'.repeat(64)});assert.equal(h.n('login').hidden,true);h.login();assert.equal(h.logoutCalls(),0);
+ const missing=accountInfoHarness({proof:''});missing.click();assert.equal(missing.n('login').hidden,false);assert.equal(missing.sent.length,0);missing.handlers.pagehide();missing.login();assert.equal(missing.logoutCalls(),0);
+});
+
+test('LINE-internal recovery reopens the mini app; external login exceptions permit deliberate retry without sending business requests',async()=>{
+ const inside=accountInfoHarness({inClient:true});inside.click();await inside.reply(inside.sent[0],'ACCOUNT_INFO_LOGIN_REQUIRED');inside.login();assert.equal(inside.logoutCalls(),0);assert.equal(inside.loginCalls.length,0);assert.deepEqual(inside.navigations,['https://miniapp.line.me/2011940133-JXUDzLnG']);
+ const failed=accountInfoHarness({loginFailure:true});failed.click();await failed.reply(failed.sent[0],'ACCOUNT_INFO_LOGIN_REQUIRED');failed.login();assert.equal(failed.n('login').disabled,false);failed.login();assert.equal(failed.loginCalls.length,2);assert.equal(failed.sent.length,1);
+});
