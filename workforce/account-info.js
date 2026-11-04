@@ -6,6 +6,8 @@
  * 魔改造: parseInfo/renderをGAS AccountInfoService/BridgeAccountInfo/両repoテスト/ACCOUNT-INFO.mdと同期。
  * 境界: 対象はサーバーが本人へ固定。token/個人情報/鍵をURL/Storage/ログへ出さず、画面退場時に消す。
  * 検証: account-info.test.mjs→実GAS連結→LINE本人の読取。表示した役割を管理APIの認可へ流用しない。
+ * 再ログイン: 公式検証の署名付き拒否/証明なしで入口を再表示。本人クリックでだけSDKをlogout→login。
+ * isLoggedIn=trueでもID tokenの有効性は別。勝手な認証延長・自動logout・業務の自動再送は禁止。
  */
 (function(global){
   'use strict';
@@ -47,15 +49,30 @@
   }
   /** 既存click経路で読取。bootstrapの自動表示/更新ボタンが同じ経路を使う。二重tap/timeout/別frame/退場後の遅延応答で情報を復活させない。 */
   function init(options){
-    const n=Object.fromEntries(['check','status','result','fields','frame'].map(k=>[k,document.getElementById('account-info-'+k)]));let pending=null,stopped=false;
+    const n=Object.fromEntries(['check','status','result','fields','frame','login'].map(k=>[k,document.getElementById('account-info-'+k)]));let pending=null,stopped=false,loginPending=false,loginRequired=options.loginRequired===true;
     const clear=()=>{n.result.hidden=true;n.fields.replaceChildren();};
-    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));n.check.disabled=!!pending||stopped;};
+    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending||loginPending));n.check.disabled=!!pending||stopped||loginRequired||loginPending;if(n.login){n.login.hidden=!loginRequired||stopped;n.login.disabled=!!pending||loginPending||stopped;}};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
+    function requireLogin(){clear();loginRequired=true;controls();}
+    // isLoggedIn()だけでは期限切れID tokenを解消できない。本人が押した時だけSDKの状態をリセットする。
+    // 認証の判定は公式LINE/GASへ残す。再ログインしても失敗した読取や保存を自動再送しない。
+    n.login?.addEventListener('click',()=>{
+      if(stopped||!loginRequired||pending||loginPending)return;loginPending=true;clear();controls();
+      try{
+        if(options.liff.isInClient?.()){
+          n.status.textContent='LINEアプリから開き直します。';global.location.assign('https://miniapp.line.me/2011940133-JXUDzLnG');return;
+        }
+        const redirectUri=global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname;
+        n.status.textContent='LINEで再ログインします。完了するとこの画面へ戻ります。';
+        if(options.liff.isLoggedIn())options.liff.logout();
+        options.liff.login({redirectUri});
+      }catch(_e){loginPending=false;n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';controls();}
+    });
     n.check.addEventListener('click',()=>{
-      if(pending||stopped)return;clear();
+      if(pending||stopped||loginRequired||loginPending)return;clear();
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
-      if(!proof){n.status.textContent='LINEログインが必要です。';return;}
+      if(!proof){n.status.textContent='LINEログインが必要です。';requireLogin();return;}
       const r={nonce:random(16),responseKey:random(32)};pending=r;controls();n.status.textContent='登録情報を確認しています。';
       r.timer=setTimeout(()=>{if(pending!==r)return;clear();n.status.textContent='応答を確認できません。もう一度確認する場合は確認ボタンを押してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAccountInfoFrame';form.hidden=true;
@@ -65,19 +82,22 @@
     global.addEventListener('message',async event=>{
       if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const r=pending;if(!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
-      let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r)return;
-      const d=event.data;if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;render(n.fields,info);n.result.hidden=false;}
-      else clear();n.status.textContent=messages[d.code];finish();
+      // 会社文脈は上でtenant-sessionが照合済み。元MACへ渡すのは既存6項目だけ。
+      // verifyの厳密な旧契約を緩めず、追加tenant列で正常な本人情報が拒否されることを防ぐ。
+      const d=global.TlhTenantSession&&event.data?.organizationId?Object.fromEntries(['type','nonce','action','code','info','mac'].map(k=>[k,event.data[k]])):event.data;
+      let valid=false;try{valid=await verify(d,r);}catch(_e){}if(!valid||pending!==r)return;
+      if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;render(n.fields,info);n.result.hidden=false;}
+      else clear();if(d.code==='ACCOUNT_INFO_LOGIN_REQUIRED')requireLogin();n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();n.status.textContent='情報を消去しました。再確認する場合はページを開き直してください。';});clear();controls();
   }
   async function bootstrap(){
     const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
     status.setAttribute?.('aria-busy','true');
-    try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();login.addEventListener('click',()=>global.liff.login({redirectUri:global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname}));
-      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
-      status.textContent=login.hidden?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl});if(login.hidden)global.TlhAutoRead.init().once('account');
-    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
+    try{await global.liff.init({liffId:config.liffId});const loggedIn=global.liff.isLoggedIn();
+      if(loggedIn&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
+      status.textContent=loggedIn?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:!loggedIn});if(loggedIn)global.TlhAutoRead.init().once('account');
+    }catch(error){if(error?.message==='WORKPLACE_LOGIN_REQUIRED'){init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:true});status.textContent=messages.ACCOUNT_INFO_LOGIN_REQUIRED;}else status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAccountInfo=Object.freeze({init,parseInfo,verify,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();

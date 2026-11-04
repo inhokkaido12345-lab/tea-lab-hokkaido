@@ -118,6 +118,9 @@
     const r=bootstrap,d=event.data;if(!r||!d||d.type!=='TLH_BRIDGE_COMPANY_CONTEXT'||d.action!==ACTION||d.nonce!==r.nonce||!originAllowed(event.origin)||!related(event.source,n.frame.contentWindow))return;
     try{
       if(!await mac([d.type,d.nonce,d.action,d.code,d.context].join('\n'),d.mac,r.responseKey)||bootstrap!==r||stopped)return;
+      if(d.code==='LINE_VERIFY_REJECTED'&&d.context===''){
+        bootstrap=null;clearTimeout(r.timer);state='FAILED';n.status.textContent='LINE本人確認の期限を確認できません。再ログインしてください。';paint();r.reject(Error('WORKPLACE_LOGIN_REQUIRED'));return;
+      }
       const value=parse(d.context);if(!value||!(d.code==='COMPANY_CONTEXT_READY'&&value.mode==='CONFIGURED'||d.code==='COMPANY_CONTEXT_LEGACY'&&value.mode==='LEGACY'))throw Error('WORKPLACE_RESPONSE_INVALID');
       bootstrap=null;clearTimeout(r.timer);const installed=install(value);if(installed&&state==='SCOPED')scopeLinks();r.resolve(installed);
     }catch(_e){if(bootstrap!==r)return;bootstrap=null;clearTimeout(r.timer);state='FAILED';n.status.textContent='店舗情報を確認できません。画面を開き直してください。';paint();r.reject(Error('WORKPLACE_RESPONSE_INVALID'));}

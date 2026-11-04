@@ -109,3 +109,10 @@ test('signed boundary rejection stops further sends and shows a fixed configurat
   assert.equal(await h.api.acceptEvent({data:d,origin:'null',source:h.nodes.frame.contentWindow}),false);assert.match(h.nodes.status.textContent,/店舗の設定/);
   assert.throws(()=>h.api.submit(h.form('bridgeRecordPunch')),/WORKPLACE_NOT_READY/);assert.equal(h.nodes.switch.disabled,true);
 });
+
+test('official signed bootstrap identity rejection exposes a distinct login-recovery outcome without any membership',async()=>{
+  const h=harness('?organizationId=orgA&workplaceId=siteA'),ready=h.ready(),rejected=assert.rejects(ready,/WORKPLACE_LOGIN_REQUIRED/),r=h.sent[0];
+  const d={type:'TLH_BRIDGE_COMPANY_CONTEXT',action:r.action,nonce:r.nonce,code:'LINE_VERIFY_REJECTED',context:''};
+  d.mac=createHmac('sha256',r.responseKey).update([d.type,d.nonce,d.action,d.code,d.context].join('\n')).digest('hex');
+  await h.deliver(d);await rejected;assert.equal(h.api.displayScope(),null);assert.equal(h.timers.size,0);
+});
