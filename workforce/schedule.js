@@ -82,7 +82,13 @@
         }
       }
       for(const r of s.requests){const card=el('article',undefined,n.requests);card.className='record-item';el('h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);el('p',({SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'管理者からの変更案'}[r.kind])+' / '+({PENDING:'管理者確認待ち',AWAITING_CONSENT:'本人同意待ち',APPROVED:'承認済み',REJECTED:'見送り・同意なし',CANCELLED:'取消済み'}[r.status]),card);el('p',planText(r.payload.plan),card);el('p','理由：'+r.payload.reason,card);if(r.payload.decisionReason)el('p','判断理由：'+r.payload.decisionReason,card);
-        if(admin&&r.status==='PENDING')for(const [decision,label]of [['APPROVE','この内容を承認'],['REJECT','見送りを記録']])button(card,label,'review',()=>{const reason=global.prompt('判断理由を入力してください。');if(reason===null)throw Error('CANCELLED');const current=s.drafts.find(p=>p.employeeCode===r.employeeCode&&p.day===r.payload.plan.day);return{...requestBase('review',r),expectedPlanRevision:s.phase==='PUBLISHED'?s.monthRevision:current?.revision||0,decision,reason};},r.employeeName+' / '+r.payload.plan.day+'\n'+planText(r.payload.plan)+'\n'+label+'しますか？');
+        if(admin&&r.status==='PENDING'){
+          const reasonLabel=el('label','判断理由',card),reasonField=el('textarea',undefined,reasonLabel);reasonField.maxLength=500;reasonField.rows=2;
+          for(const [decision,label]of [['APPROVE','この内容を承認'],['REJECT','見送りを記録']]){
+            const action=button(card,label,'review',()=>{const reason=reasonField.value;if(!reason.trim()){reasonField.focus();throw Error('REASON_REQUIRED');}const current=s.drafts.find(p=>p.employeeCode===r.employeeCode&&p.day===r.payload.plan.day);return{...requestBase('review',r),expectedPlanRevision:s.phase==='PUBLISHED'?s.monthRevision:current?.revision||0,decision,reason};},r.employeeName+' / '+r.payload.plan.day+'\n'+planText(r.payload.plan)+'\n'+label+'しますか？');
+            if(decision==='REJECT')action.className='schedule-reject';
+          }
+        }
         if(!admin&&r.status==='PENDING'&&r.kind!=='ADMIN_CHANGE')button(card,'この申請を取り消す','cancel',()=>requestBase('cancel',r),'この未処理申請を取り消しますか？確定予定は変更しません。');
         if(!admin&&r.status==='AWAITING_CONSENT')for(const accept of [true,false])button(card,accept?'この変更案に同意する':'同意しない','consent',()=>({...requestBase('consent',r),accept}),planText(r.payload.plan)+'\n'+(accept?'この変更内容に同意しますか？管理者の承認後に反映します。':'同意しないと回答しますか？'));
       }

@@ -18,6 +18,8 @@
 #schedule-summary { font-weight:600; margin-block:12px; }
 #schedule-requests .record-item button { margin:12px 10px 0 0; }
 #schedule-requests .record-item p { white-space:pre-wrap; overflow-wrap:anywhere; }
+#schedule-requests .record-item label { margin-top:14px; }
+#schedule-requests .schedule-reject { color:var(--danger); background:transparent; border:1px solid var(--danger); }
 #schedule-editor { max-width:760px; }
 @media(max-width:799px) {
  .schedule-calendar { grid-template-columns:1fr; }
