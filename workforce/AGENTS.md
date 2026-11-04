@@ -1,5 +1,9 @@
 # Workforceの恒常ルール
 
+## シフト（2026-11-04）
+
+記録→schedule.htmlは本人の希望/変更申請/同意と全員の確定閲覧、管理→admin-schedule.htmlは月締切/下書き/共有イベント/確定公開/判断。schedule.js/CSSはパレットを共有し、最新権限/締切/本人同意/版/公開完了はGASへ委ねる。本人理由/メモ/用事詳細は全員に出さない。結果不明は同じ操作ID/入力だけで再確認し、保存を自動再送しない。SCHEDULE.mdが現行。旧ShiftPlanの日別比較や給与へ単一区間に潰して接続しない。
+
 ## 現行デザイン（2026-11-03）
 
 所有者の指定パレット: 8E3F35/2F5452/7C908E/F3EFE7/252829/495C63。IBM Plex Sans JPを同一サイトfonts/配布、本文400・見出し/操作600、swap。Google Fonts/CDNへ実行時接続しない。app.cssの:rootと18節が現行。管理は番号/区切り線/短い説明/操作、その他はアカウント→招待→診断。長い補足はtool-helpのdetails、保存前の確認はcontrollerに残す。表示見本design/は操作無効・実データなし、scripts/build-workforce-design-preview.pyで再生成。見本のhidden解除を本番へコピーしない。DESIGN.md/fonts/README.mdとコメントを同期。
