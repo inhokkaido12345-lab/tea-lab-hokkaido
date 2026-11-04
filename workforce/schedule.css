@@ -27,3 +27,20 @@
  .schedule-day p { font-size:14px; }
 }
 @media(max-width:450px) { .schedule-period { grid-template-columns:1fr; } }
+
+/* 作業入口は表示だけ。権限・保存は既存controller/サーバーが担当。 */
+.schedule-task-nav{display:flex;flex-wrap:wrap;gap:10px 20px;margin:24px 0}.schedule-task-nav a{font-weight:600}.schedule-public-note{border-left:3px solid var(--accent,#2F5452);padding-left:10px}#schedule-overview>summary{font-size:1.2rem;font-weight:600;cursor:pointer}section[id],details[id]{scroll-margin-top:24px}
+
+/* 出力は共有専用の許可列だけ。管理画面や本人の詳細を印刷対象に含めない。 */
+.schedule-updated{font-weight:600}.schedule-export{margin:24px 0;padding-block:18px;border-block:1px solid var(--line)}.schedule-export h2{font-size:18px}.schedule-print-only{display:none}
+@media print{
+ @page{size:A4 landscape;margin:12mm}
+ body.schedule-page{background:#fff;color:#000}
+ .schedule-page>header,.schedule-page main>*{display:none!important}
+ .schedule-page main{max-width:none;width:auto;margin:0;padding:0}
+ .schedule-page #schedule-report:not([hidden]){display:block!important}
+ #schedule-report h1{font-size:16pt}#schedule-report p{font-size:9pt;margin:8px 0}
+ #schedule-report table{width:100%;min-width:0;border-collapse:collapse;font-size:9pt}
+ #schedule-report th,#schedule-report td{padding:5px;border:1px solid #bbb;white-space:pre-line;vertical-align:top;overflow-wrap:anywhere}
+ #schedule-report thead{display:table-header-group}#schedule-report tr{break-inside:avoid}
+}

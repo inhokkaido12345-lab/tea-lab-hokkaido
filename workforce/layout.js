@@ -1,5 +1,5 @@
 /**
- * 【現役UI2】責務: 4画面の表示と管理タブの操作可否。認証/実際の認可/通信/保存は別担当。
+ * 【現役UI2】責務: 5画面の表示と管理タブの操作可否。認証/実際の認可/通信/保存は別担当。
  * 構成: index.htmlのinit→tab click/矢印キー→新設data-workforce-pane wrapperのhidden。
  * 削除影響: 管理者側のpaneが開けなくなる。既存controllerの認可/保存やGASの実データは消えない。
  * 概念: presentation controller / separation of concerns / accessible tabs。
@@ -19,7 +19,7 @@
   function init(options = {}) {
     // 情報設計: 実装ファイルの分類ではなく「利用者が今したいこと」で移動先を分ける。
     // 配列の順がキーボード移動の順。HTMLの見た目の並び/aria-controlsも同時に合わせる。
-    const names = ['employee', 'records', 'manager', 'more'];
+    const names = ['employee', 'records', 'schedule', 'manager', 'more'];
     let adminAllowed=false,active='employee';
     const tabs = names.map(name => document.getElementById(name + '-tab'));
     const panes = Array.from(document.querySelectorAll('[data-workforce-pane]'));

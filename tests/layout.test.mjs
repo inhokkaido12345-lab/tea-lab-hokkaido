@@ -136,5 +136,12 @@ test('employee cannot click or keyboard into management and a thousand tab attem
   for(let i=0;i<1000;i++){h.click('manager-tab');h.key('records-tab','ArrowRight');}
   assert.equal(h.node('manager-tab').disabled,true);assert.equal(h.node('manager-tools-panel').hidden,true);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('admin-demo-panel').hidden,true);
-  assert.equal(h.focused(),'more-tab');assert.equal(h.sent.length,2);
+  assert.equal(h.focused(),'schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,2);
+});
+
+test('shift destination separates schedules from records and exposes administrative entry only after signed authorization',async()=>{
+ const h=await harness();h.click('schedule-tab');assert.equal(h.node('schedule-work-panel').hidden,false);assert.equal(h.node('records-work-panel').hidden,true);assert.equal(h.node('schedule-admin-entry').hidden,true);
+ await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,false);
+ const records=html.slice(html.indexOf('<div id="records-work-panel"'),html.indexOf('<div id="schedule-work-panel"'));assert.doesNotMatch(records,/href="(?:admin-)?schedule.html"/);
+ h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');
 });

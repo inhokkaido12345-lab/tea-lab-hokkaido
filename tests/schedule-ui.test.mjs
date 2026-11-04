@@ -1,4 +1,19 @@
 import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{scheduleUiHarness,snapshot}from'./helpers/schedule-harness.mjs';
+
+test('admin can compose first draft with no collection; public/private notes stay distinct through submission and departure',async()=>{
+ const h=scheduleUiHarness('admin'),s={...h.snapshot(),phase:'NOT_OPEN',monthRevision:0,deadline:''};await h.api.read();await h.reply(h.sent[0],s);assert.equal(h.n('editor').disabled,false);assert.equal(h.n('publish').disabled,true);
+ h.n('employee').value='SCH001';h.n('public-note').value='地元に帰省';h.n('note').value='非公開の事情';h.click('save');const p=JSON.parse(h.sent[1].input).plan;assert.equal(p.publicNote,'地元に帰省');assert.equal(p.note,'非公開の事情');h.events.pagehide();assert.equal(h.n('public-note').value,'');
+});
+test('another employee sees explicit shared note as text and cannot receive a malformed public note',async()=>{
+ const h=scheduleUiHarness(),s=h.snapshot();s.phase='PUBLISHED';s.plans=[{employeeCode:'SCH002',employeeName:'別の社員',day:'2026-11-05',revision:1,periods:[],workIntervals:[],plannedMinutes:0,leaveType:'PUBLIC_OFF',publicNote:'帰省 <script>text</script>'}];
+ assert.equal(h.module.validate({...s,plans:[{...s.plans[0],publicNote:{private:'bad'}}]},s.month,false),false);
+ await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('calendar')),/共有事項：帰省 <script>text<\/script>/);
+});
+test('verified publication date is displayed in Japan time and invalid timestamps are rejected',async()=>{
+ const h=scheduleUiHarness(),s={...h.snapshot(),phase:'PUBLISHED',publishedAt:'2026-11-04T18:30:00.000Z'};
+ assert.equal(h.module.validate({...s,publishedAt:'not a date'},s.month,false),false);assert.equal(h.module.validate({...s,phase:'DRAFT'},s.month,false),false);
+ await h.api.read();await h.reply(h.sent[0],s);assert.match(h.n('published-at').textContent,/2026年11月5日.*03:30/);h.events.pagehide();assert.equal(h.n('published-at').textContent,'');
+});
 test('no write on initialization; signed role-bound read renders 30 correct November dates without treating unset days as holidays',async()=>{
  const h=scheduleUiHarness();assert.equal(h.sent.length,0);assert.equal(h.n('editor').disabled,true);await h.api.read();await h.reply(h.sent[0],h.snapshot());assert.equal(h.n('editor').disabled,false);assert.equal(h.n('calendar').children.filter(c=>c.className==='schedule-day').length,30);assert.equal(h.n('calendar').children.filter(c=>c.className==='schedule-blank').length,0);
  assert.match(h.n('summary').textContent,/希望受付/);

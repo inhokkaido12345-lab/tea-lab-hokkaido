@@ -2,13 +2,13 @@
 <p><a class="guide-link" href="#preview-notice">管理画面の使い方 →</a></p>
 <section id="labor-policy-section" class="card management-section" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button disabled id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p></section>
 <section class="card management-section"><h2><span class="tool-step" aria-hidden="true">01</span>勤務記録・本社提出</h2><p class="tool-intro">社員と月を選び、出退勤の一覧をCSV・PDFで保存します。</p><a class="button primary full" href="#preview-notice">月次記録・提出用出力を開く →</a></section>
-<section class="management-section"><h2><span class="tool-step" aria-hidden="true">02</span>シフト管理</h2><p class="tool-intro">月の希望締切を設定し、従業員の希望を確認してシフトを作成・確定します。</p><a class="button primary full" href="#preview-notice">シフト作成・希望の確認を開く →</a></section>
-<div class="menu-group management-section"><h2 class="group-label"><span class="tool-step" aria-hidden="true">03</span>訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2>
+
+<div class="menu-group management-section"><h2 class="group-label"><span class="tool-step" aria-hidden="true">02</span>訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2>
 <p class="tool-intro">従業員から届いた申請を確認・承認するか、管理者として勤務記録を直接訂正します。</p>
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
 <section id="admin-overview-section" class="admin-overview" hidden><button disabled id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p></section>
 <a class="menu-item" href="#preview-notice"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div><div id="manager-registration-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab">
-      <h2><span class="tool-step" aria-hidden="true">04</span>従業員登録</h2>
+      <h2><span class="tool-step" aria-hidden="true">03</span>従業員登録</h2>
       <!-- 説明とカードは表示専用。id/hiddenは登録controllerとの契約なので維持する。
            削除すると招待方式の案内がなくなる。手順変更時はadmin-guide.htmlも同期する。 -->
       <p class="tool-intro">新しい従業員を事前登録し、本人に渡す招待コードを発行します。</p>
@@ -38,7 +38,7 @@
       </div>
       <div id="manager-maintenance-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab">
     <section id="maintenance-section" class="staff-section management-section">
-      <h2><span class="tool-step" aria-hidden="true">05</span>従業員情報・利用停止</h2>
+      <h2><span class="tool-step" aria-hidden="true">04</span>従業員情報・利用停止</h2>
       <p class="tool-intro">氏名・入社日の訂正、退職などに伴う勤怠の利用停止を行います。</p>
 <details class="tool-help"><summary>対象の確認方法・打刻訂正との違い</summary><p>出退勤や休憩の時刻は、上の「訂正と承認」から変更します。</p>
       <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="#preview-notice">訂正・停止の違いと手順</a></p></details>
