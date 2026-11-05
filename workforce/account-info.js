@@ -8,6 +8,8 @@
  * 検証: account-info.test.mjs→実GAS連結→LINE本人の読取。表示した役割を管理APIの認可へ流用しない。
  * 再ログイン: 公式検証の署名付き拒否/証明なしで入口を再表示。本人クリックでだけSDKをlogout→login。
  * isLoggedIn=trueでもID tokenの有効性は別。勝手な認証延長・自動logout・業務の自動再送は禁止。
+ * 起動: bootstrapはLINE準備後にloadを1回直接呼ぶ。単独読取画面なのでボタンクリックのqueueへ委ねない。
+ * 改造: loadは初回/手動更新の共通入口。pendingのaria-busyをbootstrapのfinallyで上書きしない。
  */
 (function(global){
   'use strict';
@@ -68,7 +70,7 @@
         options.liff.login({redirectUri});
       }catch(_e){loginPending=false;n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';controls();}
     });
-    n.check.addEventListener('click',()=>{
+    function load(){
       if(pending||stopped||loginRequired||loginPending)return;clear();
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
@@ -78,7 +80,8 @@
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAccountInfoFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
       document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='登録情報を取得できませんでした。';finish();}finally{form.remove();}
-    });
+    }
+    n.check.addEventListener('click',load);
     global.addEventListener('message',async event=>{
       const r=pending;if(!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r)return;
@@ -86,13 +89,20 @@
       else clear();if(d.code==='ACCOUNT_INFO_LOGIN_REQUIRED')requireLogin();n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();n.status.textContent='情報を消去しました。再確認する場合はページを開き直してください。';});clear();controls();
+    return Object.freeze({load});
   }
   async function bootstrap(){
-    const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
+    const status=document.getElementById('account-info-status');let departed=false;
+    global.addEventListener('pagehide',()=>{departed=true;});
+    // 履歴復帰のGET再起動は維持。初回の本人読取は、この画面のcontrollerが直接開始する。
+    global.TlhAutoRead.init();
     status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});const loggedIn=global.liff.isLoggedIn();
-      status.textContent=loggedIn?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:!loggedIn});if(loggedIn)global.TlhAutoRead.init().once('account');
-    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
+      if(departed)return;
+      status.textContent=loggedIn?'登録情報を自動取得します。':'LINEログインが必要です。';
+      const viewer=init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:!loggedIn});
+      if(loggedIn)viewer.load(); // 保存しない本人読取だけ。更新ボタンは再取得/エラー後の再試行用。
+    }catch(_e){if(!departed){status.textContent='LINEログインを準備できません。';status.setAttribute?.('aria-busy','false');}}
   }
   global.TlhAccountInfo=Object.freeze({init,parseInfo,verify,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();

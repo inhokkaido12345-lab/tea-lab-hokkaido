@@ -1,5 +1,25 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {accountInfoHarness,sampleAccountInfo} from './helpers/account-info-harness.mjs';
 
+const startupTick=()=>new Promise(resolve=>setImmediate(resolve));
+test('real page bootstrap reads once without clicking and stays busy until the signed response',async()=>{
+ const h=accountInfoHarness({bootstrap:true});await startupTick();assert.equal(h.sent.length,1);
+ assert.equal(h.n('status').attributes['aria-busy'],'true');assert.equal(h.n('check').disabled,true);h.click();assert.equal(h.sent.length,1);
+ await h.reply(h.sent[0]);assert.equal(h.n('result').hidden,false);assert.equal(h.n('status').attributes['aria-busy'],'false');
+ assert.equal(h.n('check').disabled,false);h.click();assert.equal(h.sent.length,2);
+});
+test('unlogged page bootstrap shows login without requesting or logging in automatically',async()=>{
+ const h=accountInfoHarness({bootstrap:true,loggedIn:false});await startupTick();assert.equal(h.sent.length,0);assert.equal(h.n('login').hidden,false);
+ assert.equal(h.n('check').disabled,true);assert.equal(h.n('status').attributes['aria-busy'],'false');assert.equal(h.loginCalls.length,0);
+});
+test('failed initial read is not retried automatically and manual refresh remains available',async()=>{
+ const h=accountInfoHarness({bootstrap:true});await startupTick();[...h.timers.values()][0]();await startupTick();assert.equal(h.sent.length,1);
+ assert.equal(h.n('status').attributes['aria-busy'],'false');h.click();assert.equal(h.sent.length,2);
+ const failed=accountInfoHarness({bootstrap:true,initFailure:true});await startupTick();assert.equal(failed.sent.length,0);assert.equal(failed.n('status').attributes['aria-busy'],'false');
+});
+test('leaving during LINE initialization cannot start a late account request',async()=>{
+ const h=accountInfoHarness({bootstrap:true,deferInit:true});h.handlers.pagehide();h.completeInit();await startupTick();assert.equal(h.sent.length,0);
+});
+
 test('explicit self read sends only proof and envelope; repeated taps send once and signed fields display',async()=>{
  const h=accountInfoHarness();assert.equal(h.sent.length,0);for(let i=0;i<1000;i++)h.click();assert.equal(h.sent.length,1);
  assert.deepEqual(Object.keys(h.sent[0]).sort(),['action','idToken','nonce','responseKey']);await h.reply(h.sent[0]);assert.equal(h.n('result').hidden,false);assert.equal(h.n('check').disabled,false);
