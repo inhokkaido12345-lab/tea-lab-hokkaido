@@ -29,6 +29,6 @@ test('changed business pages refresh their changed scripts and shared stylesheet
  const assets=new Set(['app.css','account-info.js','account-recovery.js','admin-access.js','admin-overview.js','attendance-journal.js','daily-summary.js','day-change.js','demo-invitation.js','labor-policy.js','monthly-work-summary.js','pending-approvals.js','punch.js','schedule.js','staff-code-change.js','staff-enrollment.js','staff-maintenance.js','work-state.js','current-workplace.js']);
  for(const page of ['index','account-info','staff-code-change','recovery','timecard-records','admin-timecard-records','day-change','admin-day-change','schedule','admin-schedule']){
   const html=fs.readFileSync(new URL('../workforce/'+page+'.html',import.meta.url),'utf8');
-  for(const m of html.matchAll(/(?:src|href)="([^"?]+)\?v=([^\"]+)"/g))if(assets.has(m[1]))assert.equal(m[2],'20261105-store1',page+':'+m[1]);
+  for(const m of html.matchAll(/(?:src|href)="([^"?]+)\?v=([^\"]+)"/g))if(assets.has(m[1]))assert.equal(m[2],m[1]==='current-workplace.js'?'20261105-store2':'20261105-store1',page+':'+m[1]);
  }
 });
