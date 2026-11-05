@@ -128,13 +128,14 @@
       const unknown=()=>{if(pending!==r)return;if(command==='commit')uncertain=true;clear();n.status.textContent='応答を確認できません。「内容を確認する」で結果を読み直してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhDayChangeFrame';form.hidden=true;
       Object.entries({...fields,action:ACTION,command,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const e=document.createElement('input');e.type='hidden';e.name=name;e.value=value;form.appendChild(e);});document.body.appendChild(form);
-      try{form.submit();}catch(_e){unknown();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     for(const key of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[key].addEventListener('input',()=>{if(uncertain||pending||completed||stopped)return;n[key].removeAttribute?.('aria-invalid');draft=null;clear();controls();});
     n.preview.addEventListener('click',()=>{if(pending||completed||stopped)return;clear();try{if(!uncertain)draft=Object.freeze(input());send('preview',draft);}catch(error){
       const detail=inputErrors[error&&error.message];n.status.textContent=(error&&error.session?'勤務 '+error.session+'：':'')+(detail?detail.text:messages.CHANGE_INVALID);if(detail){const field=error.field||n[detail.node];field.setAttribute?.('aria-invalid','true');field.focus?.();}controls();}});
     n.commit.addEventListener('click',()=>{if(n.commit.disabled||!review||!global.confirm(n.review.textContent+'\nこの内容で'+(draft.mode==='SELF'?'申請':'訂正を反映')+'しますか？'))return;send('commit',{...draft,revision:review.revision});});
-    global.addEventListener('message',async e=>{const r=pending;if(!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
+    global.addEventListener('message',async e=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(e))return;const r=pending;if(!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
       let valid=false;try{valid=await verify(e.data,r);}catch(_e){}if(!valid||pending!==r)return;const d=e.data;
       if(d.code==='CHANGE_READY'){const s=parseSummary(d.summary,r.fields);if(!s)return;
         const sessions=s.sessions||[s];n.review.textContent=s.employeeCode+' / '+s.employeeName+'\n出勤日 '+s.day+'\n'+sessions.map((q,i)=>'勤務 '+(i+1)+'\n出勤 '+stamp(q.clockIn)+'\n退勤 '+stamp(q.clockOut)+'\n休憩 '+stamp(q.breakStart)+' 〜 '+stamp(q.breakEnd)).join('\n\n')+'\n理由 '+s.reason+'\nこの日の勤務を上記の全区間へ訂正します。元の打刻は残します。';n.review.hidden=false;review={revision:d.revision};
@@ -166,7 +167,8 @@
     status.setAttribute?.('aria-busy','true');
     try{
       await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
-      login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
+      login.addEventListener('click',()=>global.liff.login({redirectUri:global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname}));
+      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
       const autoReads=global.TlhAutoRead.init();let adminAllowed=false;

@@ -44,7 +44,7 @@
  }
  // CSVは引用符だけでは数式実行を防げない。氏名/公開メモにも式の開始文字が入り得る。
  function cell(v){let s=String(v);if(/^[\s\uFEFF]*[=+\-@]/u.test(s))s="'"+s;return'"'+s.replaceAll('"','""')+'"';}
- function csv(r){return'\uFEFF'+[['対象月','対象期間','確定シフト最終更新（日本時間）',...headers],...r.rows.map(row=>[r.month,r.rangeStart+'〜'+r.rangeEnd,stamp(r.publishedAt),...row])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
+ function csv(r){const scope=r.workplace,prefix=scope?[scope.organizationName,scope.workplaceName]:[];return'\uFEFF'+[[...(scope?['会社','店舗']:[]),'対象月','対象期間','確定シフト最終更新（日本時間）',...headers],...r.rows.map(row=>[...prefix,r.month,r.rangeStart+'〜'+r.rangeEnd,stamp(r.publishedAt),...row])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
  function init(){
   // build（純粋な列変換）とinit（ブラウザの保存/印刷）を分離し、Googleやプリンターなしで計算を検査する。
   // URLはCSVの一時メモリ参照。clear時に解放し、再読取/退場後に旧社員情報を持ち越さない。
@@ -53,7 +53,7 @@
   function clearTable(){tableReady=false;n.report.hidden=true;n['report-rows'].replaceChildren();}
   function setEnabled(yes){enabled=yes===true&&!stopped&&!!report;n.print.disabled=!enabled;n.csv.disabled=!enabled;if(!enabled)clearTable();}
   function clear(){report=null;setEnabled(false);clearTable();n['report-title'].textContent='';n['report-meta'].textContent='';if(url){URL.revokeObjectURL(url);url=null;}n['export-status'].textContent='確定シフトの取得後に出力できます。';}
-  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);n['report-title'].textContent='TLH 確定シフト '+report.month+' '+({FIRST:'前半',SECOND:'後半',MONTH:'月全体'}[report.period]);n['report-meta'].textContent='対象期間：'+report.rangeStart+'〜'+report.rangeEnd+'／最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
+  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);report.workplace=global.TlhTenantSession?.displayScope()||null;n['report-title'].textContent=(report.workplace?report.workplace.organizationName+' ／ '+report.workplace.workplaceName+' ／ ':'')+'TLH 確定シフト '+report.month+' '+({FIRST:'前半',SECOND:'後半',MONTH:'月全体'}[report.period]);n['report-meta'].textContent='対象期間：'+report.rangeStart+'〜'+report.rangeEnd+'／最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
    setEnabled(true);n['export-status'].textContent='確定公開済みの共有情報だけを出力します。PDF・CSVを保存してLINEやメールへ添付できます。';
   }
   function preparePrint(){

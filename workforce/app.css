@@ -1597,3 +1597,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   #monthly-report thead { display:table-header-group; }
   #monthly-report tr { break-inside:avoid; }
 }
+
+/* 店舗の目印：全業務画面で同じ階層。店名は署名済み所属からJSが設定する。
+   削除で目印が見づらくなるが、認可はGAS側に残る。hidden/disabledは解除しない。 */
+.workplace-context{margin:0 0 1.25rem;padding:1rem 1.25rem;border-bottom:2px solid #7C908E;background:#F3EFE7;color:#252829;display:grid;gap:.65rem}
+.workplace-context strong{display:block;font-size:1.15rem;font-weight:600;line-height:1.5}
+.workplace-eyebrow{display:block;font-size:.75rem;letter-spacing:.05em;color:#495C63}
+#workplace-company,#workplace-status{font-size:.85rem;color:#495C63;margin:0}
+.workplace-chooser{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.workplace-chooser label{font-size:.8rem}.workplace-chooser select{min-width:0;max-width:100%;flex:1 1 15rem}
+.workplace-chooser button{font:inherit;padding:.5rem .75rem;border:1px solid #2F5452;border-radius:.5rem;background:#2F5452;color:#fff}
+.workplace-chooser button:disabled{opacity:.45;cursor:not-allowed}
+@media print{.workplace-context{display:none}}
