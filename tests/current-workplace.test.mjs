@@ -20,10 +20,11 @@ test('matching explicit URL is accepted, but foreign endpoints, embedding, dupli
  const foreign=h.form();foreign.action='https://evil.invalid/';assert.throws(()=>h.api.submit(foreign),/INVALID/);assert.throws(()=>h.api.submit(h.form({organizationId:c.organizationId})),/DUPLICATE/);h.leave();assert.throws(()=>h.api.submit(h.form()),/INVALID/);
  const framed=currentWorkplaceHarness({embedded:true});assert.throws(()=>framed.api.submit(framed.form()),/INVALID/);
 });
+// operations.jsは別の運営台帳・専用認可。勤怠の固定店舗scopeを付ける対象ではない。
 test('all ten business entry pages carry the same mark and load the scope helper before their controllers',()=>{
  const pages=['index','account-info','staff-code-change','recovery','timecard-records','admin-timecard-records','day-change','admin-day-change','schedule','admin-schedule'];
  for(const page of pages){const html=fs.readFileSync(new URL('../workforce/'+page+'.html',import.meta.url),'utf8');assert.match(html,/data-current-workplace/);assert.match(html,/current-workplace\.js\?v=/);const scripts=[...html.matchAll(/src="([^"?]+\.js)/g)].map(m=>m[1]);const local=scripts.filter(s=>!s.startsWith('https:'));assert.equal(local[0],'current-workplace.js');}
- for(const file of fs.readdirSync(new URL('../workforce/',import.meta.url)).filter(n=>n.endsWith('.js')&&n!=='current-workplace.js')){const js=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');if(js.includes('form.submit()'))assert.match(js,/TlhCurrentWorkplace\.submit\(form\)/,file);}
+ for(const file of fs.readdirSync(new URL('../workforce/',import.meta.url)).filter(n=>n.endsWith('.js')&&!['current-workplace.js','operations.js'].includes(n))){const js=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');if(js.includes('form.submit()'))assert.match(js,/TlhCurrentWorkplace\.submit\(form\)/,file);}
 });
 test('changed business pages refresh their changed scripts and shared stylesheet together',()=>{
  const assets=new Set(['app.css','account-info.js','account-recovery.js','admin-access.js','admin-overview.js','attendance-journal.js','daily-summary.js','day-change.js','demo-invitation.js','labor-policy.js','monthly-work-summary.js','pending-approvals.js','punch.js','schedule.js','staff-code-change.js','staff-enrollment.js','staff-maintenance.js','work-state.js','current-workplace.js']);

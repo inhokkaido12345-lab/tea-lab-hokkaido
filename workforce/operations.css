@@ -1,0 +1,14 @@
+/* 運営2画面専用の配置。共通app.cssの色/字体を使う。削除で配置だけ崩れ保存/認可は不変。
+ * 一般化：shared design tokens / responsive layout。改造は.operations-gridとfieldsetの間隔から。
+ * hidden/disabledをCSSで解除しない。operations.testと公開後のPC/スマホで確認。個人データを含めない。 */
+.operations-page main { max-width:72rem; margin:auto; padding:1.25rem; }
+.operations-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:2.5rem; align-items:start; }
+.operations-page fieldset { border:0; padding:0; min-width:0; }
+.operations-page label { display:block; margin-top:1.2rem; font-weight:600; }
+.operations-page input,.operations-page select,.operations-page textarea { display:block; width:100%; box-sizing:border-box; margin-top:.4rem; }
+.operations-page section { margin-top:2rem; padding-top:1.25rem; border-top:1px solid var(--muted); }
+.operations-page h1,.operations-page h2,.operations-page h3 { color:var(--ink); }
+.operations-page .operations-actions { display:flex; gap:.75rem; flex-wrap:wrap; margin-top:1.25rem; }
+.operations-page .operations-note { line-height:1.7; padding:1rem; background:#fff; border-left:4px solid var(--teal); }
+.operations-page #ops-result p,.operations-page #ops-review p { overflow-wrap:anywhere; }
+@media(max-width:48rem) { .operations-grid { grid-template-columns:minmax(0,1fr); gap:1.5rem; } }
