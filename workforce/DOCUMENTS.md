@@ -4,7 +4,7 @@
 
 | 資料 | 読み方 |
 |---|---|
-| [LOGIN-RECOVERY.md](LOGIN-RECOVERY.md) | 未公開の打刻ログイン改善・書式生成削減・検査と限界 |
+| [LOGIN-RECOVERY.md](LOGIN-RECOVERY.md) | 公開済みの打刻ログイン改善・書式生成削減・検査と限界 |
 | [README.md](../README.md) | 現行機能・保守 |
 | [assets/brand/README.md](../assets/brand/README.md) | 現行機能・保守 |
 | [tests/README.md](../tests/README.md) | 現行機能・保守 |
