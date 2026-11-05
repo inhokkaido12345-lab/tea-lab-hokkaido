@@ -7,6 +7,11 @@ test('submit adds only the fixed two identifiers and preserves identity, operati
  const h=currentWorkplaceHarness(),fields={action:'bridgeRecordPunch',eventId:'evt_fixture',idToken:'fake.jwt.proof',nonce:'a'.repeat(32),responseKey:'b'.repeat(64)},form=h.form(fields);h.api.submit(form);
  assert.deepEqual(h.sent[0],{...fields,organizationId:h.api.config.organizationId,workplaceId:h.api.config.workplaceId});assert.equal(h.sent.length,1);assert.throws(()=>h.api.submit(form),/DUPLICATE/);assert.equal(h.sent.length,1);
 });
+test('a real form named action input can shadow form.action without replacing the destination attribute',()=>{
+ const h=currentWorkplaceHarness(),form=h.form({action:'bridgeGetPunchReadiness',idToken:'fake.jwt.proof'});
+ Object.defineProperty(form,'action',{value:form.children[0],configurable:true});
+ h.api.submit(form);assert.equal(h.sent.length,1);assert.equal(h.sent[0].action,'bridgeGetPunchReadiness');
+});
 test('another store URL, partial or repeated scope cannot submit and shows a concrete warning',()=>{
  for(const query of ['?organizationId=other&workplaceId=other','?organizationId=other','?workplaceId=other','?organizationId=other&organizationId=other&workplaceId=other']){const h=currentWorkplaceHarness({href:'https://tealabhokkaido.com/workforce/'+query});assert.equal(h.banner.attrs.role,'alert');assert.match(h.banner.children.at(-1).textContent,/店舗情報が一致しません/);assert.throws(()=>h.api.submit(h.form()),/INVALID/);assert.equal(h.sent.length,0);}
 });

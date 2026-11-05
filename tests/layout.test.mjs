@@ -38,7 +38,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     document: { getElementById: node,
       querySelectorAll(selector) { if(['[data-approval-badge]','[data-current-workplace]'].includes(selector))return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
-      body: { appendChild() {} }, createElement() { return { children: [],
+      body: { appendChild() {} }, createElement() { return { children: [],getAttribute(k){return this[k];},
         appendChild(child) { this.children.push(child); }, remove() {},
         submit() { sent.push(Object.fromEntries(this.children.map(child => [child.name, child.value]))); } }; } },
     fetch() { throw Error('unexpected network'); },
