@@ -9,7 +9,9 @@
  * 拡張: 過去時刻・代理打刻・給与/履歴表示は別設計。勝手に受付を開けない。
  * 改造箇所: commands/allowedはGAS WorkStateの遷移/PunchService/BridgePunchと両集計テストも同期。
  * 境界: ID/token/鍵/指紋はメモリ/POSTだけ。URL/ログ/ブラウザ保存へ出さない。
- * 検証: punch.test.mjs→CI→LINE受付閉鎖確認。模擬保存と実打刻を区別する。
+ * 復帰: 署名付き本人確認拒否/証明の欠落だけでログイン案内。draftが残る間は遷移せず固定IDを保持。
+ * 改造: requireLogin/controlsとindex.htmlのpunch-login、punch.test.mjsを同期。周期確認/自動loginを追加しない。
+ * 検証: punch.test.mjs→CI→本人の読取。現行受付はON、新環境の既定値とは別。実打刻を試験で作らない。
  */
 (function(global){
   'use strict';
@@ -35,7 +37,7 @@
     WORK_STATE_CORRECTIONS_PENDING:'打刻修正の反映確認が必要です。開発担当に知らせてください。',
     WORK_STATE_STORAGE_NOT_READY:'保存先の設定確認が必要です。開発担当に知らせてください。',
     WRITE_REVIEW_REQUIRED:'記録の整合性確認が必要です。操作を止めて開発担当に知らせてください。',
-    LINE_VERIFY_REJECTED:'LINE本人確認が失敗しました。LINEから開き直してください。',INVALID_REQUEST:'送信内容を確認できませんでした。',
+    LINE_VERIFY_REJECTED:'LINEでログインし直してください。',INVALID_REQUEST:'送信内容を確認できませんでした。',
   });
   function random(size){return Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');}
   /**
@@ -62,26 +64,51 @@
    */
   function init(options){
     const check=document.getElementById('punch-check'),retry=document.getElementById('punch-retry'),status=document.getElementById('punch-status');
+    const login=document.getElementById('punch-login');
     const buttons=Object.fromEntries(Object.entries(commands).map(([type,c])=>[type,document.getElementById(c.id)]));
-    let pending=null,ready=null,draft=null,blocked=false;
-    function controls(){status.setAttribute?.('aria-busy',String(!!pending));
-      check.disabled=!!pending||!!draft||blocked;
-      retry.hidden=!draft;retry.disabled=!!pending||blocked;
+    let pending=null,ready=null,draft=null,draftSubmitted=false,blocked=false,loginRequired=false,loginPending=false,stopped=false;
+    function controls(){status.setAttribute?.('aria-busy',String(!!pending||loginPending));
+      check.disabled=!!pending||!!draft||blocked||loginRequired||loginPending||stopped;
+      retry.hidden=!draft;retry.disabled=!!pending||blocked||loginPending||stopped;
+      if(login){login.hidden=!loginRequired||!!draft||blocked||stopped;login.disabled=!!pending||loginPending||blocked||stopped;}
       for(const [type,button]of Object.entries(buttons)){
-        button.hidden=!ready||!allowed[ready.code].includes(type);button.disabled=!!pending||!!draft||blocked;
+        button.hidden=!ready||!allowed[ready.code].includes(type);button.disabled=!!pending||!!draft||blocked||loginRequired||loginPending||stopped;
       }
     }
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
+    /** 本人確認失敗は未保存の証明ではない。以前の送信が保存済みの可能性もあるためdraftを捨てない。 */
+    function requireLogin(){
+      // 送信前に証明がなくなっただけなら保存は開始していない。初回loginを妨げない。
+      if(draft&&!draftSubmitted)draft=null;
+      ready=null;loginRequired=true;
+      status.textContent=draft?'LINE本人確認が必要です。打刻の保存結果は未確認です。この画面を閉じず、同じ打刻を再送して確認してください。再送できない場合は管理者に記録の確認を依頼してください。':'LINEでログインし直してください。下のボタンから進めます。';
+      controls();
+    }
+    // 本人が押した時だけ既存SDKで復帰。未確定の打刻がある間は遷移禁止（Storageへの秘密保存もしない）。
+    login?.addEventListener('click',()=>{
+      if(!loginRequired||draft||pending||blocked||loginPending||stopped)return;
+      loginPending=true;ready=null;controls();
+      try{
+        if(options.liff.isInClient?.()){
+          status.textContent='LINEアプリから開き直します。';global.location.assign('https://miniapp.line.me/2011940133-JXUDzLnG');return;
+        }
+        status.textContent='LINEで再ログインします。完了すると打刻画面へ戻ります。';
+        if(options.liff.isLoggedIn())options.liff.logout();
+        options.liff.login({redirectUri:global.location.origin+global.location.pathname});
+      }catch(_error){loginPending=false;status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';controls();}
+    });
     async function send(action,fields={}){
-      if(pending||blocked)return;
+      if(pending||blocked||loginPending||stopped)return;
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
-      const idToken=options.liff&&options.liff.getIDToken();if(typeof idToken!=='string'||!idToken){status.textContent='LINE本人確認情報がありません。';return;}
+      let idToken;try{idToken=options.liff&&options.liff.getIDToken();}catch(_error){}
+      if(typeof idToken!=='string'||!idToken){requireLogin();return;}
       const r={action,fields,nonce:random(16),responseKey:random(32)};pending=r;controls();status.textContent='処理中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPunchFrame';form.hidden=true;
       Object.entries({...fields,action,nonce:r.nonce,responseKey:r.responseKey,idToken}).forEach(([name,value])=>{
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });document.body.appendChild(form);
+      if(action===WRITE)draftSubmitted=true; // 例外でも送信の成否を推測せず、以後は同じ固定IDで確認する。
       try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();}finally{form.remove();}
     }
     function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();});}
@@ -90,20 +117,24 @@
       try{
         const d=event.data,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
         if(!await verifyResponse(data,r)||pending!==r)return;status.textContent=messages[data.code];
-        if(Object.hasOwn(allowed,data.code)){ready={code:data.code,revision:data.revision};}
+        if(data.code!=='LINE_VERIFY_REJECTED')loginRequired=false;
+        if(data.code==='LINE_VERIFY_REJECTED'){requireLogin();}
+        else if(Object.hasOwn(allowed,data.code)){ready={code:data.code,revision:data.revision};}
         else if(!['PUNCH_UNAVAILABLE','PUNCH_NOT_SAVED','PUNCH_BUSY','WORK_STATE_BUSY'].includes(data.code)){ready=null;draft=null;}
         if(['WRITE_REVIEW_REQUIRED','WORK_STATE_REVIEW_REQUIRED','WORK_STATE_STORAGE_NOT_READY','WORK_STATE_CORRECTIONS_PENDING'].includes(data.code))blocked=true;
         finish();
         if(r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED'))options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
       }catch(_error){/* 未検証の応答を表示しない。 */}
     });
-    check.addEventListener('click',()=>{if(pending||draft||blocked)return;ready=null;controls();invoke(READ);});
+    check.addEventListener('click',()=>{if(pending||draft||blocked||loginRequired||loginPending||stopped)return;ready=null;controls();invoke(READ);});
     Object.entries(buttons).forEach(([type,button])=>button.addEventListener('click',()=>{
-      if(pending||draft||blocked||!ready||!allowed[ready.code].includes(type))return;
+      if(pending||draft||blocked||loginRequired||loginPending||stopped||!ready||!allowed[ready.code].includes(type))return;
       if(!global.confirm(commands[type].label+'：このLINEの本人打刻を現在のサーバー時刻で記録します。続けますか？'))return;
-      draft={eventId:'evt_'+random(16),eventType:type,revision:ready.revision};controls();invoke(WRITE,draft);
+      draft={eventId:'evt_'+random(16),eventType:type,revision:ready.revision};draftSubmitted=false;controls();invoke(WRITE,draft);
     }));
     retry.addEventListener('click',()=>{if(draft&&!pending&&!blocked)invoke(WRITE,draft);});
+    // bfcacheからの復帰はauto-read.jsが新しいGETへ戻す。退場後の遅延返信で打刻可能にしない。
+    global.addEventListener('pagehide',()=>{stopped=true;ready=null;draft=null;draftSubmitted=false;loginPending=false;finish();});
     controls();
   }
   global.TlhPunch=Object.freeze({init,verifyResponse});

@@ -3,14 +3,14 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 import {webcrypto,createHmac} from 'node:crypto';
 const source=fs.readFileSync(new URL('../workforce/attendance-journal.js',import.meta.url),'utf8');
 function journal(){return {month:'2026-11',days:Array.from({length:30},(_,i)=>({day:'2026-11-'+String(i+1).padStart(2,'0'),clockIn:'',clockOut:'',breakMs:0,workedMs:null,state:'NO_RECORD',plannedStart:'',plannedEnd:'',plannedBreakMinutes:null,plannedWorkedMs:null,excessMs:null}))};}
-function harness({cards=false,today=false,audience}={}){
+function harness({cards=false,today=false,audience,intl=Intl}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let id=0;
   function el(){return {value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},
     appendChild(n){this.children.push(n);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},remove(){},
     submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
   const n=k=>{if(!nodes.has(k))nodes.set(k,el());return nodes.get(k);};
   const window={addEventListener(k,fn){handlers[k]=fn;}};window.top=window;
-  vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl,Date,
+  vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl:intl,Date,
     document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement:el,body:el()},
     setTimeout(fn){timers.set(++id,fn);return id;},clearTimeout(k){timers.delete(k);}});
   n('month').value='2026-11';n('mode').value=audience==='admin'?'admin':'self';const viewer=window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today,audience});
@@ -45,6 +45,17 @@ test('completed work renders JST clock times, actual/planned break and one hour 
   h.click();await h.reply(h.sent[0],'JOURNAL_READY',j);const cells=h.n('rows').children[0].children.map(c=>c.textContent);
   assert.match(cells[2],/09:00/);assert.match(cells[3],/19:00/);assert.equal(cells[4],'1時間00分');
   assert.equal(cells[5],'9時間00分');assert.equal(cells[8],'60分');assert.equal(cells[9],'1時間00分');
+});
+
+test('a full month table and cards reuse only the formatter and preserve every JST timestamp',async()=>{
+ let builds=0,formats=0;
+ const intl={DateTimeFormat:function(...args){builds++;const formatter=new Intl.DateTimeFormat(...args);return {format(value){formats++;return formatter.format(value);}};}};
+ const h=harness({cards:true,intl}),j=journal();assert.equal(builds,0);
+ for(const row of j.days){const start=row.day+'T15:00:00.000Z',end=row.day+'T16:00:00.000Z';Object.assign(row,{state:'COMPLETED',clockIn:start,clockOut:end,workedMs:3600000,plannedStart:start,plannedEnd:end,plannedBreakMinutes:0,plannedWorkedMs:3600000,excessMs:0});}
+ const expected=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
+ h.click();await h.reply(h.sent[0],'JOURNAL_READY',j);assert.equal(builds,1);assert.equal(formats,240);
+ for(let i=0;i<30;i++){const cells=h.n('rows').children[i].children;assert.equal(cells[2].textContent,expected.format(new Date(j.days[i].clockIn)));assert.equal(cells[3].textContent,expected.format(new Date(j.days[i].clockOut)));assert.equal(cells[6].textContent,cells[2].textContent);assert.equal(cells[7].textContent,cells[3].textContent);}
+ h.click();await h.reply(h.sent[1]);assert.equal(builds,1);assert.equal(h.n('rows').children[0].children[2].textContent,'—');
 });
 test('wrong source/origin, forged signature, nonce and modified journal never display records',async()=>{
   const h=harness();h.click();const r=h.sent[0];

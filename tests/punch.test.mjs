@@ -4,17 +4,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto, createHmac } from 'node:crypto';
-function harness({onRecorded}={}){
+function harness({onRecorded,liff:customLiff}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let seq=0;
   const node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:true,disabled:false,textContent:'',events:{},addEventListener(type,fn){this.events[type]=fn;}});return nodes.get(id);};
-  const window={top:null,confirm:()=>true,addEventListener(type,fn){handlers[type]=fn;}};window.top=window;
+  const logins=[],redirects=[],logouts=[];
+  const window={top:null,location:{origin:'https://example.test',pathname:'/workforce/',search:'?private=discard',hash:'#discard',assign(url){redirects.push(url);}},confirm:()=>true,addEventListener(type,fn){handlers[type]=fn;}};window.top=window;
   const context={window,crypto:webcrypto,Uint8Array,TextEncoder,
     document:{getElementById:node,body:{appendChild(){}},createElement(){return {children:[],appendChild(n){this.children.push(n);},remove(){},
       submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}},
     setTimeout(fn){const id=++seq;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},
   };
   vm.runInNewContext(fs.readFileSync(new URL('../workforce/punch.js',import.meta.url),'utf8'),context);
-  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff:{getIDToken:()=> 'fake.jwt.proof'},onRecorded});
+  const liff={getIDToken:()=> 'fake.jwt.proof',isInClient:()=>false,isLoggedIn:()=>true,logout(){logouts.push(true);},login(options){logins.push(options);},...customLiff};
+  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff,onRecorded});
   const click=id=>node(id).events.click();
   async function reply(r,code,revision='',changes={},origin='null'){
     const d={type:'TLH_BRIDGE_PUNCH',action:r.action,nonce:r.nonce,code,revision};
@@ -22,7 +24,7 @@ function harness({onRecorded}={}){
     Object.assign(d,changes);await handlers.message({origin,data:d});
   }
   async function ready(code='PUNCH_READY_OFF'){click('punch-check');await reply(sent.at(-1),code,'b'.repeat(64));}
-  return {node,window,sent,timers,click,reply,ready};
+  return {node,window,sent,timers,click,reply,ready,liff,logins,logouts,redirects,handlers};
 }
 test('initial UI sends nothing; signed closed switch never opens command buttons',async()=>{
   const h=harness();assert.equal(h.sent.length,0);h.click('punch-in');assert.equal(h.sent.length,0);
@@ -85,4 +87,50 @@ test('quarantine and raw-history/schema errors disable all commands, including r
 test('read timeout has no write draft, and embedding cannot request capability or save',async()=>{
   const h=harness();h.click('punch-check');[...h.timers.values()][0]();assert.equal(h.node('punch-check').disabled,false);assert.equal(h.node('punch-retry').hidden,true);
   const other=harness();other.window.top={};other.click('punch-check');assert.equal(other.sent.length,0);
+});
+
+test('only a verified identity rejection offers explicit login; no redirect or request is automatic',async()=>{
+ const h=harness();h.click('punch-check');const r=h.sent[0];
+ await h.reply(r,'LINE_VERIFY_REJECTED','',{mac:'0'.repeat(64)});assert.equal(h.node('punch-login').hidden,true);
+ await h.reply(r,'LINE_VERIFY_REJECTED');assert.equal(h.node('punch-login').hidden,false);assert.equal(h.node('punch-check').disabled,true);
+ assert.equal(h.logins.length,0);assert.equal(h.sent.length,1);h.click('punch-check');assert.equal(h.sent.length,1);
+ h.click('punch-login');h.click('punch-login');assert.equal(h.logouts.length,1);assert.equal(h.logins.length,1);
+ assert.equal(h.logins[0].redirectUri,'https://example.test/workforce/');assert.equal(h.sent.length,1);
+});
+
+test('missing proof and SDK errors offer login without sending data; ordinary refusal and timeouts do not',async()=>{
+ for(const getIDToken of [()=>null,()=>{throw Error('fake SDK failure');}]){
+  const h=harness({liff:{getIDToken}});h.click('punch-check');assert.equal(h.sent.length,0);assert.equal(h.node('punch-login').hidden,false);
+ }
+ for(const code of ['WORK_STATE_EMPLOYEE_REQUIRED','PUNCH_DISABLED','PUNCH_BUSY']){
+  const h=harness();h.click('punch-check');await h.reply(h.sent[0],code);assert.equal(h.node('punch-login').hidden,true);
+ }
+ const h=harness();h.click('punch-check');[...h.timers.values()][0]();assert.equal(h.node('punch-login').hidden,true);
+});
+
+test('LINE client reopens the mini app, and failed external login allows a manual retry',async()=>{
+ const h=harness({liff:{isInClient:()=>true}});h.click('punch-check');await h.reply(h.sent[0],'LINE_VERIFY_REJECTED');h.click('punch-login');
+ assert.deepEqual(h.redirects,['https://miniapp.line.me/2011940133-JXUDzLnG']);assert.equal(h.logouts.length,0);assert.equal(h.logins.length,0);
+ const other=harness({liff:{login(){throw Error('fake login failure');}}});other.click('punch-check');await other.reply(other.sent[0],'LINE_VERIFY_REJECTED');other.click('punch-login');
+ assert.equal(other.node('punch-login').disabled,false);assert.match(other.node('punch-status').textContent,/開始できません/);
+});
+
+test('proof disappearing before the first write leaves no submitted draft and permits explicit login',async()=>{
+ const h=harness();await h.ready();h.liff.getIDToken=()=>null;h.click('punch-in');
+ assert.equal(h.sent.length,1);assert.equal(h.node('punch-login').hidden,false);assert.equal(h.node('punch-retry').hidden,true);
+ h.click('punch-login');assert.equal(h.logins.length,1);assert.equal(h.sent.length,1);
+});
+
+test('unknown write then identity rejection never discards the event or navigates; exact retry resolves saved result',async()=>{
+ const h=harness();await h.ready();h.click('punch-in');const old=h.sent[1];[...h.timers.values()][0]();h.click('punch-retry');await h.reply(h.sent[2],'LINE_VERIFY_REJECTED');
+ assert.equal(h.node('punch-login').hidden,true);assert.equal(h.node('punch-check').disabled,true);assert.match(h.node('punch-status').textContent,/保存結果は未確認/);
+ h.click('punch-login');assert.equal(h.logins.length,0);h.click('punch-retry');const next=h.sent[3];
+ for(const key of ['eventId','eventType','revision'])assert.equal(next[key],old[key]);assert.notEqual(next.nonce,old.nonce);
+ await h.reply(next,'PUNCH_ALREADY_RECORDED');assert.equal(h.node('punch-check').disabled,false);assert.equal(h.node('punch-retry').hidden,true);
+});
+
+test('departure cancels waiting response and disables every action including login and fixed retry',async()=>{
+ const h=harness();await h.ready();h.click('punch-in');const old=h.sent[1];h.handlers.pagehide();assert.equal(h.timers.size,0);
+ await h.reply(old,'PUNCH_CLOCK_IN_DONE');h.click('punch-check');h.click('punch-in');h.click('punch-retry');h.click('punch-login');assert.equal(h.sent.length,2);assert.equal(h.logins.length,0);
+ assert.equal(h.node('punch-in').hidden,true);assert.equal(h.node('punch-check').disabled,true);
 });
