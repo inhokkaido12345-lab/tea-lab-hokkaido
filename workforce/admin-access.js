@@ -50,10 +50,11 @@
         request.timer=setTimeout(()=>{if(pending===request)finish('unavailable');},30000);
         const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAdminAccessFrame';form.hidden=true;
         Object.entries({action:ACTION,idToken,nonce:request.nonce,responseKey:request.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
-        document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}finally{form.remove();}
+        document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}finally{form.remove();}
       }catch(_e){finish('unavailable');}
     }
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const request=pending;if(stopped||!request||!related(event.source,options.frame.contentWindow)||
         !(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       const source=event.data,data={type:source&&source.type,action:source&&source.action,nonce:source&&source.nonce,code:source&&source.code,mac:source&&source.mac};

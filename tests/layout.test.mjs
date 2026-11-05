@@ -40,7 +40,14 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
       body: { appendChild() {} }, createElement() { return { children: [],getAttribute(k){return this[k];},
         appendChild(child) { this.children.push(child); }, remove() {},
-        submit() { sent.push(Object.fromEntries(this.children.map(child => [child.name, child.value]))); } }; } },
+        submit() { const p=Object.fromEntries(this.children.map(child => [child.name, child.value]));
+          // 店舗bootstrapは実HMACでLEGACY返信する。sentは既存業務の送信だけを数える。
+          if(p.action==='bridgeGetCompanyContext'){
+            const data={type:'TLH_BRIDGE_COMPANY_CONTEXT',action:p.action,nonce:p.nonce,code:'COMPANY_CONTEXT_LEGACY',context:JSON.stringify({version:2,mode:'LEGACY',workplaces:[]})};
+            data.mac=createHmac('sha256',p.responseKey).update([data.type,data.nonce,data.action,data.code,data.context].join('\n')).digest('hex');
+            queueMicrotask(()=>{for(const fn of handlers.message||[])fn({data,origin:'null',source:node('workplace-frame').contentWindow});});
+          }else sent.push(p);
+        } }; } },
     fetch() { throw Error('unexpected network'); },
   };
   context.window = context; context.top = context;
@@ -51,6 +58,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; assert.equal(inline.length, 1);
   vm.runInNewContext(inline[0][1], context);
   await new Promise(resolve => setImmediate(resolve));
+  if(loggedIn&&typeof proof==='string'&&proof&&!initFailure){await context.TlhTenantSession.ready(context.liff);await new Promise(resolve=>setImmediate(resolve));}
   return { node, panes, context, diagnostics, sent, timers,loginCalls,reloads:()=>reloads, focused: () => focused,
     depart(){for(const fn of handlers.pagehide||[])fn();},
     click(id) { node(id).events.click(); },

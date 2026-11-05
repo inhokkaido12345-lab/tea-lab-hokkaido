@@ -36,11 +36,16 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
 
-  <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-store1"><link rel="stylesheet" href="schedule.css?v=20261104-periods">
+  <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-platform1"><link rel="stylesheet" href="schedule.css?v=20261104-periods">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
-<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
+<section id="workplace-banner" class="workplace-context" aria-label="利用する店舗" aria-busy="false">
+  <div><span class="workplace-eyebrow">タイムカードの店舗</span><strong id="workplace-name">店舗は本人確認後に表示します</strong><span id="workplace-company"></span></div>
+  <div class="workplace-chooser"><label for="workplace-select">店舗を選ぶ</label><select id="workplace-select"><option value="">店舗は未確認です</option></select><button id="workplace-switch" type="button" disabled>店舗を切り替える</button></div>
+  <p id="workplace-status" role="status" aria-live="polite">本人確認後に、利用できる店舗を確認します。</p>
+  <iframe id="workplace-frame" name="tlhCompanyContextFrame" title="利用できる店舗の確認応答" hidden></iframe>
+</section>
 <main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" aria-busy="true" class="session-notice" role="status">LINEログインを準備しています。</p>
 <button id="home-line-login" type="button" class="bridge-button" hidden disabled>LINEログイン</button>
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
@@ -124,6 +129,7 @@
 </div>
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
 <p><a class="guide-link" href="admin-guide.html">管理画面の使い方 →</a></p>
+<p><a id="workplace-admin-entry" class="guide-link" href="workplace-admins.html" hidden>この店舗の管理者・打刻権限を設定 →</a></p>
 
 <!-- 管理内の切替は表示専用。保存ボタン/入力/再送状態は各controllerの担当。 -->
 <div id="manager-sections" class="manager-sections" role="group" aria-label="管理する項目">
@@ -147,6 +153,7 @@
         <textarea id="staff-claim-code" class="invite-code" rows="3" required maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
         <button id="staff-claim" class="bridge-button" type="submit">このLINEで招待を受け取る</button>
       </form>
+      <a id="workplace-enrollment-open" class="button primary" hidden>登録した店舗を開く →</a>
       </details>
       </div>
       <div id="manager-registration-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden>
@@ -169,6 +176,7 @@
           <button id="staff-issue" class="bridge-button" type="submit">従業員を事前登録して招待を発行</button>
         </form>
         <div id="staff-invite-box" hidden>
+          <p><a id="workplace-invitation-link" hidden>招待先URL（コードとは別に本人へ送付）</a></p>
           <label for="staff-issued-code">発行済み招待コード</label>
           <textarea id="staff-issued-code" class="invite-code" rows="3" readonly autocomplete="off" spellcheck="false"></textarea>
           <button id="staff-copy" class="bridge-button" type="button">招待コードをコピー</button>
@@ -206,6 +214,7 @@
           <p class="footnote">氏名・入社日の変更です。未使用の招待は取り消されます。社員番号・LINE連携・打刻時刻は変更しません。</p>
         </form>
         <button id="maintenance-stop" class="bridge-button" type="button">従業員の利用を停止する</button>
+        <p id="maintenance-company-note" class="footnote" hidden>氏名・入社日の訂正は会社内の共通情報に反映します。会社全体の利用停止は会社管理者の操作です。</p><a id="maintenance-workplace-stop" class="button" href="workplace-admins.html" hidden>この店舗だけの打刻権限を停止する →</a>
         <p class="footnote">対象の従業員登録と勤怠の従業員権限を停止します。TLHアカウント・管理者権限・過去の履歴は残ります。この画面に停止の取り消し機能はありません。</p>
       </div>
       <button id="maintenance-reset" class="bridge-button" type="button">対象を選び直す</button>
@@ -370,25 +379,24 @@
     順序依存があるためasyncを付けない。deferだけを付けて下の即時起動を先走らせない。
     魔改造：script追加/移動は起動テスト・固定UI参照・READMEを同期。認可や保存を自動化しない。
   -->
-  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="current-workplace.js?v=20261105-store2"></script>
-  <script src="demo-invitation.js?v=20261105-store1"></script>
-  <script src="staff-enrollment.js?v=20261105-store1"></script>
-  <script src="admin-overview.js?v=20261105-store1"></script>
-  <script src="staff-maintenance.js?v=20261105-store1"></script>
-  <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261105-store1"></script>
-  <script src="daily-summary.js?v=20261105-store1"></script>
-  <script src="monthly-work-summary.js?v=20261105-store1"></script>
-  <script src="attendance-journal.js?v=20261105-store1"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script src="tenant-session.js?v=20261105-platform1"></script>
+  <script src="demo-invitation.js?v=20261105-platform1"></script>
+  <script src="staff-enrollment.js?v=20261105-company-unlinked1"></script>
+  <script src="admin-overview.js?v=20261105-platform1"></script>
+  <script src="staff-maintenance.js?v=20261105-platform1"></script>
+  <script src="work-state.js?v=20261105-platform1"></script>
+  <script src="punch.js?v=20261105-platform1"></script>
+  <script src="daily-summary.js?v=20261105-platform1"></script>
+  <script src="monthly-work-summary.js?v=20261105-platform1"></script>
+  <script src="attendance-journal.js?v=20261105-platform1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261104-periods"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
-  <script src="schedule-report.js?v=20261104-periods"></script>
-  <script src="schedule.js?v=20261105-store1"></script>
+  <script src="schedule-report.js?v=20261105-platform1"></script>
+  <script src="schedule.js?v=20261105-company-unlinked1"></script>
   <script src="layout.js?v=20261104-cleanup"></script>
-  <script src="admin-access.js?v=20261105-store1"></script>
-  <script src="labor-policy.js?v=20261105-store1"></script>
+  <script src="admin-access.js?v=20261105-platform1"></script>
+  <script src="labor-policy.js?v=20261105-platform1"></script>
   <script>
     /**
      * TLH Workforce / LINE認証・TLH一般アカウント作成 診断画面 D8。
@@ -430,7 +438,7 @@
       document.getElementById('staff-load-status').textContent='LINEログインへ進みます。完了するとこの画面へ戻ります。';
       try{
         if(window.liff.isLoggedIn()){window.location.reload();return;}
-        window.liff.login({redirectUri:window.location.origin+window.location.pathname});
+        window.liff.login({redirectUri:TlhTenantSession.loginRedirectUri()});
       }catch(_error){
         homeLoginPending=false;homeLoginButton.disabled=false;
         document.getElementById('staff-load-status').textContent='LINEログインを開始できませんでした。もう一度お試しください。';
@@ -677,7 +685,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         bridgeStatus.textContent =
           'ブラウザがフォームの送信を拒否しました。';
@@ -805,7 +813,7 @@
       document.body.appendChild(form);
 
       try {
-        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         authStatus.textContent = 'ブラウザがPOST送信を拒否しました。';
         finishAuthTest();
@@ -930,7 +938,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         accountStatusElement.textContent = 'フォームPOSTを送信できませんでした。';
         finishAccountTest();
@@ -1053,7 +1061,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         signupStatus.textContent =
           'フォームの送信を開始できませんでした。';
@@ -1168,7 +1176,7 @@
       }
       document.body.appendChild(form);
       try {
-        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         adminStatus.textContent = '送信処理を開始できませんでした。';
         finishAdminTest();
@@ -1286,6 +1294,15 @@
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
+        if(!await TlhTenantSession.ready(window.liff))return;
+        if(TlhTenantSession.invitationOnly()){
+          // 未所属者は招待受取りだけ。通常の自動読取/管理gateは所属の再確認後に開始する。
+          document.querySelectorAll('[data-workforce-pane]').forEach(el=>{el.hidden=el.id!=='employee-registration-panel';});
+          document.getElementById('workforce-tabs').hidden=true;
+          const panel=document.getElementById('employee-registration-panel');panel.querySelector('.service-section').hidden=true;
+          panel.querySelector('.enrollment-details').open=true;
+          return;
+        }
         homeReady=true;adminAccess.start();loadVisiblePane(homePane);
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';

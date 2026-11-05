@@ -1,6 +1,16 @@
+運営追加：platform-operations.html/company-operations.htmlは独立ops APIと専用運営role。表示名はTLH運営管理者/会社管理者/店舗サービス管理者。READだけを初回自動、PREVIEW/COMMIT/再送は明示。Storage/URLへ保存しない。社員番号とAccount IDを混同しない。保存した店舗roleの勤怠適用と有効化コードは未接続と画面/OPERATIONS.mdへ明示。既存の勤怠roleやPWAに混ぜず、operations.testとbackend連結を同期。
+
 現在店舗の追加：current-workplace.jsの表示名/固定IDと10業務HTMLのdata-current-workplaceを同期。全業務formはTlhCurrentWorkplace.submit経由、nonce/操作ID/token/入力を変えない。URLの他店舗/重複scopeや退場後の送信を拒否。サーバーの固定境界は別に必須。表示を認可にしない。新API通信/Storage/タイマーなし、sandbox/見本は対象外。CURRENT-WORKPLACE.md参照。
 
 # Workforceの恒常ルール
+
+## 2026-11-05：会社・店舗表示と権限（未公開）
+
+tenant-session.jsがLINE本人確認後に署名付き店舗一覧を1回取得し、上部に会社/店舗を表示。許可された店舗の切替はページを起動し直し、前店舗の入力・名簿・出力を持ち越さない。保存中/結果不明では切替不可。URLは選択であり権限ではない。
+
+workplace-admins.html/workplace-roles.jsは店舗内の管理者/打刻権限の確認→明示保存。氏名/入社日は自店管理者が訂正可能だが会社共通情報であり、会社全体停止とは分ける。招待先URLはコードと別に共有。未所属者は招待受取りだけを表示し、登録後に店舗を開き直して所属を再確認する。
+
+本番GAS/新台帳/registryへの移行は未実施。**新bootstrap APIが必要なのでGASを先、UIを後に公開。** 未設定環境では従来機能を維持し、架空の所属店舗を表示しない。既存受付ONをこの変更でOFFへ戻さない。詳細はbackend docs/会社店舗-運用と移行.md。
 
 外部ホーム/PWAの未ログインはhome-line-loginを本人が押してliff.loginへ進む。SDK初期化成功・外部・未ログインのときだけ表示。自動redirect/独自認可URL/無限再試行は足さない。redirectUriはorigin+pathnameだけ、query/hash/tokenはコピーしない。pagehide後の押下を拒否。帰還後は同じstart/最新GAS認可。layout.testの未ログイン/復帰/SDK失敗/連打/離脱とPWA.mdを同期。
 
@@ -42,7 +52,7 @@ UI2の見本を所有者が確認し、実画面反映と公開を了承。画�
 
 LINEログインの最小タイムカードを優先。通常4打刻/日別一覧/SELF申請/DIRECT直接訂正/REVIEW承認は公開済み。架空社員で両訂正経路を実保存確認済み。
 管理者本人の訂正も従業員側からSELF申請する。管理はadmin-day-change.html（DIRECT/REVIEWのみ）とadmin-timecard-records.html（adminのみ）。本人ページはSELF/selfのみで管理gate/一覧を起動しない。現行は10勤務区間と氏名付き一覧に対応。却下/取消/異常修復は未実装。詳細ROLE-PAGES.md。
-打刻受付は最後の確認でOFF、復旧/一般登録もOFF。実社員の個人情報や過去時刻を推測して試験しない。
+打刻受付は所有者指示で2026-11-04にON。復旧/一般登録はOFF。実社員の個人情報や過去時刻を推測して試験しない。
 現在の画面入口と改造方法はREADME.md。以前の状況はhistory配下へ退避し、未公開/未接続を現在の指示と解釈しない。
 通常の調査/整理/検査はまとめて進める。実データ/権限/受付/新しい公開は承認範囲を確認する。回答末尾は「次は○○です。」。
 
@@ -61,6 +71,6 @@ daily-summary.jsのdurationは月次でも共有。GAS側の共有依存はpriva
 token/招待秘密/氏名/指紋/集計をURL/console/localStorage/sessionStorageへ出さない。
 同操作のretry draft/IDは固定、nonce/応答鍵は通信ごとに更新。連打/重複をUIとGAS両方で防ぐ。
 
-実社員の開始は別確認。実受付閉鎖を維持。実データ/管理者role/停止済み試験行を無断変更しない。
+実社員の開始は別確認。所有者の受付ONを勝手に戻さない。実データ/管理者role/停止済み試験行を無断変更しない。
 D17は来歴検査後の正式投影へ接続済み。新環境の安全な初期管理者入口は未整備、手編集で迂回しない。
 `node --test tests/*.mjs`→該当Actions→LINE読取を確認。模擬と実機を混同しない。

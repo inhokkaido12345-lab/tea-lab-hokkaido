@@ -147,9 +147,10 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
       Object.entries({action,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
-      document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='送信できませんでした。';finish();}finally{form.remove();}
+      document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async e=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(e))return;
       const r=pending;if(!r||stopped||!adminAllowed||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
       let valid=false;try{valid=await verifyResponse(e.data,r);}catch(_e){}if(!valid||pending!==r||stopped||!adminAllowed)return;
       if(n.month.value!==r.month||n.mode.value!==r.mode||r.mode==='admin'&&n.employee.value.trim()!==r.employeeCode){clear();finish();return;}
@@ -177,7 +178,8 @@
     document.getElementById('journal-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date()).slice(0,7);
     status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
-      login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
+      login.addEventListener('click',()=>global.liff.login({redirectUri:global.TlhTenantSession?global.TlhTenantSession.loginRedirectUri():global.location.origin+global.location.pathname}));
+      if(global.liff.isLoggedIn()&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
       status.textContent=login.hidden?'表示する月を選んで確認してください。':'LINEログインが必要です。';const viewer=init({liff:global.liff,gasUrl:config.gasUrl,audience,report:audience==='admin',exporter:audience==='admin'?global.TlhMonthlyReport.init():null,cards:document.getElementById('journal-cards')});
       const autoReads=global.TlhAutoRead.init();let adminAllowed=false;
