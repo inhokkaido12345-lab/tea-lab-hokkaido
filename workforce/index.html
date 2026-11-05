@@ -389,15 +389,15 @@
   <script src="current-workplace.js?v=20261105-store2"></script>
   <script src="demo-invitation.js?v=20261105-store1"></script>
   <script src="staff-enrollment.js?v=20261105-store1"></script>
-  <script src="admin-overview.js?v=20261105-store1"></script>
+  <script src="admin-overview.js?v=20261105-timing1"></script>
   <script src="staff-maintenance.js?v=20261105-store1"></script>
   <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261105-login1"></script>
+  <script src="punch.js?v=20261105-timing1"></script>
   <script src="daily-summary.js?v=20261105-store1"></script>
   <script src="monthly-work-summary.js?v=20261105-store1"></script>
   <script src="attendance-journal.js?v=20261105-format1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
-  <script src="auto-read.js?v=20261104-periods"></script>
+  <script src="auto-read.js?v=20261105-timing1"></script>
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261104-periods"></script>
@@ -468,10 +468,10 @@
     const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
     const laborPolicyUi = TlhLaborPolicy.init({gasUrl:GAS_URL,liff:window.liff});
-    const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
+    const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,autoLoad:false,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed)loadVisiblePane(homePane);}});
+      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
     // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
     // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。
@@ -487,7 +487,10 @@
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
-    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff, onRecorded:()=>{
+    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff,
+      // 固定名と時間だけの診断。token/打刻ID/本人情報をログへ渡さず、業務の成否判定には使わない。
+      onTiming:sample=>{if(['read','write'].includes(sample.phase)&&['response','timeout','send_error','cancelled'].includes(sample.outcome)&&Number.isFinite(sample.elapsedMs))console.info(JSON.stringify({type:'TLH_UI_TIMING_V1',phase:sample.phase,outcome:sample.outcome,elapsedMs:Math.max(0,Math.round(sample.elapsedMs))}));},
+      onRecorded:()=>{
       autoReads.again('punch',()=>homeReady&&homePane==='employee');autoReads.again('today',()=>homeReady&&homePane==='employee');
       autoReads.again('daily',()=>homeReady&&homePane==='records');autoReads.again('monthly',()=>homeReady&&homePane==='records');
     }});
@@ -1306,7 +1309,8 @@
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
-        homeReady=true;adminAccess.start();loadVisiblePane(homePane);
+        // 起動時の管理者確認と打刻準備を同じ共有Lockへ同時送信しない。失敗後の自動再試行はしない。
+        homeReady=true;adminAccess.start();autoReads.once('access',()=>homeReady);loadVisiblePane(homePane);
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;

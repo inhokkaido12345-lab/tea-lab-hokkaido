@@ -1,5 +1,6 @@
 /**
  * 現役・社員選択/承認待ち件数。init無通信→署名付き起動gate後に1回読取→DTO検査→選択肢/通知。
+ * ホームはautoLoad=falseで初回をauto-readのoverviewキーへ委ねる。通知を捨てず、打刻の初期読取と競合させない。
  * 削除影響: 管理者の候補と通知が取得不能。DB/保存処理は残る。新規社員番号の作成入力は対象外。
  * 概念: authenticated read model / presentation formatting。value=社員番号、表示=番号（氏名）。
  * 初歩: option.valueはAPIへ渡す識別子、textContentは人が読む文字。氏名を識別キーにしない。
@@ -54,7 +55,8 @@
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});document.body.appendChild(form);
       try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='一覧・承認待ちは未確認です。送信できません。';finish();}finally{form.remove();}
     }
-    function setAllowed(value){const changed=allowed!==(value===true);allowed=value===true;if(!allowed){finish();placeholder('管理者権限の確認後に選択できます');setCount(null);}controls();if(allowed&&changed)load();}
+    // ホームはautoLoad=falseで共通読取queueへ委ねる。他の入口は従来の許可直後読取を維持。
+    function setAllowed(value){const changed=allowed!==(value===true);allowed=value===true;if(!allowed){finish();placeholder('管理者権限の確認後に選択できます');setCount(null);}controls();if(allowed&&changed&&options.autoLoad!==false)load();}
     n.check.addEventListener('click',load);
     global.addEventListener('message',async event=>{
       const r=pending;if(!r||!allowed||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;

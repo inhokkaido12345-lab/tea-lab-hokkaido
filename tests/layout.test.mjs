@@ -60,6 +60,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       const request=sent.find(r=>r.action==='bridgeCheckStaffEnrollment'),data={type:'TLH_BRIDGE_STAFF_ENROLLMENT',action:request.action,nonce:request.nonce,code};
       data.mac=createHmac('sha256',request.responseKey).update([data.type,data.nonce,data.action,data.code].join('\n')).digest('hex');
       for(const fn of handlers.message)await fn({origin:'null',source:node('admin-access-frame').contentWindow,data});
+      await new Promise(resolve=>setImmediate(resolve));
     },
     async replyPunch(code) {
       const request = sent.at(-1), data = { type: 'TLH_BRIDGE_PUNCH', action: request.action,
@@ -75,19 +76,34 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       for(const fn of handlers.message)await fn({origin:'null',source:node('account-info-frame').contentWindow,data});
       await new Promise(resolve=>setImmediate(resolve));
     },
+    async replyJournalError(){
+      const request=sent.findLast(r=>r.action==='bridgeGetAttendanceJournalV2'),data={type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',action:request.action,nonce:request.nonce,code:'JOURNAL_UNAVAILABLE',journal:''};
+      data.mac=createHmac('sha256',request.responseKey).update([data.type,data.nonce,data.action,data.code,data.journal].join('\n')).digest('hex');
+      for(const fn of handlers.message)await fn({origin:'null',source:node('journal-frame').contentWindow,data});
+      await new Promise(resolve=>setImmediate(resolve));
+    },
   };
 }
 
-test('LIFF-ready defaults to employee, sends one role check and reads visible punch state automatically', async () => {
-  const h = await harness(); assert.equal(h.sent.length, 2);assert.equal(h.sent[0].action,'bridgeCheckStaffEnrollment');assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');assert.equal(h.node('manager-tab').disabled,true); assert.equal(h.node('workforce-tabs').hidden, false);
+test('startup serializes role and punch reads instead of competing for the same script lock', async () => {
+  const h = await harness();assert.equal(h.sent.length,1);assert.equal(h.sent[0].action,'bridgeCheckStaffEnrollment');assert.equal(h.node('manager-tab').disabled,true);
+  await h.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');assert.equal(h.node('manager-tab').disabled,true); assert.equal(h.node('workforce-tabs').hidden, false);
   assert.equal(h.node('punch-section').hidden, false); assert.equal(h.node('employee-work-panel').hidden, false);
   assert.equal(h.node('manager-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
 });
 
+test('startup roster and approval count wait behind punch and today reads; failed role check cannot stall employee reads forever',async()=>{
+ const h=await harness();await h.replyAccess();assert.deepEqual(h.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness']);
+ await h.replyPunch('PUNCH_DISABLED');assert.equal(h.sent[2].action,'bridgeGetAttendanceJournalV2');
+ await h.replyJournalError();assert.equal(h.sent[3].action,'bridgeGetAdminOverview');assert.equal(h.sent.length,4);
+ const failed=await harness();[...failed.timers.values()][0]();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(failed.node('manager-tab').disabled,true);assert.deepEqual(failed.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness']);
+});
+
 test('More tab loads own account inline once, reuses its result on return, and refreshes only by request',async()=>{
  const h=await harness();assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,0);
- h.click('more-tab');await h.replyPunch('PUNCH_DISABLED');
+ h.click('more-tab');await h.replyAccess();
  assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);assert.equal(h.node('account-info-status').attributes['aria-busy'],'true');
  h.click('account-info-check');assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);
  await h.replyAccount();assert.equal(h.node('account-info-result').hidden,false);assert.match(h.node('account-info-fields').children.map(n=>n.textContent).join(' '),/INFO001/);
@@ -97,7 +113,7 @@ test('More tab loads own account inline once, reuses its result on return, and r
 });
 
 test('More tab account failure offers a manual refresh without retry loops or enabling management',async()=>{
- const h=await harness();h.click('more-tab');await h.replyPunch('PUNCH_DISABLED');await h.replyAccount('ACCOUNT_INFO_UNAVAILABLE');
+ const h=await harness();h.click('more-tab');await h.replyAccess('TLH_ADMIN_REQUIRED');await h.replyAccount('ACCOUNT_INFO_UNAVAILABLE');
  assert.equal(h.node('account-info-result').hidden,true);assert.equal(h.node('account-info-check').disabled,false);assert.equal(h.node('manager-tab').disabled,true);
  h.click('employee-tab');h.click('more-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);
 });
@@ -117,7 +133,7 @@ test('login return uses normal startup; SDK failure and LIFF-internal state neve
   const returned=await harness({inClient:false});
   assert.equal(returned.node('home-line-login').hidden,true);assert.equal(returned.loginCalls.length,0);
   assert.equal(returned.sent[0].action,'bridgeCheckStaffEnrollment');
-  assert.equal(returned.sent[1].action,'bridgeGetPunchReadiness');assert.equal(returned.node('manager-tab').disabled,true);
+  assert.equal(returned.sent.length,1);assert.equal(returned.node('manager-tab').disabled,true);await returned.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(returned.sent[1].action,'bridgeGetPunchReadiness');
   for(const options of [{loggedIn:false,inClient:true},{loggedIn:false,inClient:false,initFailure:true}]){
     const h=await harness(options);assert.equal(h.node('home-line-login').hidden,true);h.click('home-line-login');assert.equal(h.loginCalls.length,0);assert.equal(h.sent.length,0);
   }
@@ -131,7 +147,7 @@ test('tabs change only wrapper visibility, not permissions, pending values, comm
   h.click('manager-tab');h.click('manager-employees-choice'); assert.equal(h.node('manager-registration-panel').hidden, false);
   assert.equal(h.node('employee-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   assert.equal(h.node('staff-issued-code').value, 'fake-private-draft'); assert.equal(h.node('staff-check').disabled, true);
-  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length, 3);assert.equal(h.sent[2].action,'bridgeGetAdminOverview');
+  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');
 });
 test('arrow/Home/End navigation maintains selected tab, focus and tab stop; other keys are untouched', async () => {
   const h = await harness();await h.replyAccess(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'records-tab');
@@ -148,7 +164,7 @@ test('four destinations expose only their wrappers and queue lazy reads without 
   h.click('more-tab');assert.equal(h.node('employee-registration-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,false);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('records-work-panel').hidden,true);
   h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
-  assert.equal(h.sent.length,3);assert.equal(h.sent[2].action,'bridgeGetAdminOverview');
+  assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');
 });
 
 test('developer demo also separates manager issue/release from personal invitation claim',async()=>{
@@ -157,7 +173,7 @@ test('developer demo also separates manager issue/release from personal invitati
   assert.match(admin,/id="demo-issue"/);assert.match(admin,/id="demo-release"/);assert.doesNotMatch(admin,/id="demo-claim"/);
   const personal=html.slice(html.indexOf('<section id="personal-demo-panel"'),html.indexOf('<section class="card" aria-live="polite">',html.indexOf('<section id="personal-demo-panel"')));
   assert.match(personal,/id="demo-claim"/);assert.doesNotMatch(personal,/id="demo-(?:issue|release)"/);
-  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,3);
+  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,2);
 });
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {
@@ -167,7 +183,7 @@ test('missing login or proof keeps business sections and nav closed, while diagn
   }
 });
 test('signed closed-reception response stays closed through view changes and does not create a punch', async () => {
-  const h = await harness(); h.click('punch-check'); assert.equal(h.sent.length, 2);
+  const h = await harness();await h.replyAccess('TLH_ADMIN_REQUIRED'); h.click('punch-check'); assert.equal(h.sent.length, 2);
   await h.replyPunch('PUNCH_DISABLED'); h.click('manager-tab'); h.click('employee-tab');
   assert.equal(h.node('punch-status').textContent, '打刻受付は停止中です。');
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);

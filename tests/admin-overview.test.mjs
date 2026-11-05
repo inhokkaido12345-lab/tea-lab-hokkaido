@@ -1,4 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {adminOverviewHarness,sampleOverview} from './helpers/admin-overview-harness.mjs';
+test('home may defer the authorized roster to its queue without changing ordinary page auto-load',async()=>{
+ const h=adminOverviewHarness({autoLoad:false});h.api.setAllowed(true);assert.equal(h.sent.length,0);assert.equal(h.n('check').disabled,false);
+ h.click();h.click();assert.equal(h.sent.length,1);await h.reply(h.sent[0]);assert.equal(h.badges[0].textContent,'● 2件');
+ h.api.setAllowed(false);h.click();assert.equal(h.sent.length,1);
+});
 test('no unauthenticated roster; verified gate auto-loads once, concurrent taps send once, labels never become identifiers',async()=>{
  const h=adminOverviewHarness();h.click();assert.equal(h.sent.length,0);h.api.setAllowed(true);for(let i=0;i<1000;i++){h.api.setAllowed(true);h.click();}assert.equal(h.sent.length,1);assert.equal(h.n('status').attributes['aria-busy'],'true');
  await h.reply(h.sent[0]);assert.equal(h.n('select').options[1].textContent,'DIR001（架空社員）');assert.equal(h.n('select').options[1].value,'DIR001');assert.ok(h.badges.every(b=>!b.hidden&&b.textContent==='● 2件'));assert.equal(h.n('status').attributes['aria-busy'],'false');

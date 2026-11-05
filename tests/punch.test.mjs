@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto, createHmac } from 'node:crypto';
-function harness({onRecorded,liff:customLiff}={}){
+function harness({onRecorded,onTiming,liff:customLiff}={}){
   const nodes=new Map(),handlers={},sent=[],timers=new Map();let seq=0;
   const node=id=>{if(!nodes.has(id))nodes.set(id,{hidden:true,disabled:false,textContent:'',events:{},addEventListener(type,fn){this.events[type]=fn;}});return nodes.get(id);};
   const logins=[],redirects=[],logouts=[];
@@ -16,7 +16,7 @@ function harness({onRecorded,liff:customLiff}={}){
   };
   vm.runInNewContext(fs.readFileSync(new URL('../workforce/punch.js',import.meta.url),'utf8'),context);
   const liff={getIDToken:()=> 'fake.jwt.proof',isInClient:()=>false,isLoggedIn:()=>true,logout(){logouts.push(true);},login(options){logins.push(options);},...customLiff};
-  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff,onRecorded});
+  window.TlhPunch.init({gasUrl:'https://script.google.com/fake',liff,onRecorded,onTiming});
   const click=id=>node(id).events.click();
   async function reply(r,code,revision='',changes={},origin='null'){
     const d={type:'TLH_BRIDGE_PUNCH',action:r.action,nonce:r.nonce,code,revision};
@@ -31,6 +31,21 @@ test('initial UI sends nothing; signed closed switch never opens command buttons
   h.click('punch-check');await h.reply(h.sent[0],'PUNCH_DISABLED');assert.equal(h.node('punch-in').hidden,true);
   assert.equal(h.node('punch-status').textContent,'打刻受付は停止中です。');
   assert.deepEqual(Object.keys(h.sent[0]).sort(),['action','idToken','nonce','responseKey']);
+});
+
+test('read/write timings contain only duration and fixed labels; diagnostic exceptions cannot change a saved result',async()=>{
+ const samples=[];let saved=0;
+ const h=harness({onTiming:sample=>{samples.push(sample);throw Error('diagnostic failure');},onRecorded:()=>saved++});
+ await h.ready();h.click('punch-in');await h.reply(h.sent[1],'PUNCH_CLOCK_IN_DONE');
+ assert.equal(samples.length,2);assert.deepEqual(samples.map(x=>x.phase),['read','write']);assert.equal(saved,1);assert.equal(h.node('punch-check').disabled,false);
+ for(const sample of samples){assert.deepEqual(Object.keys(sample).sort(),['elapsedMs','outcome','phase']);assert.ok(sample.elapsedMs>=0);assert.equal(sample.outcome,'response');}
+ assert.doesNotMatch(JSON.stringify(samples),/fake.jwt|eventId|responseKey|nonce/);
+});
+
+test('timeout and departure measure separately without replacing the fixed retry operation',async()=>{
+ const samples=[],h=harness({onTiming:sample=>samples.push(sample)});await h.ready();h.click('punch-in');const original=h.sent[1];[...h.timers.values()][0]();
+ assert.equal(samples.at(-1).outcome,'timeout');h.click('punch-retry');assert.equal(h.sent[2].eventId,original.eventId);h.handlers.pagehide();assert.equal(samples.at(-1).outcome,'cancelled');
+ await h.reply(h.sent[2],'PUNCH_CLOCK_IN_DONE');assert.equal(samples.length,3);
 });
 
 test('display refresh is notified only after a matching signed saved result, never on timeout or late replay',async()=>{

@@ -6,11 +6,13 @@
  * 魔改造: 下の固定表だけが自動実行の許可リスト。登録/打刻/承認/preview/再送を絶対に足さない。
  * 境界: LINE準備/最新管理者gateは呼出し側とGASが担当。判定の代わりに使わない。Storage/ログなし。
  * 検証: auto-read.test.mjs＋layout/全UI/連結。自動失敗を無限再試行せず、更新は人が操作する。
+ * 起動: accessキーは既に開始した管理者確認の終了待ちだけ。overviewも同じqueueで読み、Lock競合を抑える。
+ * 改造: accessを保存入口へ転用せず、indexのrole→punch→today→overview順とtimeout試験を同期する。
  */
 (function(global){'use strict';
   const reads=Object.freeze({punch:['punch-check','punch-status'],today:['journal-check','journal-status'],journal:['journal-check','journal-status'],
-    daily:['daily-summary-check','daily-summary-status'],monthly:['monthly-work-check','monthly-work-status'],account:['account-info-check','account-info-status'],
-    schedule:['schedule-refresh','schedule-status'],pending:['pending-load','pending-status'],labor:['labor-policy-check','labor-policy-status'],enrollment:['staff-check','staff-status'],overview:[null,'admin-overview-status']});
+    daily:['daily-summary-check','daily-summary-status'],monthly:['monthly-work-check','monthly-work-status'],account:['account-info-check','account-info-status'],access:[null,'admin-access-status'],
+    schedule:['schedule-refresh','schedule-status'],pending:['pending-load','pending-status'],labor:['labor-policy-check','labor-policy-status'],enrollment:['staff-check','staff-status'],overview:['admin-overview-check','admin-overview-status']});
   function init(){
     let stopped=false,running=false,observer=null,release=null,restoring=false;const seen=new Set(),queue=[];
     // 戻る/進むのbfcacheはJSの停止状態や古い認可も復元する。再送せず新しいGETで起動し直す。
