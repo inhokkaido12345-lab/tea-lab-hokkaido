@@ -32,7 +32,7 @@
    r.timer=setTimeout(()=>{if(pending!==r)return;if(command==='PREVIEW'){draft=null;reviewed=false;}n.status.textContent=command==='COMMIT'?'結果を確認できません。入力を変えず同じ保存ボタンで確認してください。':'応答がありません。確認し直してください。';finish();},30000);
    const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhStaffCodeChangeFrame';form.hidden=true;
    Object.entries({...draft,action:ACTION,command,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});document.body.appendChild(form);
-   try{form.submit();}catch(_e){if(command==='PREVIEW'){draft=null;reviewed=false;}n.status.textContent='送信結果を確認できません。同じ操作で確認してください。';finish();}finally{form.remove();}
+   try{if(g.TlhCurrentWorkplace)g.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){if(command==='PREVIEW'){draft=null;reviewed=false;}n.status.textContent='送信結果を確認できません。同じ操作で確認してください。';finish();}finally{form.remove();}
   }
   g.addEventListener('message',async e=>{
    const r=pending;if(!r||stopped||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;

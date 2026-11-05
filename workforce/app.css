@@ -1597,3 +1597,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   #monthly-report thead { display:table-header-group; }
   #monthly-report tr { break-inside:avoid; }
 }
+
+/* 今の店舗の目印：全業務画面で共有。削除で店舗名だけが消える。認可/hidden/disabledは変更しない。
+   魔改造：配色/余白はここ、店舗名はcurrent-workplace.js。固定IDと表示名を混同しない。 */
+.current-workplace-mark {
+  max-width:980px;
+  margin:12px auto;
+  padding:12px 20px;
+  border-left:4px solid var(--teal);
+  background:var(--soft,#f3efe7);
+  color:var(--ink,#252829);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  overflow-wrap:anywhere;
+}
+.current-workplace-mark strong { font-size:16px; font-weight:600; }
+.current-workplace-mark span { font-size:12px; }
+.current-workplace-mark p { margin:4px 0 0; color:#8e3f35; }

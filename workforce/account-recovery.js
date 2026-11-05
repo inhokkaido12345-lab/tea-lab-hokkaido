@@ -107,7 +107,7 @@
         const input = document.createElement('input'); input.type = 'hidden'; input.name = name; input.value = value; form.appendChild(input);
       });
       document.body.appendChild(form);
-      try { form.submit(); } catch (_error) { unknown(); } finally { form.remove(); }
+      try { if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit(); } catch (_error) { unknown(); } finally { form.remove(); }
     }
     n.submit.addEventListener('click', () => {
       if (pending || userActive || uncertain || stopped) return;
