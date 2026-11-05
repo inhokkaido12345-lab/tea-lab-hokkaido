@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- 配布用・会社運営管理。operations.js→独立運営API→専用台帳。勤怠の上位roleではない。
+     削除でこの入口だけ停止。改造は共通controller/specs/両repo試験と同期。
+     初歩：fieldsetのdisabledは本人の権限確認まで維持。秘密をHTMLへ埋め込まない。 -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>会社運営管理 | TLH</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-platform1"><link rel="stylesheet" href="operations.css?v=20261105-ops1">
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="operations.js?v=20261105-ops1" data-bootstrap="true" data-view="COMPANY"></script></head>
+<body class="secondary-page operations-page"><header><strong>会社運営管理</strong><nav aria-label="運営画面"><a href="platform-operations.html">TLH運営管理</a> ／ <a href="./">タイムカードへ</a></nav></header>
+<main><h1>会社運営管理</h1><p>自社の店舗を登録・管理し、店舗サービス管理者を指定します。他社の情報は表示しません。</p>
+<p class="operations-note">この画面は会社・店舗・運営権限を管理します。TLH運営管理者／会社管理者でも、各店舗の勤怠・給与閲覧権は自動では付きません。<br>現在は運営台帳への権限保存までです。店舗サービス管理者の勤怠への適用、サービス有効化コード、利用状態の照合は接続準備中です。ここで店舗を登録しても、打刻受付や保存先は自動作成・変更しません。</p>
+<p id="ops-status" role="status" aria-live="polite" aria-busy="false">LINEログインを準備しています。</p><div class="operations-actions"><button id="ops-login" type="button" hidden disabled>LINEログイン</button><button id="ops-refresh" type="button" disabled>最新情報を読み込む</button></div>
+<div class="operations-grid"><section aria-labelledby="ops-form-heading"><h2 id="ops-form-heading">登録・権限の変更</h2><p>会社名や店舗名と、変更後の有効／停止を確認して保存します。対象者のTLHアカウントIDは、本人の「その他→アカウント情報」で確認できます。社員番号・LINEのID・パスワードは入力しません。</p>
+<fieldset id="ops-fields" disabled><label for="ops-command">操作</label><select id="ops-command"><option value="">権限の確認後に表示します</option></select>
+<div id="ops-row-organizationId"><label for="ops-organization">会社</label><select id="ops-organization"></select><input id="ops-organization-new" aria-label="新しい会社ID" autocomplete="off" maxlength="128" placeholder="例：company_example" hidden></div>
+<div id="ops-row-storeId"><label for="ops-store">店舗</label><select id="ops-store"></select><input id="ops-store-new" aria-label="新しい店舗ID" autocomplete="off" maxlength="128" placeholder="例：store_example" hidden></div>
+<div id="ops-row-name"><label for="ops-name">登録・変更後の名称</label><input id="ops-name" type="text" maxlength="100" autocomplete="off"></div>
+<div id="ops-row-accountId"><label for="ops-account">対象者のTLHアカウントID</label><input id="ops-account" type="text" maxlength="128" autocomplete="off" spellcheck="false"></div>
+<div id="ops-row-serviceId"><label for="ops-service">対象サービス</label><select id="ops-service"><option value="WORKFORCE">タイムカード</option><option value="INVENTORY">在庫管理（未接続）</option><option value="POS">POS（未接続）</option></select></div>
+<div id="ops-row-enabled"><label for="ops-enabled">変更後の権限</label><select id="ops-enabled"><option value="true">有効にする</option><option value="false">停止する</option></select></div>
+<label for="ops-reason">変更する理由（監査履歴に保存）</label><textarea id="ops-reason" maxlength="200" rows="3" autocomplete="off"></textarea><p>理由へパスワード・認証コード・個人の給与等を記載しないでください。</p><button id="ops-preview" type="button" disabled>対象と変更内容を確認</button></fieldset>
+<div id="ops-review" aria-live="polite"></div><div class="operations-actions"><button id="ops-commit" type="button" hidden disabled>確認した内容を保存する</button><button id="ops-cancel" type="button" disabled>確認を取り消す</button><button id="ops-retry" type="button" hidden disabled>同じ操作の保存結果を確認</button></div></section>
+<section aria-labelledby="ops-list-heading"><h2 id="ops-list-heading">自社の店舗・運営権限</h2><div id="ops-result"></div></section></div>
+<p><a href="OPERATIONS.md">名称・使い方・現在の接続範囲</a></p><iframe id="ops-frame" name="tlhOperationsFrame" title="運営APIの確認応答" hidden></iframe></main></body></html>
