@@ -1,3 +1,5 @@
+運営追加：platform-operations.html/company-operations.htmlは独立ops APIと専用運営role。表示名はTLH運営管理者/会社管理者/店舗サービス管理者。READだけを初回自動、PREVIEW/COMMIT/再送は明示。Storage/URLへ保存しない。社員番号とAccount IDを混同しない。保存した店舗roleの勤怠適用と有効化コードは未接続と画面/OPERATIONS.mdへ明示。既存の勤怠roleやPWAに混ぜず、operations.testとbackend連結を同期。
+
 現在店舗の追加：current-workplace.jsの表示名/固定IDと10業務HTMLのdata-current-workplaceを同期。全業務formはTlhCurrentWorkplace.submit経由、nonce/操作ID/token/入力を変えない。URLの他店舗/重複scopeや退場後の送信を拒否。サーバーの固定境界は別に必須。表示を認可にしない。新API通信/Storage/タイマーなし、sandbox/見本は対象外。CURRENT-WORKPLACE.md参照。
 
 # Workforceの恒常ルール

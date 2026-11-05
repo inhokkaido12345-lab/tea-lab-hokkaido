@@ -1,3 +1,7 @@
+## 最新追加：TLH運営・会社運営（開発実装・未公開）
+
+platform-operations.html / company-operations.html / operations.js / operations.cssを追加。[名称・使い方・接続範囲・魔改造](OPERATIONS.md)。会社/店舗/3種類の運営roleは専用APIで確認→保存します。運営roleの勤怠への適用・有効化コードは未接続。公開/初期運営role設定はまだです。
+
 # TLH勤怠管理：画面の説明と改造入口
 
 開発位置（2026-11-05）：`codex/platform-operations-20261105`へ現行単店舗版と会社分離案を統合。未公開です。TLH運営/会社運営Webは未実装であり、workplace-admins.htmlは店舗実務の権限画面だけです。TLH運営権から各社の勤怠/給与閲覧を継承しません。会社v2では社員番号変更APIがまだ未対応なので、店舗選択後の番号変更リンクは隠します。既存の単店舗向け番号変更ページは保持。実2社所属と台帳は移行前です。
