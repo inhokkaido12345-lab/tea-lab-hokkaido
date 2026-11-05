@@ -128,7 +128,7 @@
         form.appendChild(input);
       });
       document.body.appendChild(form);
-      try { if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit(); }
+      try { if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit(); }
       catch (_error) { status.textContent = '送信できませんでした。'; finish(); }
       finally { form.remove(); }
     }

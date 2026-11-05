@@ -44,9 +44,10 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;clear();n.status.textContent='状態未確認：応答がありません。至急確認事項がないとは判断できません。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhLaborPolicyFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});document.body.appendChild(form);
-      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='状態未確認：取得できません。至急確認してください。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='状態未確認：取得できません。至急確認してください。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const r=pending;if(!r||!allowed||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r||!allowed||stopped)return;
       const d=event.data;if(d.code==='LABOR_POLICY_READY'){

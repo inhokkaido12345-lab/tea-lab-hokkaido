@@ -77,12 +77,16 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;clear();n.status.textContent='応答を確認できません。もう一度確認する場合は確認ボタンを押してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAccountInfoFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
-      document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='登録情報を取得できませんでした。';finish();}finally{form.remove();}
+      document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){clear();n.status.textContent='登録情報を取得できませんでした。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const r=pending;if(!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
-      let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r)return;
-      const d=event.data;if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;render(n.fields,info);n.result.hidden=false;}
+      // 会社文脈は上でtenant-sessionが照合済み。元MACへ渡すのは既存6項目だけ。
+      // verifyの厳密な旧契約を緩めず、追加tenant列で正常な本人情報が拒否されることを防ぐ。
+      const d=global.TlhTenantSession&&event.data?.organizationId?Object.fromEntries(['type','nonce','action','code','info','mac'].map(k=>[k,event.data[k]])):event.data;
+      let valid=false;try{valid=await verify(d,r);}catch(_e){}if(!valid||pending!==r)return;
+      if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;render(n.fields,info);n.result.hidden=false;}
       else clear();if(d.code==='ACCOUNT_INFO_LOGIN_REQUIRED')requireLogin();n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();n.status.textContent='情報を消去しました。再確認する場合はページを開き直してください。';});clear();controls();
@@ -91,8 +95,9 @@
     const status=document.getElementById('account-info-status'),login=document.getElementById('account-info-login');
     status.setAttribute?.('aria-busy','true');
     try{await global.liff.init({liffId:config.liffId});const loggedIn=global.liff.isLoggedIn();
+      if(loggedIn&&global.TlhTenantSession&&!await global.TlhTenantSession.ready(global.liff))return;
       status.textContent=loggedIn?'登録情報を自動取得します。':'LINEログインが必要です。';init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:!loggedIn});if(loggedIn)global.TlhAutoRead.init().once('account');
-    }catch(_e){status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
+    }catch(error){if(error?.message==='WORKPLACE_LOGIN_REQUIRED'){init({liff:global.liff,gasUrl:config.gasUrl,loginRequired:true});status.textContent=messages.ACCOUNT_INFO_LOGIN_REQUIRED;}else status.textContent='LINEログインを準備できません。';} finally { status.setAttribute?.('aria-busy','false'); }
   }
   global.TlhAccountInfo=Object.freeze({init,parseInfo,verify,config});
   if(document.currentScript&&document.currentScript.dataset.bootstrap==='true')bootstrap();

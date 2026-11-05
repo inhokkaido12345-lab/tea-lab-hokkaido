@@ -33,12 +33,12 @@
   /** Excel等の数式開始文字は空白の後ろも検査。引用符だけでは数式実行を防げない。 */
   function cell(value){let text=String(value);if(/^[\s\uFEFF]*[=+\-@]/u.test(text))text="'"+text;return'"'+text.replaceAll('"','""')+'"';}
   /** buildの表示モデルをBOM付きCSV文字列へ。保存先/送信先を決めず、給与計算もしない。 */
-  function csv(report){return'\uFEFF'+[headers,...report.rows.map(row=>[report.month,report.employeeCode,report.employeeName,...row,stamp(report.generatedAt)])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
+  function csv(report){const scope=report.workplace,prefix=scope?[scope.organizationName,scope.workplaceName]:[];return'\uFEFF'+[[...(scope?['会社','店舗']:[]),...headers],...report.rows.map(row=>[...prefix,report.month,report.employeeCode,report.employeeName,...row,stamp(report.generatedAt)])].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';}
   /** initは無通信。setReportでのみ出力を開き、clearは既存ObjectURLと人物情報を破棄する。 */
   function init(){
     const n=Object.fromEntries(['csv','print','status','title','meta','summary','rows'].map(k=>[k,document.getElementById('report-'+k)])),section=document.getElementById('monthly-report');let report=null,url=null,stopped=false;
     function clear(){report=null;section.hidden=true;n.rows.replaceChildren();for(const key of ['title','meta','summary'])n[key].textContent='';n.csv.disabled=true;n.print.disabled=true;if(url){URL.revokeObjectURL(url);url=null;}n.status.textContent='記録の取得後に出力できます。';}
-    function setReport(value){if(stopped)return;clear();report=build(value);n.title.textContent=report.month+' ／ '+report.employeeCode+'（'+report.employeeName+'）';n.meta.textContent='取得日時（日本時間）：'+stamp(report.generatedAt)+(report.employeeStatus==='INACTIVE'?' ／ 従業員の利用停止済み':'');
+    function setReport(value){if(stopped)return;clear();report=build(value);report.workplace=global.TlhTenantSession?.displayScope()||null;n.title.textContent=(report.workplace?report.workplace.organizationName+' ／ '+report.workplace.workplaceName+' ／ ':'')+report.month+' ／ '+report.employeeCode+'（'+report.employeeName+'）';n.meta.textContent='取得日時（日本時間）：'+stamp(report.generatedAt)+(report.employeeStatus==='INACTIVE'?' ／ 従業員の利用停止済み':'');
       n.summary.textContent='退勤済み '+report.completed+'区間 ／ 実働合計 '+duration(report.workedMs)+' ／ 休憩合計 '+duration(report.breakMs)+' ／ 未退勤 '+report.open+'区間（合計は退勤済み区間のみ）';
       for(const row of report.rows){const tr=document.createElement('tr');for(const value of row){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}n.rows.appendChild(tr);}section.hidden=false;n.csv.disabled=false;n.print.disabled=false;n.status.textContent=report.open?'未退勤の区間があります。未確定部分を確認してから提出してください。':'取得時点の記録を出力できます。内容を確認してから提出してください。';
     }

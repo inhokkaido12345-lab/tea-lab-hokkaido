@@ -9,13 +9,17 @@
   <meta name="referrer" content="no-referrer">
   <title>LINEの再連携 | TLH Workforce</title>
   <link rel="stylesheet" href="recovery.css?v=20261103-loading1">
-  <script defer src="current-workplace.js?v=20261105-store2"></script>
-<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script defer src="account-recovery.js?v=20261105-store1" data-bootstrap="true"></script>
+  <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="tenant-session.js?v=20261105-platform1"></script>
+  <script defer src="account-recovery.js?v=20261105-platform1" data-bootstrap="true"></script>
 </head>
 <body>
   <header><strong>TLH Workforce</strong><a href="./">勤怠へ戻る</a></header>
-<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
+<section id="workplace-banner" class="workplace-context" aria-label="利用する店舗" aria-busy="false">
+  <div><span class="workplace-eyebrow">タイムカードの店舗</span><strong id="workplace-name">店舗は本人確認後に表示します</strong><span id="workplace-company"></span></div>
+  <div class="workplace-chooser"><label for="workplace-select">店舗を選ぶ</label><select id="workplace-select"><option value="">店舗は未確認です</option></select><button id="workplace-switch" type="button" disabled>店舗を切り替える</button></div>
+  <p id="workplace-status" role="status" aria-live="polite">本人確認後に、利用できる店舗を確認します。</p>
+  <iframe id="workplace-frame" name="tlhCompanyContextFrame" title="利用できる店舗の確認応答" hidden></iframe>
+</section>
   <main>
     <h1>LINEの再連携</h1>
     <button id="recovery-login" type="button" hidden>LINEログイン</button>

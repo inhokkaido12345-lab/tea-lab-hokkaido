@@ -90,10 +90,11 @@
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });
       document.body.appendChild(form);
-      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。もう一度確認してください。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。もう一度確認してください。';finish();}finally{form.remove();}
     }
     button.addEventListener('click',()=>check().catch(()=>{clear();status.textContent='安全な通信を開始できませんでした。';finish();}));
     global.addEventListener('message',async event=>{
+      if(global.TlhTenantSession&&!await global.TlhTenantSession.acceptEvent(event))return;
       const request=pending;
       if(!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{
