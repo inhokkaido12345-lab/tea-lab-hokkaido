@@ -36,7 +36,9 @@
    * token・nonce・操作ID・入力は変えない。結果不明でも自動再送せず、旧署名の検査は各controllerで維持。
    */
   function submit(form){
-    if(stopped||global!==global.top||!locationMatches()||form.method.toUpperCase()!=='POST'||form.action!==config.endpoint)throw Error('CURRENT_WORKPLACE_REQUEST_INVALID');
+    // hidden input name="action"はform.actionをDOM要素として上書きする（named access）。
+    // 送信先/方式は属性から読む。業務actionの値とURLを比較して送信を止めない。
+    if(stopped||global!==global.top||!locationMatches()||String(form.getAttribute('method')).toUpperCase()!=='POST'||form.getAttribute('action')!==config.endpoint)throw Error('CURRENT_WORKPLACE_REQUEST_INVALID');
     if(Array.from(form.children).some(el=>['organizationId','workplaceId'].includes(el.name)))throw Error('CURRENT_WORKPLACE_SCOPE_DUPLICATE');
     for(const key of ['organizationId','workplaceId']){
       const input=document.createElement('input');input.type='hidden';input.name=key;input.value=config[key];form.appendChild(input);
