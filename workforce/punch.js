@@ -11,6 +11,7 @@
  * 境界: ID/token/鍵/指紋はメモリ/POSTだけ。URL/ログ/ブラウザ保存へ出さない。
  * 復帰: 署名付き本人確認拒否/証明の欠落だけでログイン案内。draftが残る間は遷移せず固定IDを保持。
  * 改造: requireLogin/controlsとindex.htmlのpunch-login、punch.test.mjsを同期。周期確認/自動loginを追加しない。
+ * 計測: onTimingはread/writeの応答・timeout・退場までの時間だけ。保存確定と後続読取を区別し、診断失敗を業務へ伝播しない。
  * 検証: punch.test.mjs→CI→本人の読取。現行受付はON、新環境の既定値とは別。実打刻を試験で作らない。
  */
 (function(global){
@@ -75,7 +76,11 @@
         button.hidden=!ready||!allowed[ready.code].includes(type);button.disabled=!!pending||!!draft||blocked||loginRequired||loginPending||stopped;
       }
     }
-    function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
+    function finish(outcome='response'){
+      const request=pending;if(request)clearTimeout(request.timer);pending=null;controls();
+      // 保存応答と、その後の読取更新を別々に測る。診断callbackが失敗しても打刻結果を変えない。
+      if(request)try{options.onTiming?.({phase:request.action===WRITE?'write':'read',outcome,elapsedMs:Math.max(0,Date.now()-request.started)});}catch(_timingError){}
+    }
     /** 本人確認失敗は未保存の証明ではない。以前の送信が保存済みの可能性もあるためdraftを捨てない。 */
     function requireLogin(){
       // 送信前に証明がなくなっただけなら保存は開始していない。初回loginを妨げない。
@@ -102,16 +107,16 @@
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       let idToken;try{idToken=options.liff&&options.liff.getIDToken();}catch(_error){}
       if(typeof idToken!=='string'||!idToken){requireLogin();return;}
-      const r={action,fields,nonce:random(16),responseKey:random(32)};pending=r;controls();status.textContent='処理中です。';
-      r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish();},30000);
+      const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now()};pending=r;controls();status.textContent='処理中です。';
+      r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish('timeout');},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPunchFrame';form.hidden=true;
       Object.entries({...fields,action,nonce:r.nonce,responseKey:r.responseKey,idToken}).forEach(([name,value])=>{
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });document.body.appendChild(form);
       if(action===WRITE)draftSubmitted=true; // 例外でも送信の成否を推測せず、以後は同じ固定IDで確認する。
-      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();}finally{form.remove();}
+      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish('send_error');}finally{form.remove();}
     }
-    function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish();});}
+    function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish('send_error');});}
     global.addEventListener('message',async event=>{
       const r=pending;if(!r||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
       try{
@@ -134,7 +139,7 @@
     }));
     retry.addEventListener('click',()=>{if(draft&&!pending&&!blocked)invoke(WRITE,draft);});
     // bfcacheからの復帰はauto-read.jsが新しいGETへ戻す。退場後の遅延返信で打刻可能にしない。
-    global.addEventListener('pagehide',()=>{stopped=true;ready=null;draft=null;draftSubmitted=false;loginPending=false;finish();});
+    global.addEventListener('pagehide',()=>{stopped=true;ready=null;draft=null;draftSubmitted=false;loginPending=false;finish('cancelled');});
     controls();
   }
   global.TlhPunch=Object.freeze({init,verifyResponse});
