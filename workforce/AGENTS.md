@@ -1,3 +1,7 @@
+<!-- current-doc-status:start -->
+> 2026-11-05資料整理：機能仕様と保守資料。現在の公開・設定・未達状況は[最新状態](CURRENT-STATUS.md)を優先してください。本文の過去の日付・版・検査件数は当時の記録です。恒久的な安全方針は引き続き適用します。
+<!-- current-doc-status:end -->
+
 運営追加：platform-operations.html/company-operations.html/operations.jsは専用運営roleと台帳の独立API。勤怠のCurrentWorkplace scopeを付けない。表示名はTLH運営管理者/会社管理者/店舗サービス管理者。READだけを自動、PREVIEW/COMMIT/再送は明示。会社分離案/既存UI変更はこの公開候補へ含めない。OPERATIONS.mdと専用/連結検査を同期。
 
 現在店舗の追加：current-workplace.jsの表示名/固定IDと10業務HTMLのdata-current-workplaceを同期。全業務formはTlhCurrentWorkplace.submit経由、nonce/操作ID/token/入力を変えない。URLの他店舗/重複scopeや退場後の送信を拒否。サーバーの固定境界は別に必須。表示を認可にしない。新API通信/Storage/タイマーなし、sandbox/見本は対象外。CURRENT-WORKPLACE.md参照。
