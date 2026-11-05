@@ -9,6 +9,8 @@
  * 改造: DTOはAttendanceJournalService/Bridge/両repo試験と同期。予定超過を法定時間外へ改称しない。
  * 個人時刻・token・社員番号・鍵はPOST/メモリ限定。URL/ログ/Storageへ保存しない。
  * 検証: attendance-journal.test.mjs→全UI回帰→LINE本人/管理者読取。自動実行は読取だけ、打刻/申請をしない。
+ * 軽量化: clockは日本時間の書式設定だけを遅延生成し再利用。本人データ/権限/取得結果のcacheではない。
+ * 魔改造: 表・カード・中抜け・休憩で共用するclockを変える時は時差/深夜/空欄と月次の検査を同期する。
  */
 (function(global){
   'use strict';
@@ -24,7 +26,17 @@
   const stateLabels={NO_RECORD:'未打刻',WORKING:'勤務中',BREAK:'休憩中',COMPLETED:'退勤済み'};
   const fields=['day','clockIn','clockOut','breakMs','workedMs','state','plannedStart','plannedEnd','plannedBreakMinutes','plannedWorkedMs','excessMs'];
   const duration=ms=>ms===null?'—':Math.floor(ms/3600000)+'時間'+String(Math.floor(ms/60000)%60).padStart(2,'0')+'分';
-  const clock=iso=>iso?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(iso)):'—';
+  // 固定書式は1ページ1個。空欄だけなら生成しない。日付/社員ごとの結果は保持しない。
+  let clockFormatter=null;
+  function clock(iso){
+    if(!iso)return '—';
+    if(!clockFormatter){
+      clockFormatter=new Intl.DateTimeFormat('ja-JP',{
+        timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',
+      });
+    }
+    return clockFormatter.format(new Date(iso));
+  }
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
   /** 署名確認後もDTOの型・日付・集計整合を検証。不正データを部分表示しない。 */
   function parseJournal(text,month){
