@@ -15,7 +15,7 @@
   const TYPE = 'TLH_BRIDGE_STAFF_ENROLLMENT';
   const messages = Object.freeze({
     STAFF_ADMIN_READY: '管理者用登録画面を開きました。',
-    STAFF_INVITATION_READY: '招待を発行しました。有効期限は発行から24時間です。',
+    STAFF_INVITATION_READY: '招待を発行しました。有効期限は発行から24時間です。本人のLINE登録前でも、シフトの作成・確定公開に組み込めます。',
     STAFF_INVITATION_REVOKED: '未使用の招待を取り消しました。',
     NO_PENDING_INVITATION: '取り消す未使用招待がありません。',
     STAFF_REGISTERED: '従業員登録が完了しました。',
