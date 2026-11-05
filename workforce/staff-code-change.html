@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- 現役・管理者の社員番号変更。確認→専用JS→公式LINE/権限/期待版→明示保存。
+     削除で番号変更の画面だけ停止。内部ID/打刻/LINE連携は変更しない。
+     一般化：preview/commit。魔改造はGAS Service/Bridge・STAFF-CODE-CHANGE.md・両repo検査を同期。
+     個人情報をURLやStorageへ入れず、実社員の例をソースへ埋め込まない。 -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>社員番号の変更 | TLH Workforce</title>
+<link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261103-palette1">
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="staff-code-change.js?v=20261105-1" data-bootstrap="true"></script>
+</head><body class="secondary-page"><header><strong>TLH Workforce</strong><a href="./">勤怠画面へ戻る</a></header>
+<main><h1>社員番号の変更</h1><p>既存の従業員を作り直さず、社員番号だけを変更します。内部の従業員ID、LINE連携、打刻・訂正・シフトの記録は保持します。</p>
+<p>別の人が現在使用している番号へは変更できません。番号を移す場合は、先に現在の利用者の番号を変更します。番号変更だけではアカウントや権限は増えません。</p>
+<form id="code-change-form"><fieldset id="code-change-fields" class="staff-fields" disabled>
+<label for="code-change-old">現在の社員番号</label><input id="code-change-old" required pattern="[A-Z0-9][A-Z0-9_-]{2,31}" maxlength="32" autocomplete="off">
+<label for="code-change-name">現在の氏名</label><input id="code-change-name" required maxlength="80" autocomplete="off">
+<label for="code-change-date">現在の入社日（未指定なら空欄）</label><input id="code-change-date" type="date">
+<label for="code-change-new">変更後の社員番号</label><input id="code-change-new" required pattern="[A-Z0-9][A-Z0-9_-]{2,31}" maxlength="32" autocomplete="off">
+</fieldset><button id="code-change-preview" type="submit" disabled>変更内容を確認する</button></form>
+<section id="code-change-review" class="card" hidden><h2>変更前の確認</h2><p id="code-change-summary"></p><p>表示内容が正しいことを確認してから保存してください。</p><button id="code-change-commit" type="button" disabled>確認した社員番号へ変更する</button></section>
+<button id="code-change-reset" type="button" disabled>入力をやり直す</button>
+<p id="code-change-status" role="status" aria-live="polite" aria-busy="true">LINEログインを確認しています。</p>
+<p><a href="account-info.html">LINEログインの確認・やり直し</a></p>
+<p class="footnote">同じ操作の結果が不明なときは、入力を変えず保存ボタンで同じ操作を確認します。ページを閉じた場合は、管理画面の最新名簿で新旧の番号を確認してください。Sheetの番号を直接書き換えないでください。</p>
+<iframe id="code-change-frame" name="tlhStaffCodeChangeFrame" title="社員番号変更の確認応答" hidden></iframe>
+</main></body></html>
