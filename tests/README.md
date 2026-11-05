@@ -1,3 +1,7 @@
+<!-- current-doc-status:start -->
+> 2026-11-05資料整理：機能仕様と保守資料。現在の公開・設定・未達状況は[最新状態](../workforce/CURRENT-STATUS.md)を優先してください。本文の過去の日付・版・検査件数は当時の記録です。恒久的な安全方針は引き続き適用します。
+<!-- current-doc-status:end -->
+
 # Workforce画面の模擬テスト
 
 Workforceの今回の監査対象は従業員情報/出退勤/シフト。startup-loadingが本文と18外部script/起動順、pwa-preparationがmanifestの範囲/画像/秘密のない起動URLと未導入の保存境界を検査。従来の全UI・署名・失権・再送・離脱・出力試験は維持します。

@@ -1,6 +1,6 @@
 # TLH運営管理・会社運営管理
 
-開発実装です。公開・専用台帳接続・最初の運営管理者の実設定は別工程です。現在のタイムカードの管理者権限や打刻受付は変更していません。
+2026-11-05に公開済みです。専用台帳接続・最初の運営管理者の実設定は未実施です。PC実画面で接続準備中と保存不可を確認済みです。スマホでの運営操作は未確認です。現在のタイムカードの管理者権限や打刻受付は変更していません。
 
 | 名称 | 役割 |
 |---|---|
@@ -42,4 +42,4 @@
 
 HTMLのhidden/disabledやiframe名を変更する場合はcontrollerと試験も変更します。roleの名称変更と、保存済みの内部role文字列の変更を混同しないでください。
 
-検査：このrepoで `node --test tests/*.mjs`。backend側で `node --test tests/operations-api.test.mjs`、両repo固定版の通し確認は `node --test integration/operations-web.test.mjs`。通信/Sheetsを代用する検査なので、公開後のLINEログインと実台帳読取は別に確認します。PC/スマホの実ブラウザ表示は未確認です。
+検査：このrepoで `node --test tests/*.mjs`。backend側で `node --test tests/operations-api.test.mjs`、両repo固定版の通し確認は `node --test integration/operations-web.test.mjs`。通信/Sheetsは代用品です。公開後、PCでLINEログインと両運営画面の未設定表示・保存不可を確認済みです。実台帳の読書きとスマホでの運営画面確認は未実施です。
