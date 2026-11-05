@@ -1,6 +1,6 @@
 /**
  * 通信表示: aria-busyを実pendingに同期し、CSSだけで回す。成功/失敗/timeout後は停止。認可/送信条件は不変。
- * 現役・本人情報の表示。account-info.html→LINE証明をPOST→署名付きDTO→textContentで描画。
+ * 現役・本人情報の表示。index.htmlのその他/単独account-info.html→LINE証明をPOST→署名付きDTO→textContent。
  * 削除影響: 本人情報の読取だけ停止。勤怠/アカウントの保存や認可は変えない。
  * 概念: authenticated read model / allowlist / request correlation。initだけでは通信しない。
  * 魔改造: parseInfo/renderをGAS AccountInfoService/BridgeAccountInfo/両repoテスト/ACCOUNT-INFO.mdと同期。
@@ -10,6 +10,8 @@
  * isLoggedIn=trueでもID tokenの有効性は別。勝手な認証延長・自動logout・業務の自動再送は禁止。
  * 起動: bootstrapはLINE準備後にloadを1回直接呼ぶ。単独読取画面なのでボタンクリックのqueueへ委ねない。
  * 改造: loadは初回/手動更新の共通入口。pendingのaria-busyをbootstrapのfinallyで上書きしない。
+ * ホーム: initだけを既存LIFFで呼び、loadVisiblePane→auto-readのaccountキーで初回取得。SDKを二重初期化しない。
+ * 削除/拡張: 両HTMLのaccount-info-*とiframe名、ホームの読込順・タブ初回/再訪/失敗の検査を同期する。
  */
 (function(global){
   'use strict';
