@@ -4,6 +4,7 @@
  * 暗号はNode標準を使用。見た目/実LINEの成功は別途確認する。改造はlayout/HTML/READMEを同期。
  */
 import test from 'node:test';
+import {sampleAccountInfo} from './helpers/account-info-harness.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -22,7 +23,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: /\bdisabled\b/.test(attrs), value: '', textContent: '', events: {}, contentWindow:{},
       dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
       addEventListener(type, fn) { this.events[type] = fn; },
-      setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();}, replaceChildren() {}, appendChild() {}, focus() { focused = id; } };
+      setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();},children:[],replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}, focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
   }
   const node = id => { assert.ok(nodes.has(id), 'missing actual DOM id: ' + id); return nodes.get(id); };
@@ -68,6 +69,12 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       for (const fn of handlers.message) await fn({ origin: 'null', data });
       await new Promise(resolve=>setImmediate(resolve));
     },
+    async replyAccount(code='ACCOUNT_INFO_READY'){
+      const request=sent.findLast(r=>r.action==='bridgeGetAccountInfo'),data={type:'TLH_BRIDGE_ACCOUNT_INFO',action:request.action,nonce:request.nonce,code,info:code==='ACCOUNT_INFO_READY'?JSON.stringify(sampleAccountInfo()):''};
+      data.mac=createHmac('sha256',request.responseKey).update([data.type,data.nonce,data.action,data.code,data.info].join('\n')).digest('hex');
+      for(const fn of handlers.message)await fn({origin:'null',source:node('account-info-frame').contentWindow,data});
+      await new Promise(resolve=>setImmediate(resolve));
+    },
   };
 }
 
@@ -76,6 +83,23 @@ test('LIFF-ready defaults to employee, sends one role check and reads visible pu
   assert.equal(h.node('punch-section').hidden, false); assert.equal(h.node('employee-work-panel').hidden, false);
   assert.equal(h.node('manager-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
+});
+
+test('More tab loads own account inline once, reuses its result on return, and refreshes only by request',async()=>{
+ const h=await harness();assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,0);
+ h.click('more-tab');await h.replyPunch('PUNCH_DISABLED');
+ assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);assert.equal(h.node('account-info-status').attributes['aria-busy'],'true');
+ h.click('account-info-check');assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);
+ await h.replyAccount();assert.equal(h.node('account-info-result').hidden,false);assert.match(h.node('account-info-fields').children.map(n=>n.textContent).join(' '),/INFO001/);
+ h.click('employee-tab');h.click('more-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);
+ h.click('account-info-check');assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,2);h.depart();await h.replyAccount();
+ assert.equal(h.node('account-info-result').hidden,true);assert.equal(h.node('account-info-fields').children.length,0);
+});
+
+test('More tab account failure offers a manual refresh without retry loops or enabling management',async()=>{
+ const h=await harness();h.click('more-tab');await h.replyPunch('PUNCH_DISABLED');await h.replyAccount('ACCOUNT_INFO_UNAVAILABLE');
+ assert.equal(h.node('account-info-result').hidden,true);assert.equal(h.node('account-info-check').disabled,false);assert.equal(h.node('manager-tab').disabled,true);
+ h.click('employee-tab');h.click('more-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.sent.filter(r=>r.action==='bridgeGetAccountInfo').length,1);
 });
 
 test('external first launch offers explicit LINE login without loops, saved tokens, or business requests',async()=>{

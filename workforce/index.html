@@ -140,7 +140,21 @@
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
 <a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="schedule-admin-entry" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><h2>シフト管理</h2><p class="tool-intro">希望受付前から下書きを作成できます。希望の確認・受付設定・確定公開もこちらです。</p><a class="button primary full" href="admin-schedule.html">シフト作成・希望の確認を開く →</a></section><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
-      <section class="service-section"><h2><span class="tool-step" aria-hidden="true">01</span>自分のアカウント</h2><p class="tool-intro">社員番号・氏名・ログインの連携方法を確認できます。</p><a class="button primary full" href="account-info.html">アカウント情報を見る →</a><details class="tool-help"><summary>登録情報が違う・LINEを変更したとき</summary><p>情報に誤りがある場合は管理者へお知らせください。LINEの再連携受付は停止中です。</p></details></section>
+      <section class="service-section" aria-labelledby="more-account-heading">
+        <h2 id="more-account-heading"><span class="tool-step" aria-hidden="true">01</span>自分のアカウント</h2>
+        <p class="tool-intro">このタブを開くと、社員コード・氏名・ログインの連携方法を自動表示します。</p>
+        <!-- 別画面と同じ本人専用controllerを再利用。id/iframe名はaccount-info.jsと同期する。
+             削除すると「その他」の本人情報だけが停止。初期取得はloadVisiblePaneのaccountキー。
+             氏名等をHTMLへ埋め込まず、署名付き応答をtextContentで表示する。 -->
+        <button id="account-info-login" class="bridge-button" type="button" hidden>LINEログイン</button>
+        <button id="account-info-check" class="bridge-button" type="button" disabled>アカウント情報を更新</button>
+        <p id="account-info-status" class="footnote" role="status" aria-live="polite">「その他」を開くと登録情報を読み込みます。</p>
+        <div id="account-info-result" hidden aria-labelledby="account-info-heading">
+          <h3 id="account-info-heading">登録情報</h3><dl id="account-info-fields" class="review-values"></dl>
+        </div>
+        <details class="tool-help"><summary>登録情報が違う・LINEを変更したとき</summary><p>社員コードと違っている項目を管理者へお知らせください。LINEの再連携受付は停止中です。この表示から登録・連携・権限は変更しません。</p><a href="account-info.html">アカウント情報だけを別画面で開く</a></details>
+        <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
+      </section>
 <details class="enrollment-details">
       <summary>招待コードを受け取った方へ</summary><p class="tool-intro">管理者から渡されたコードを入力し、このLINEに従業員情報を紐付けます。登録する本人が操作してください。</p>
       <form id="staff-claim-form">
@@ -384,6 +398,7 @@
   <script src="attendance-journal.js?v=20261105-format1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261104-periods"></script>
+  <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261104-periods"></script>
   <script src="schedule.js?v=20261105-store1"></script>
@@ -447,6 +462,7 @@
       if(name==='employee'){autoReads.once('punch',visible);autoReads.once('today',visible);}
       if(name==='schedule'){autoReads.once('schedule',visible);}
       if(name==='records'){autoReads.once('daily',visible);autoReads.once('monthly',visible);}
+      if(name==='more'){autoReads.once('account',visible);} // 初回だけ本人読取。タブの往復で重複送信しない。
       if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);autoReads.once('labor',permitted);}
     }
     const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
@@ -457,6 +473,9 @@
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
       onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed)loadVisiblePane(homePane);}});
     TlhWorkforceShell.init();
+    // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
+    // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。
+    TlhAccountInfo.init({gasUrl:GAS_URL,liff:window.liff});
     const homeDay = new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     document.getElementById('schedule-month').value=homeDay.slice(0,7);
     document.getElementById('schedule-scope').value=Number(homeDay.slice(8))<=15?'FIRST':'SECOND';
