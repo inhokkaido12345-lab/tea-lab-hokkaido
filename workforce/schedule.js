@@ -22,7 +22,7 @@
     // 署名が正しくても別の月/役割/本人のデータなら描画しない。HMACと業務DTO検査は両方必要。
     if(s&&s.publishedAt!==undefined&&!(s.publishedAt===''||s.phase==='PUBLISHED'&&iso(s.publishedAt)))return false;
     if(!s||s.version!==1||s.month!==month||s.admin!==admin||!Number.isSafeInteger(s.monthRevision)||s.monthRevision<0||!['NOT_OPEN','DRAFT','COLLECTING','PUBLISHED'].includes(s.phase)||!(s.deadline===''||iso(s.deadline))||!iso(s.serverNow)||!text(s.employeeCode,32))return false;
-    if(!Array.isArray(s.employees)||s.employees.length>1000||!s.employees.every(p=>code(p.employeeCode)&&text(p.employeeName,80)))return false;
+    if(!Array.isArray(s.employees)||s.employees.length>1000||!s.employees.every(p=>code(p.employeeCode)&&text(p.employeeName,80)&&(!Object.hasOwn(p,'registrationStatus')||['PENDING_LINK','REGISTERED'].includes(p.registrationStatus))))return false;
     for(const key of ['plans','ownPlans','drafts','requests','events','draftEvents'])if(!Array.isArray(s[key])||s[key].length>10000)return false;
     if(!admin&&(s.employees.length||s.drafts.length||s.draftEvents.length))return false;
     const identity=p=>p&&code(p.employeeCode)&&text(p.employeeName,80)&&date(p.day)&&p.day>=range.start&&p.day<=range.end&&Number.isSafeInteger(p.revision)&&p.revision>0;
@@ -93,7 +93,8 @@
       document.getElementById('schedule-legacy-option').hidden=!s.legacyAvailable;
       const periodLabel=s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体（従来データ）';
       const state={NOT_OPEN:'未作成（希望受付前でも下書き作成できます）',DRAFT:'下書き作成中・希望受付は未開始',COLLECTING:Date.parse(s.serverNow)>=Date.parse(s.deadline)?'初回希望締切済み・下書き作成':'希望受付中・下書き作成',PUBLISHED:'確定公開済み'}[s.phase];n.summary.textContent=s.month+' '+periodLabel+'：'+state+(s.deadline?' / 希望締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
-      n.employee.replaceChildren();for(const p of s.employees){const o=el('option',p.employeeCode+'（'+p.employeeName+'）',n.employee);o.value=p.employeeCode;}
+      // 未認証名簿は管理者の予定対象。本人認可や共有DTOには転用しない。GAS/検査/登録後引継ぎも同期。
+      n.employee.replaceChildren();for(const p of s.employees){const o=el('option',p.employeeCode+'（'+p.employeeName+'）'+(p.registrationStatus==='PENDING_LINK'?'［未認証］':''),n.employee);o.value=p.employeeCode;}
       n.deadline.value=s.deadline?new Date(Date.parse(s.deadline)+32400000).toISOString().slice(0,16):'';
       renderCalendar(s);
       renderRequests(s);

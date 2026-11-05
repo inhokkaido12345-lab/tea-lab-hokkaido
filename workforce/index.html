@@ -152,7 +152,8 @@
       <h2><span class="tool-step" aria-hidden="true">01</span>従業員登録</h2>
       <!-- 説明とカードは表示専用。id/hiddenは登録controllerとの契約なので維持する。
            削除すると招待方式の案内がなくなる。手順変更時はadmin-guide.htmlも同期する。 -->
-      <p class="tool-intro">新しい従業員を事前登録し、本人に渡す招待コードを発行します。</p>
+      <p class="tool-intro">新しい従業員を事前登録し、本人に渡す招待コードを発行します。LINE未登録でも、事前登録した時点からシフトの作成・確定公開に組み込めます。</p>
+      <p class="footnote">本人のLINE登録を待つ必要はありません。シフトでは［未認証］と表示します。招待の期限が切れても従業員情報や予定は消えません。本人が登録する時に、同じ社員番号・氏名で招待を再発行できます。</p>
 <details class="tool-help"><summary>登録の流れ・管理者登録との違い</summary><p>管理者を追加する機能ではありません。</p>
       <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p></details>
       <button id="staff-check" class="bridge-button" type="button">従業員の登録フォームを表示</button>
@@ -369,7 +370,7 @@
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="demo-invitation.js?v=20261103-loading1"></script>
-  <script src="staff-enrollment.js?v=20261103-lifecycle1"></script>
+  <script src="staff-enrollment.js?v=20261105-unlinked1"></script>
   <script src="admin-overview.js?v=20261103-admin1"></script>
   <script src="staff-maintenance.js?v=20261103-lifecycle1"></script>
   <script src="work-state.js?v=20261103-loading1"></script>
@@ -381,7 +382,7 @@
   <script src="auto-read.js?v=20261104-periods"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261104-periods"></script>
-  <script src="schedule.js?v=20261104-periods"></script>
+  <script src="schedule.js?v=20261105-unlinked1"></script>
   <script src="layout.js?v=20261104-cleanup"></script>
   <script src="admin-access.js?v=20261103-loading1"></script>
   <script src="labor-policy.js?v=20261103-auto1"></script>

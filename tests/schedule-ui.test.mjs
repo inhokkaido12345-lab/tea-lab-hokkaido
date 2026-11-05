@@ -1,5 +1,12 @@
 import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{scheduleUiHarness,snapshot}from'./helpers/schedule-harness.mjs';
 
+test('manager can select pre-registered staff with an unlinked marker; older responses remain compatible',async()=>{
+ const h=scheduleUiHarness('admin'),s=h.snapshot();s.employees.push({employeeCode:'UNLINK001',employeeName:'架空未認証社員',registrationStatus:'PENDING_LINK'});
+ await h.api.read();await h.reply(h.sent[0],s);assert.match(h.n('employee').children.at(-1).textContent,/UNLINK001（架空未認証社員）.*未認証/);
+ h.n('employee').value='UNLINK001';h.click('save');assert.equal(JSON.parse(h.sent.at(-1).input).employeeCode,'UNLINK001');
+ const wrong={...s,employees:[{employeeCode:'UNLINK001',employeeName:'架空未認証社員',registrationStatus:'ADMIN'}]};assert.equal(h.module.validate(wrong,'2026-11',true),false);
+});
+
 test('period-bound employee form displays availability and sends selected half without a second open-page action',async()=>{
  const h=scheduleUiHarness(),s={...h.snapshot(),period:'FIRST',rangeStart:'2026-11-01',rangeEnd:'2026-11-15'};h.n('scope').value='FIRST';await h.api.read();await h.reply(h.sent[0],s);
  assert.equal(h.n('save').disabled,false);assert.match(h.n('availability').textContent,/送信できます/);assert.equal(h.n('calendar').children.filter(n=>n.className==='schedule-day').length,15);
