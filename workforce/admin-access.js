@@ -50,7 +50,7 @@
         request.timer=setTimeout(()=>{if(pending===request)finish('unavailable');},30000);
         const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAdminAccessFrame';form.hidden=true;
         Object.entries({action:ACTION,idToken,nonce:request.nonce,responseKey:request.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
-        document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}finally{form.remove();}
+        document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}finally{form.remove();}
       }catch(_e){finish('unavailable');}
     }
     global.addEventListener('message',async event=>{

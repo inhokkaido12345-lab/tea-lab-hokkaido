@@ -46,7 +46,7 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;uncertain=command==='commit';n.status.textContent=uncertain?'保存結果を確認できません。同じ操作で確認してください。':'応答を確認できません。対象を確認し直してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhWorkplaceRoleFrame';form.hidden=true;
       for(const [name,value]of Object.entries({...fields,action:ACTION,command,operationId,revision,nonce:r.nonce,responseKey:r.responseKey,idToken:token})){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);}
-      document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){uncertain=command==='commit';n.status.textContent='送信結果を確認できません。同じ操作で確認してください。';finish();}finally{form.remove();}
+      document.body.appendChild(form);try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){uncertain=command==='commit';n.status.textContent='送信結果を確認できません。同じ操作で確認してください。';finish();}finally{form.remove();}
     }
     function invoke(command,fields,operationId,revision){send(command,fields,operationId,revision).catch(()=>{uncertain=command==='commit';n.status.textContent='通信を開始できません。同じ店舗で状態を確認してください。';finish();});}
     n.preview.addEventListener('click',()=>{

@@ -685,7 +685,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         bridgeStatus.textContent =
           'ブラウザがフォームの送信を拒否しました。';
@@ -813,7 +813,7 @@
       document.body.appendChild(form);
 
       try {
-        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         authStatus.textContent = 'ブラウザがPOST送信を拒否しました。';
         finishAuthTest();
@@ -938,7 +938,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         accountStatusElement.textContent = 'フォームPOSTを送信できませんでした。';
         finishAccountTest();
@@ -1061,7 +1061,7 @@
 
       document.body.appendChild(form);
       try {
-        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         signupStatus.textContent =
           'フォームの送信を開始できませんでした。';
@@ -1176,7 +1176,7 @@
       }
       document.body.appendChild(form);
       try {
-        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else form.submit();
+        if(window.TlhTenantSession)window.TlhTenantSession.submit(form);else if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         adminStatus.textContent = '送信処理を開始できませんでした。';
         finishAdminTest();

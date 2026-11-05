@@ -102,7 +102,7 @@
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });
       document.body.appendChild(form);
-      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     }
     const invoke=(action,fields)=>send(action,fields).catch(()=>{if(stopped)return;status.textContent='安全な送信を開始できませんでした。';finish();});
     global.addEventListener('message',async event=>{

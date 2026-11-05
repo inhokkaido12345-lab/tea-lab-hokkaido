@@ -52,7 +52,7 @@
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='一覧・承認待ちは未確認です。応答がありません。更新してください。';finish();},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAdminOverviewFrame';form.hidden=true;
       Object.entries({action:ACTION,idToken:proof,nonce:r.nonce,responseKey:r.responseKey}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});document.body.appendChild(form);
-      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else form.submit();}catch(_e){n.status.textContent='一覧・承認待ちは未確認です。送信できません。';finish();}finally{form.remove();}
+      try{if(global.TlhTenantSession)global.TlhTenantSession.submit(form);else if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='一覧・承認待ちは未確認です。送信できません。';finish();}finally{form.remove();}
     }
     function setAllowed(value){const changed=allowed!==(value===true);allowed=value===true;if(!allowed){finish();placeholder('管理者権限の確認後に選択できます');setCount(null);}controls();if(allowed&&changed)load();}
     n.check.addEventListener('click',load);
