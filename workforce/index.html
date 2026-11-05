@@ -40,6 +40,7 @@
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
+<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
 <main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" aria-busy="true" class="session-notice" role="status">LINEログインを準備しています。</p>
 <button id="home-line-login" type="button" class="bridge-button" hidden disabled>LINEログイン</button>
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
@@ -370,6 +371,7 @@
     魔改造：script追加/移動は起動テスト・固定UI参照・READMEを同期。認可や保存を自動化しない。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="current-workplace.js?v=20261105-store1"></script>
   <script src="demo-invitation.js?v=20261103-loading1"></script>
   <script src="staff-enrollment.js?v=20261105-unlinked1"></script>
   <script src="admin-overview.js?v=20261103-admin1"></script>
@@ -675,7 +677,7 @@
 
       document.body.appendChild(form);
       try {
-        form.submit();
+        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         bridgeStatus.textContent =
           'ブラウザがフォームの送信を拒否しました。';
@@ -803,7 +805,7 @@
       document.body.appendChild(form);
 
       try {
-        form.submit();
+        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         authStatus.textContent = 'ブラウザがPOST送信を拒否しました。';
         finishAuthTest();
@@ -928,7 +930,7 @@
 
       document.body.appendChild(form);
       try {
-        form.submit();
+        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         accountStatusElement.textContent = 'フォームPOSTを送信できませんでした。';
         finishAccountTest();
@@ -1051,7 +1053,7 @@
 
       document.body.appendChild(form);
       try {
-        form.submit();
+        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         signupStatus.textContent =
           'フォームの送信を開始できませんでした。';
@@ -1166,7 +1168,7 @@
       }
       document.body.appendChild(form);
       try {
-        form.submit();
+        if(window.TlhCurrentWorkplace)window.TlhCurrentWorkplace.submit(form);else form.submit();
       } catch (_error) {
         adminStatus.textContent = '送信処理を開始できませんでした。';
         finishAdminTest();

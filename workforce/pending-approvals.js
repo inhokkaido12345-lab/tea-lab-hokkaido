@@ -51,7 +51,7 @@
       request.timer=setTimeout(()=>{if(pending===request){n.status.textContent='応答を確認できません。一覧を確認し直してください。';finish();}},30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPendingApprovalsFrame';form.hidden=true;
       Object.entries({action:ACTION,command:'pending',groupId:'',cursor:next?cursor:'',nonce:request.nonce,responseKey:request.key,idToken:proof}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
-      document.body.appendChild(form);try{form.submit();}catch(_e){n.status.textContent='送信できません。一覧を確認し直してください。';finish();}finally{form.remove();}
+      document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='送信できません。一覧を確認し直してください。';finish();}finally{form.remove();}
     }
     n.load.addEventListener('click',()=>send(false));n.next.addEventListener('click',()=>{if(cursor)send(true);});
     global.addEventListener('message',async event=>{

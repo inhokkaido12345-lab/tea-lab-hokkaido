@@ -29,14 +29,14 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   node('journal-mode').value='self'; // 実HTMLの唯一のoptionが初期選択される。
   const diagnostics = { open: false };
   const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,MutationObserver:Observer,
-    location: { origin: 'https://tealabhokkaido.com', pathname: '/workforce/',reload(){reloads++;} },
+    location: { href:'https://tealabhokkaido.com/workforce/',origin: 'https://tealabhokkaido.com', pathname: '/workforce/',reload(){reloads++;} },
     confirm: () => false,
     liff: { init: async () => {if(initFailure)throw Error('fixture init failure');}, isLoggedIn: () => loggedIn, isInClient: () => inClient, getIDToken: () => proof,
       login(options){loginCalls.push(JSON.parse(JSON.stringify(options)));if(loginFailure)throw Error('fixture login failure');} },
     setTimeout(fn) { const id = ++timer; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { (handlers[type] ||= []).push(fn); },
     document: { getElementById: node,
-      querySelectorAll(selector) { if(selector==='[data-approval-badge]')return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
+      querySelectorAll(selector) { if(['[data-approval-badge]','[data-current-workplace]'].includes(selector))return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
       body: { appendChild() {} }, createElement() { return { children: [],
         appendChild(child) { this.children.push(child); }, remove() {},

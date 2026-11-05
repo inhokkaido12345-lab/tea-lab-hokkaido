@@ -158,7 +158,7 @@
       const r={...request,nonce:random(16),key:random(32)};pending=r;if(r.command==='read')clear();controls();n.status.textContent='通信中です。';
       const unknown=()=>{if(pending!==r)return;if(r.command!=='read')uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='read'?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhScheduleFrame';form.hidden=true;
-      Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{form.submit();}catch(_e){unknown();}finally{form.remove();}
+      Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     async function read(){if(pending||stopped)return;await send({command:'read',input:JSON.stringify({month:n.month.value,...(n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
     global.addEventListener('message',async event=>{

@@ -1,3 +1,5 @@
+現在店舗の追加：current-workplace.jsの表示名/固定IDと10業務HTMLのdata-current-workplaceを同期。全業務formはTlhCurrentWorkplace.submit経由、nonce/操作ID/token/入力を変えない。URLの他店舗/重複scopeや退場後の送信を拒否。サーバーの固定境界は別に必須。表示を認可にしない。新API通信/Storage/タイマーなし、sandbox/見本は対象外。CURRENT-WORKPLACE.md参照。
+
 # Workforceの恒常ルール
 
 外部ホーム/PWAの未ログインはhome-line-loginを本人が押してliff.loginへ進む。SDK初期化成功・外部・未ログインのときだけ表示。自動redirect/独自認可URL/無限再試行は足さない。redirectUriはorigin+pathnameだけ、query/hash/tokenはコピーしない。pagehide後の押下を拒否。帰還後は同じstart/最新GAS認可。layout.testの未ログイン/復帰/SDK失敗/連打/離脱とPWA.mdを同期。
