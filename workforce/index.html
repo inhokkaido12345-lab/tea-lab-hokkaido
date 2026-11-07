@@ -140,6 +140,8 @@
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
 <a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="schedule-admin-entry" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><h2>シフト管理</h2><p class="tool-intro">希望受付前から下書きを作成できます。希望の確認・受付設定・確定公開もこちらです。</p><a class="button primary full" href="admin-schedule.html">シフト作成・希望の確認を開く →</a></section><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
+      <!-- 表示専用のヘルプ。ログイン/保存/ホーム画面追加を自動実行しない。employee-help.htmlとPWA.mdを同期。 -->
+      <p class="tool-intro"><a href="employee-help.html">従業員向けヘルプ：ホーム画面への追加・初回登録</a></p>
       <section class="service-section" aria-labelledby="more-account-heading">
         <h2 id="more-account-heading"><span class="tool-step" aria-hidden="true">01</span>自分のアカウント</h2>
         <p class="tool-intro">このタブを開くと、社員コード・氏名・ログインの連携方法を自動表示します。</p>
@@ -178,9 +180,10 @@
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
             <label>社員番号<input id="staff-employee-code" required maxlength="32" pattern="[A-Z0-9][A-Z0-9_-]{2,31}" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
-            <label>氏名<input id="staff-name" required maxlength="80" autocomplete="off"></label>
+            <label>氏名<input id="staff-name" aria-describedby="staff-name-help" required maxlength="80" autocomplete="off"></label>
             <label>入社日（任意）<input id="staff-hire-date" type="date"></label>
           </fieldset>
+          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a href="admin-guide.html#name-match">照合できないときの確認</a></p>
           <button id="staff-issue" class="bridge-button" type="submit">従業員を事前登録して招待を発行</button>
         </form>
         <div id="staff-invite-box" hidden>
@@ -206,7 +209,8 @@
       <form id="maintenance-target-form">
         <fieldset id="maintenance-target-fields" class="staff-fields">
           <label>対象の社員番号<select id="maintenance-code" required><option value="">従業員一覧を確認してください</option></select></label>
-          <label>現在の氏名<input id="maintenance-old-name" required maxlength="80" autocomplete="off"></label>
+          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a href="admin-guide.html#name-match">氏名照合の説明</a></p>
+          <label>現在の氏名<input id="maintenance-old-name" aria-describedby="maintenance-name-help" required maxlength="80" autocomplete="off"></label>
           <label>現在の入社日（未指定なら空欄）<input id="maintenance-old-date" type="date"></label>
         </fieldset>
         <button id="maintenance-check" class="bridge-button" type="submit">対象を確認する</button>
