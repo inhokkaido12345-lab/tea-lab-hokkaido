@@ -1,6 +1,6 @@
 # 説明書索引
 
-- [従業員向けヘルプ](employee-help.html)：Android/Chrome・iPhone/Safariのホーム画面追加、本人の招待受取り（2026-11-07公開前）。
+- [従業員向けヘルプ](employee-help.html)：Android/Chrome・iPhone/Safariのホーム画面追加、本人の招待受取り（2026-11-07公開済み）。
 - [氏名照合の注意](admin-guide.html#name-match)：登録済み氏名のスペースまで一致させる手順。
 
 - [PERFORMANCE.md](PERFORMANCE.md)：公開済み待機削減、実測と時間ログ、再現・戻し方。
