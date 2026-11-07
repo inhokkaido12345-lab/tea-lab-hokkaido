@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>従業員向け：登録とホーム画面への追加 | TLH Workforce</title>
+  <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1">
+  <link rel="stylesheet" href="app.css?v=20261103-palette1">
+</head>
+<!-- 現役・従業員向けの静的ヘルプ。ホームの「その他」→本ページ→既存アプリの順。
+     削除影響: 追加/本人登録の説明リンクが切れる。打刻や認証のcontrollerとは独立。
+     一般化: progressive enhancement。ホーム画面追加はブラウザの機能で、独自ダウンロード処理ではない。
+     魔改造: OSのメニュー名は公式資料で確認し、PWA.md/admin-guide/indexの説明も同期する。
+     境界: JS・フォーム送信・計測・端末判定なし。氏名/社員ID/コード/tokenを例へ埋めない。
+     検証: ローカル参照/HTML構造→既存UI/連結検査。Android実績と未確認のiPhone実機を区別する。
+     既存app.cssと同一サイト配布の字体を共有し、このページ専用のデザイン基盤は増やさない。 -->
+<body class="secondary-page admin-guide-page">
+  <header class="secondary-header"><strong>TLH Workforce</strong><a href="./">アプリへ戻る</a></header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">従業員向けヘルプ</p><h1>登録とホーム画面への追加</h1><p>いつものスマートフォンから、TLH勤怠アプリを使う手順です。</p></div></div>
+    <section class="management-section" aria-labelledby="start-title">
+      <h2 id="start-title">最初に：ChromeかSafariで開く</h2>
+      <p>AndroidはChrome、iPhoneはSafariを開き、次のアドレスを入力してください。LINE内でこの説明を見ている場合も、ホーム画面への追加はChromeかSafariで行います。</p>
+      <p><a href="https://tealabhokkaido.com/workforce/">https://tealabhokkaido.com/workforce/</a></p>
+      <p>「PWA」は、Webサイトをホーム画面からアプリのように開く仕組みです。App StoreやGoogle Playで探したり、ファイルをダウンロードしたりする必要はありません。追加せずブラウザから使うこともできます。</p>
+      <nav aria-label="このページの目次"><ul><li><a href="#android">Android・Chrome</a></li><li><a href="#iphone">iPhone・Safari</a></li><li><a href="#registration">LINEログインと招待コード</a></li><li><a href="#trouble">困ったとき</a></li></ul></nav>
+    </section>
+    <section id="android" class="management-section">
+      <h2>Android：Chromeから追加する</h2>
+      <ol>
+        <li>Chromeで上記の勤怠アプリを開きます。</li>
+        <li>右上の「︙」メニューを開きます。</li>
+        <li>「ホーム画面に追加」または「インストールしてショートカットを作成」を選び、「インストール」「アプリをインストール」などの案内に進みます。端末・Chromeの版によって表示名が異なります。</li>
+        <li>表示された名前を確認して追加し、ホーム画面のTLHアイコンから開きます。</li>
+      </ol>
+      <p>「ショートカットを作成」だけが表示される場合は、ブラウザで開く入口として追加できます。インストール表示がなくても、ブラウザ版は使えます。</p>
+    </section>
+    <section id="iphone" class="management-section">
+      <h2>iPhone：Safariから追加する</h2>
+      <ol>
+        <li>Safariで上記の勤怠アプリを開きます。</li>
+        <li>共有ボタン（四角から上向きの矢印）を押します。Safariの配置によってはメニューボタンを開いてから「共有」を選びます。</li>
+        <li>共有メニューの「ホーム画面に追加」を選びます。見つからない場合はメニューを下へスクロールします。</li>
+        <li>「Webアプリとして開く」が表示される場合はオンにし、「追加」を押します。</li>
+        <li>ホーム画面のTLHアイコンから開きます。</li>
+      </ol>
+      <p class="footnote">iOSの版によって配置や項目名が異なります。iPhoneの実機でのTLHログイン帰還は、まだ確認していません。うまく進まない場合は管理者へお知らせください。</p>
+    </section>
+    <section id="registration" class="management-section">
+      <h2>本人のLINEでログインし、招待を受け取る</h2>
+      <ol>
+        <li>追加したアイコンから開き、「LINEログイン」が表示されたら押します。自分のLINEでログインして、元のアプリへ戻ります。</li>
+        <li>「その他」→「招待コードを受け取った方へ」を開きます。</li>
+        <li>管理者から個別に受け取ったコードを入力し、「このLINEで招待を受け取る」を押して内容を確認します。</li>
+        <li>登録後、「その他」のアカウント情報で氏名・社員番号を確認します。違っている場合は管理者へ連絡してください。</li>
+      </ol>
+      <p>招待コードは発行から24時間有効です。期限切れの場合は管理者へ再発行を依頼してください。受取りに氏名の手入力は不要です。管理者や別の人のLINEで代理受取りをしないでください。</p>
+      <p>すでに登録済みなら、ホーム画面へ追加したことを理由に登録し直す必要はありません。同じ本人のLINEでログインします。</p>
+    </section>
+    <section id="trouble" class="management-section">
+      <h2>困ったとき</h2>
+      <dl>
+        <dt>ホーム画面に追加する項目がない</dt><dd>LINE内ではなく、AndroidはChrome、iPhoneはSafariで開いているか確認してください。追加できなくても上記URLから利用できます。</dd>
+        <dt>アイコンから開くとログインを求められる</dt><dd>本人の「LINEログイン」から進んでください。ブラウザでのログインがホーム画面版へ引き継がれない場合や、期限が切れる場合があります。</dd>
+        <dt>通信中のまま・保存できたか分からない</dt><dd>ネット接続が必要です。打刻の完了表示と記録を確認してください。結果不明なら新しい打刻を繰り返さず、画面の再確認・同じ打刻の再送案内に従い、解決しなければ管理者へ連絡してください。</dd>
+        <dt>氏名が違う・登録済みの人の招待を再発行できない</dt><dd>従業員本人はアカウント情報を管理者に確認してもらってください。管理者が既存登録の照合や招待再発行をする際は、姓名の間のスペースの種類・有無・個数まで、登録済みの氏名と一致させる必要があります。<a href="admin-guide.html#name-match">管理者向けの氏名照合の説明</a>を参照してください。</dd>
+      </dl>
+      <p>ホーム画面への追加は、オフライン打刻やログイン不要になる機能ではありません。</p>
+    </section>
+    <section class="management-section"><h2>手順の参照元</h2><p>2026年11月7日確認：<a href="https://support.google.com/chrome/answer/9658361?hl=ja&amp;co=GENIE.Platform%3DAndroid">Google公式・Chromeのウェブアプリ</a>／<a href="https://support.apple.com/ja-jp/guide/iphone/iphea86e5236/ios">Apple公式・Safariからホーム画面へ追加</a>。</p><p><a href="./">勤怠アプリへ戻る</a></p></section>
+  </main>
+</body>
+</html>
