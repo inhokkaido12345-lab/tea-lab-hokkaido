@@ -46,7 +46,7 @@
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
      列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
-      <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。</p>
+      <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a href="employee-help.html#punch" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
 
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
       <button id="punch-check" class="bridge-button" type="button">勤務状態を更新 ↻</button>
@@ -140,8 +140,8 @@
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
 <a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="schedule-admin-entry" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><h2>シフト管理</h2><p class="tool-intro">希望受付前から下書きを作成できます。希望の確認・受付設定・確定公開もこちらです。</p><a class="button primary full" href="admin-schedule.html">シフト作成・希望の確認を開く →</a></section><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
-      <!-- 表示専用のヘルプ。ログイン/保存/ホーム画面追加を自動実行しない。employee-help.htmlとPWA.mdを同期。 -->
-      <p class="tool-intro"><a href="employee-help.html">従業員向けヘルプ：ホーム画面への追加・初回登録</a></p>
+      <!-- 表示専用ヘルプは別画面へ。未確定打刻の元画面を閉じず、登録/打刻を自動実行しない。employee-help.htmlと同期。 -->
+      <p class="tool-intro"><a href="employee-help.html" target="_blank" rel="noopener">従業員向けヘルプ：打刻・訂正申請・初回登録（別画面）</a></p>
       <section class="service-section" aria-labelledby="more-account-heading">
         <h2 id="more-account-heading"><span class="tool-step" aria-hidden="true">01</span>自分のアカウント</h2>
         <p class="tool-intro">このタブを開くと、社員コード・氏名・ログインの連携方法を自動表示します。</p>
