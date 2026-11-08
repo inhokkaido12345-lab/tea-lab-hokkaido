@@ -1320,7 +1320,7 @@
         document.getElementById('monthly-work-section').hidden = false;
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
-        // 起動時の管理者確認と打刻準備を同じ共有Lockへ同時送信しない。失敗後の自動再試行はしない。
+        // 固定3読取を同じPOSTへまとめ、GASで共有Lockを1回取得。失敗後の自動再試行はしない。
         homeReady=true;autoReads.together(['access','punch','today'],()=>homeReady);loadVisiblePane(homePane);
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
