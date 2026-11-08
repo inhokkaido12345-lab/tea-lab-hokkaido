@@ -357,6 +357,7 @@
     GAS HtmlService内のJavaScriptがtop.postMessageで結果を返す。
     postMessageの内容は今回も固定PONG + nonceのみ。
   -->
+  <iframe id="home-read-frame" name="tlhHomeReadFrame" title="本人情報の一括読取応答" hidden aria-hidden="true"></iframe>
   <iframe id="admin-access-frame" name="tlhAdminAccessFrame" title="管理者権限の確認応答" hidden aria-hidden="true"></iframe>
   <iframe id="tlhBridgeFrame" name="tlhBridgeFrame"
     title="TLH GAS通信テスト応答" hidden aria-hidden="true"></iframe>
@@ -394,23 +395,24 @@
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="current-workplace.js?v=20261105-store2"></script>
+  <script src="home-read.js?v=20261108-batch1"></script>
   <script src="demo-invitation.js?v=20261105-store1"></script>
   <script src="staff-enrollment.js?v=20261105-store1"></script>
   <script src="admin-overview.js?v=20261105-timing1"></script>
   <script src="staff-maintenance.js?v=20261105-store1"></script>
   <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261105-timing1"></script>
-  <script src="daily-summary.js?v=20261105-store1"></script>
-  <script src="monthly-work-summary.js?v=20261105-store1"></script>
-  <script src="attendance-journal.js?v=20261105-format1"></script>
+  <script src="punch.js?v=20261108-batch1"></script>
+  <script src="daily-summary.js?v=20261108-batch1"></script>
+  <script src="monthly-work-summary.js?v=20261108-batch1"></script>
+  <script src="attendance-journal.js?v=20261108-batch1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
-  <script src="auto-read.js?v=20261105-timing1"></script>
+  <script src="auto-read.js?v=20261108-batch1"></script>
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261104-periods"></script>
   <script src="schedule.js?v=20261105-store1"></script>
   <script src="layout.js?v=20261104-cleanup"></script>
-  <script src="admin-access.js?v=20261105-store1"></script>
+  <script src="admin-access.js?v=20261108-batch1"></script>
   <script src="labor-policy.js?v=20261105-store1"></script>
   <script>
     /**
@@ -441,7 +443,8 @@
       'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec';
     const BRIDGE_TIMEOUT_MS = 15000;
     // 独立controller。古い診断のnull-origin/nonceだけの受信を再利用しない。
-    const autoReads=TlhAutoRead.init();
+    const homeReads=TlhHomeRead.init({gasUrl:GAS_URL,frame:document.getElementById('home-read-frame')});
+    const autoReads=TlhAutoRead.init({startAccess:()=>adminAccess.start()});
     // 外部ブラウザ/PWAの未ログインだけに入口を出す。自動redirectや独自の認証URLを作らない。
     // 削除すると初回PWA起動時にログインへ進めなくなる。復帰後は同じstart()/最新GAS認可を通す。
     // redirectUriはorigin+pathnameだけ。query/hash/tokenをコピー・保存しない。PWA.md/起動試験と同期。
@@ -466,9 +469,9 @@
     function loadVisiblePane(name){
       homePane=name;if(!homeReady)return;
       const visible=()=>homeReady&&homePane===name;
-      if(name==='employee'){autoReads.once('punch',visible);autoReads.once('today',visible);}
+      if(name==='employee'){autoReads.together(['punch','today'],visible);}
       if(name==='schedule'){autoReads.once('schedule',visible);}
-      if(name==='records'){autoReads.once('daily',visible);autoReads.once('monthly',visible);}
+      if(name==='records'){autoReads.together(['daily','monthly'],visible);}
       if(name==='more'){autoReads.once('account',visible);} // 初回だけ本人読取。タブの往復で重複送信しない。
       if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);autoReads.once('labor',permitted);}
     }
@@ -476,7 +479,7 @@
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
     const laborPolicyUi = TlhLaborPolicy.init({gasUrl:GAS_URL,liff:window.liff});
     const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,autoLoad:false,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
-    const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,
+    const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
       onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
@@ -489,20 +492,21 @@
     // 同じページのcontrollerを使い、LIFFを二重初期化せず、タブの初回表示で読取だけを開始する。
     TlhSchedule.init({gasUrl:GAS_URL,liff:window.liff,audience:'employee'});
     document.getElementById('journal-month').value = homeDay.slice(0,7);
-    TlhAttendanceJournal.init({gasUrl:GAS_URL,liff:window.liff,cards:document.getElementById('journal-cards'),today:true,audience:'employee'});
+    const homeJournal=TlhAttendanceJournal.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,cards:document.getElementById('journal-cards'),today:true,audience:'employee'});
     TlhDemoInvitation.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
-    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff,
+    TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff,readTransport:homeReads,
       // 固定名と時間だけの診断。token/打刻ID/本人情報をログへ渡さず、業務の成否判定には使わない。
       onTiming:sample=>{if(['read','write'].includes(sample.phase)&&['response','timeout','send_error','cancelled'].includes(sample.outcome)&&Number.isFinite(sample.elapsedMs))console.info(JSON.stringify({type:'TLH_UI_TIMING_V1',phase:sample.phase,outcome:sample.outcome,elapsedMs:Math.max(0,Math.round(sample.elapsedMs))}));},
       onRecorded:()=>{
-      autoReads.again('punch',()=>homeReady&&homePane==='employee');autoReads.again('today',()=>homeReady&&homePane==='employee');
-      autoReads.again('daily',()=>homeReady&&homePane==='records');autoReads.again('monthly',()=>homeReady&&homePane==='records');
+      homeJournal.invalidate();homeDaily.invalidate();homeMonthly.invalidate();autoReads.invalidate(['today','daily','monthly']);
+      autoReads.together(['punch','today'],()=>homeReady&&homePane==='employee',true);
+      autoReads.together(['daily','monthly'],()=>homeReady&&homePane==='records',true);
     }});
-    TlhDailySummary.init({ gasUrl: GAS_URL, liff: window.liff });
-    TlhMonthlyWorkSummary.init({ gasUrl: GAS_URL, liff: window.liff });
+    const homeDaily=TlhDailySummary.init({ gasUrl: GAS_URL, liff: window.liff,readTransport:homeReads });
+    const homeMonthly=TlhMonthlyWorkSummary.init({ gasUrl: GAS_URL, liff: window.liff,readTransport:homeReads });
     const bridgeSection = document.getElementById('bridge-section');
     const bridgeStatus = document.getElementById('bridge-status');
     const bridgeButton = document.getElementById('bridge-button');
@@ -1317,7 +1321,7 @@
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
         // 起動時の管理者確認と打刻準備を同じ共有Lockへ同時送信しない。失敗後の自動再試行はしない。
-        homeReady=true;adminAccess.start();autoReads.once('access',()=>homeReady);loadVisiblePane(homePane);
+        homeReady=true;autoReads.together(['access','punch','today'],()=>homeReady);loadVisiblePane(homePane);
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;

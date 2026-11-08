@@ -157,15 +157,20 @@
       if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!modes.includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
       const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day,action,employeeCode};pending=r;controls();n.status.textContent='読み込み中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
+      if(options.readTransport&&mode==='self'){options.readTransport.request({action,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).then(data=>receive(r,data)).catch(()=>{if(pending===r&&!stopped){n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
       Object.entries({action,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).forEach(([name,value])=>{const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);});
       document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){n.status.textContent='送信できませんでした。';finish();}finally{form.remove();}
     });
     global.addEventListener('message',async e=>{
       const r=pending;if(!r||stopped||!adminAllowed||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
-      let valid=false;try{valid=await verifyResponse(e.data,r);}catch(_e){}if(!valid||pending!==r||stopped||!adminAllowed)return;
+      await receive(r,e.data);
+    });
+    async function receive(r,value){
+      if(stopped||pending!==r||!adminAllowed)return;
+      let valid=false;try{valid=await verifyResponse(value,r);}catch(_e){}if(!valid||pending!==r||stopped||!adminAllowed)return;
       if(n.month.value!==r.month||n.mode.value!==r.mode||r.mode==='admin'&&n.employee.value.trim()!==r.employeeCode){clear();finish();return;}
-      const d=e.data;
+      const d=value;
       if(d.code==='JOURNAL_READY'){
         const j=r.action===REPORT_ACTION?parseReport(d.journal,r.month,r.employeeCode):parseJournal(d.journal,r.month);if(!j)return;
         if(r.action===REPORT_ACTION)options.exporter?.setReport(j);
@@ -180,9 +185,9 @@
         else if(options.cards)renderCards(options.cards,j,r.day);
       }
       n.status.textContent=messages[d.code];finish();
-    });
+    }
     global.addEventListener('pagehide',()=>{stopped=true;clear();n.employee.value='';finish();});controls();
-    return Object.freeze({setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
+    return Object.freeze({invalidate(){clear();finish();},setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
   }
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');
