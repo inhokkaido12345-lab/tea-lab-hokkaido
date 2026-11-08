@@ -13,17 +13,20 @@
   function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const parent=source.parent;if(!parent||parent===source)return false;source=parent;}}catch(_e){}return false;}
   function init(options){
     let stopped=false,scheduled=false;const queue=[],pending=new Set();
-    function fail(batch,code='READ_HOME_UNAVAILABLE'){if(!pending.delete(batch))return;clearTimeout(batch.timer);for(const child of batch.children)child.reject(Object.assign(Error(code),{code}));}
+    function schedule(){if(!stopped&&!scheduled&&queue.length){scheduled=true;Promise.resolve().then(flush);}}
+    function fail(batch,code='READ_HOME_UNAVAILABLE'){if(!pending.delete(batch))return;clearTimeout(batch.timer);for(const child of batch.children)child.reject(Object.assign(Error(code),{code}));schedule();}
     function flush(){
-      scheduled=false;if(stopped)return;
+      scheduled=false;if(stopped||pending.size)return;
       // Different proofs or duplicate actions are separate requests, never silently merged.
       while(queue.length){
         const first=queue.shift(),children=[first];
         for(let i=0;i<queue.length&&children.length<5;){const child=queue[i];
           if(child.input.idToken===first.input.idToken&&!children.some(c=>c.input.action===child.input.action)){children.push(child);queue.splice(i,1);}else i++;
         }
+        for(const child of children)clearTimeout(child.timer);
         const batch={nonce:random(16),responseKey:random(32),children};pending.add(batch);
-        batch.timer=setTimeout(()=>fail(batch),30000);
+        // One navigation per iframe. Queued reads retain their original deadline, not a new 30s.
+        batch.timer=setTimeout(()=>fail(batch),Math.max(0,Math.min(...children.map(c=>c.deadline))-Date.now()));
         const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target=options.frame.name||'tlhHomeReadFrame';form.hidden=true;
         const requests=children.map(c=>{const {idToken,...input}=c.input;return input;});
         for(const [name,value]of Object.entries({action:ACTION,nonce:batch.nonce,responseKey:batch.responseKey,idToken:first.input.idToken,requests:JSON.stringify(requests)})){
@@ -31,6 +34,7 @@
         }
         document.body.appendChild(form);
         try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){fail(batch);}finally{form.remove();}
+        return; // A second POST would cancel the first navigation in the shared iframe.
       }
     }
     async function receive(event){
@@ -47,15 +51,23 @@
         if(!Array.isArray(replies)||replies.length!==batch.children.length||batch.children.some((c,i)=>replies[i]?.nonce!==c.input.nonce||replies[i]?.action!==c.input.action))return;
         pending.delete(batch);clearTimeout(batch.timer);
         batch.children.forEach((c,i)=>c.resolve(replies[i]));
+        schedule();
       }catch(_e){/* Unverified replies never reach controllers. Their timeout stays active. */}
     }
     global.addEventListener('message',receive);
-    global.addEventListener('pagehide',()=>{stopped=true;for(const batch of [...pending])fail(batch);for(const child of queue.splice(0))child.reject(Error('READ_HOME_UNAVAILABLE'));});
+    function cancel(nonce){
+      const child=queue.find(c=>c.input.nonce===nonce);
+      if(child){queue.splice(queue.indexOf(child),1);clearTimeout(child.timer);child.reject(Error('READ_HOME_CANCELLED'));}
+      for(const batch of [...pending])if(batch.children.some(c=>c.input.nonce===nonce))fail(batch);
+    }
+    global.addEventListener('pagehide',()=>{stopped=true;for(const batch of [...pending])fail(batch);for(const child of queue.splice(0)){clearTimeout(child.timer);child.reject(Error('READ_HOME_UNAVAILABLE'));}});
     return Object.freeze({request(input){return new Promise((resolve,reject)=>{
       const journal=input?.action==='bridgeGetAttendanceJournalV2',fields=journal?['action','nonce','responseKey','idToken','mode','month','employeeCode']:['action','nonce','responseKey','idToken'];
       if(stopped||!input||!actions.includes(input.action)||Object.keys(input).sort().join(',')!==fields.sort().join(',')||journal&&(input.mode!=='self'||input.employeeCode!=='')){reject(Error('READ_HOME_INVALID'));return;}
-      queue.push({input:{...input},resolve,reject});if(!scheduled){scheduled=true;Promise.resolve().then(flush);}
-    });}});
+      const child={input:{...input},resolve,reject,deadline:Date.now()+30000};
+      child.timer=setTimeout(()=>{const i=queue.indexOf(child);if(i>=0){queue.splice(i,1);reject(Error('READ_HOME_UNAVAILABLE'));}},30000);
+      queue.push(child);schedule();
+    });},cancel});
   }
   global.TlhHomeRead=Object.freeze({init});
 })(window);

@@ -29,6 +29,17 @@ test('verified LINE rejection is preserved for explicit relogin; timeout/pagehid
  const departing=h.api.request(h.input());const closed=assert.rejects(departing,/UNAVAILABLE/);h.handlers.pagehide();await closed;await tick();assert.equal(h.sent.length,2);await assert.rejects(h.api.request(h.input()),/INVALID/);
 });
 test('different proof and duplicate action never borrow another request identity or overwrite results',async()=>{
- const h=setup(),p1=h.api.request(h.input()),p2=h.api.request({...h.input('bridgeGetDailySummary','2'),idToken:'other.jwt.proof'}),p3=h.api.request(h.input('bridgeGetPunchReadiness','3'));await tick();assert.equal(h.sent.length,3);
- for(const request of h.sent)await h.deliver(h.response(request));await Promise.all([p1,p2,p3]);assert.equal(h.timers.size,0);
+ const h=setup(),p1=h.api.request(h.input()),p2=h.api.request({...h.input('bridgeGetDailySummary','2'),idToken:'other.jwt.proof'}),p3=h.api.request(h.input('bridgeGetPunchReadiness','3'));await tick();assert.equal(h.sent.length,1);
+ for(let i=0;i<3;i++){assert.equal(h.sent.length,i+1);await h.deliver(h.response(h.sent[i]));await tick();}await Promise.all([p1,p2,p3]);assert.equal(h.timers.size,0);
+});
+test('in-flight reads serialize iframe navigation; cancelled stale read releases a fresh queued group without replay',async()=>{
+ const h=setup(),old=h.api.request(h.input()),cancelled=assert.rejects(old,/UNAVAILABLE/);await tick();const oldReply=h.response(h.sent[0]);
+ const fresh=h.api.request(h.input('bridgeGetDailySummary','2'));await tick();assert.equal(h.sent.length,1);
+ h.api.cancel('1'.repeat(32));await cancelled;await tick();assert.equal(h.sent.length,2);await h.deliver(oldReply);
+ await h.deliver(h.response(h.sent[1]));assert.equal((await fresh).action,'bridgeGetDailySummary');assert.equal(h.timers.size,0);
+});
+test('a queued read expiring behind an earlier request is never submitted later',async()=>{
+ const h=setup(),first=h.api.request(h.input());await tick();
+ const next=h.api.request(h.input('bridgeGetDailySummary','2')),expired=assert.rejects(next,/UNAVAILABLE/);await tick();
+ [...h.timers.values()].at(-1)();await expired;await h.deliver(h.response(h.sent[0]));await first;await tick();assert.equal(h.sent.length,1);
 });

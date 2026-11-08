@@ -118,7 +118,7 @@
       }catch(_error){/* 未検証の集計や内部例外を表示しない。 */}
     }
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();});
-    return Object.freeze({invalidate(){clear();finish();}});
+    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}});
   }
   global.TlhMonthlyWorkSummary=Object.freeze({init,verifyResponse,parseSummary});
 })(window);

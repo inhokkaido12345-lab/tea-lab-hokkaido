@@ -127,7 +127,7 @@
       }catch(_error){/* 未検証の個人集計や内部例外は表示しない。 */}
     }
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();});
-    return Object.freeze({invalidate(){clear();finish();}});
+    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}});
   }
   global.TlhDailySummary=Object.freeze({init,verifyResponse,parseSummary,duration});
 })(window);

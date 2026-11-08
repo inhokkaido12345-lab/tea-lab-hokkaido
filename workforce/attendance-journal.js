@@ -187,7 +187,7 @@
       n.status.textContent=messages[d.code];finish();
     }
     global.addEventListener('pagehide',()=>{stopped=true;clear();n.employee.value='';finish();});controls();
-    return Object.freeze({invalidate(){clear();finish();},setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
+    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();},setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
   }
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');
