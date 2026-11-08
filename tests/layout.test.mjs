@@ -67,7 +67,8 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       const data={type:'TLH_BRIDGE_READ_HOME_V1',nonce:batch.nonce,action:batch.action,code:'READ_HOME_READY',replies:JSON.stringify(replies)};
       data.mac=createHmac('sha256',batch.responseKey).update(Object.values(data).join('\n')).digest('hex');
       for(const fn of handlers.message)await fn({origin:'null',source:node('home-read-frame').contentWindow,data});
-      for(let i=0;i<50;i++){await new Promise(resolve=>setImmediate(resolve));if(['admin-access-status','punch-status','journal-status'].every(id=>node(id).getAttribute('aria-busy')!=='true'))break;}
+      // Await the actual WebCrypto completion, not a machine-speed-dependent number of event-loop turns.
+      const deadline=Date.now()+2000;while(['admin-access-status','punch-status','journal-status'].some(id=>node(id).getAttribute('aria-busy')==='true')){assert.ok(Date.now()<deadline,'startup child verification did not settle');await new Promise(resolve=>setTimeout(resolve,1));}
       await new Promise(resolve=>setImmediate(resolve));
     },
     async replyAccount(code='ACCOUNT_INFO_READY'){
