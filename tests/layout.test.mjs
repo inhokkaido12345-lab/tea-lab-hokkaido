@@ -14,7 +14,7 @@ const html = fs.readFileSync(new URL('../workforce/index.html', import.meta.url)
 const layout = fs.readFileSync(new URL('../workforce/layout.js', import.meta.url), 'utf8');
 async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = true, initFailure = false, loginFailure = false } = {}) {
   const loginCalls=[];let reloads=0;
-  const nodes = new Map(), panes = [], handlers = {}, sent = [], timers = new Map(); let timer = 0, focused = '';
+  const nodes = new Map(), panes = [], handlers = {}, sent = [], wire = [], timers = new Map(); let timer = 0, focused = '';
   const observers=new Set();class Observer{constructor(fn){this.fn=fn;}observe(n){this.node=n;observers.add(this);}disconnect(){observers.delete(this);}}
   // 既知の二重引用ID属性をfixtureにするだけ。HTML構文/親子関係/描画の検証ではない。
   for (const match of html.matchAll(/<[a-z][a-z0-9-]*\b([^<>]*\bid="([^"]+)"[^<>]*)>/gi)) {
@@ -41,7 +41,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
       body: { appendChild() {} }, createElement() { return { children: [],getAttribute(k){return this[k];},
         appendChild(child) { this.children.push(child); }, remove() {},
-        submit() { sent.push(Object.fromEntries(this.children.map(child => [child.name, child.value]))); } }; } },
+        submit() { const request=Object.fromEntries(this.children.map(child=>[child.name,child.value]));wire.push(request);if(request.action==='bridgeReadHomeV1')sent.push(...JSON.parse(request.requests));else sent.push(request); } }; } },
     fetch() { throw Error('unexpected network'); },
   };
   context.window = context; context.top = context;
@@ -52,22 +52,23 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; assert.equal(inline.length, 1);
   vm.runInNewContext(inline[0][1], context);
   await new Promise(resolve => setImmediate(resolve));
-  return { node, panes, context, diagnostics, sent, timers,loginCalls,reloads:()=>reloads, focused: () => focused,
+  return { node, panes, context, diagnostics, sent, wire, timers,loginCalls,reloads:()=>reloads, focused: () => focused,
     depart(){for(const fn of handlers.pagehide||[])fn();},
     click(id) { node(id).events.click(); },
     key(id, key) { let prevented = false; node(id).events.keydown({ key, preventDefault() { prevented = true; } }); return prevented; },
-    async replyAccess(code='STAFF_ADMIN_READY') {
-      const request=sent.find(r=>r.action==='bridgeCheckStaffEnrollment'),data={type:'TLH_BRIDGE_STAFF_ENROLLMENT',action:request.action,nonce:request.nonce,code};
-      data.mac=createHmac('sha256',request.responseKey).update([data.type,data.nonce,data.action,data.code].join('\n')).digest('hex');
-      for(const fn of handlers.message)await fn({origin:'null',source:node('admin-access-frame').contentWindow,data});
-      await new Promise(resolve=>setImmediate(resolve));
-    },
-    async replyPunch(code) {
-      const request = sent.at(-1), data = { type: 'TLH_BRIDGE_PUNCH', action: request.action,
-        nonce: request.nonce, code, revision: '' };
-      data.mac = createHmac('sha256', request.responseKey).update(
-        [data.type, data.nonce, data.action, data.code, data.revision].join('\n')).digest('hex');
-      for (const fn of handlers.message) await fn({ origin: 'null', data });
+    async replyAccess(code='STAFF_ADMIN_READY',punchCode='PUNCH_DISABLED') {
+      const batch=wire.find(r=>r.action==='bridgeReadHomeV1');if(!batch)return;
+      const replies=JSON.parse(batch.requests).map(r=>{
+        const data={type:r.action==='bridgeCheckStaffEnrollment'?'TLH_BRIDGE_STAFF_ENROLLMENT':r.action==='bridgeGetPunchReadiness'?'TLH_BRIDGE_PUNCH':'TLH_BRIDGE_ATTENDANCE_JOURNAL',nonce:r.nonce,action:r.action,
+          code:r.action==='bridgeCheckStaffEnrollment'?code:r.action==='bridgeGetPunchReadiness'?punchCode:'JOURNAL_UNAVAILABLE'};
+        if(r.action==='bridgeGetPunchReadiness')data.revision='';if(r.action==='bridgeGetAttendanceJournalV2')data.journal='';
+        data.mac=createHmac('sha256',r.responseKey).update(Object.values(data).join('\n')).digest('hex');return data;
+      });
+      const data={type:'TLH_BRIDGE_READ_HOME_V1',nonce:batch.nonce,action:batch.action,code:'READ_HOME_READY',replies:JSON.stringify(replies)};
+      data.mac=createHmac('sha256',batch.responseKey).update(Object.values(data).join('\n')).digest('hex');
+      for(const fn of handlers.message)await fn({origin:'null',source:node('home-read-frame').contentWindow,data});
+      // Await the actual WebCrypto completion, not a machine-speed-dependent number of event-loop turns.
+      const deadline=Date.now()+2000;while(['admin-access-status','punch-status','journal-status'].some(id=>node(id).getAttribute('aria-busy')==='true')){assert.ok(Date.now()<deadline,'startup child verification did not settle');await new Promise(resolve=>setTimeout(resolve,1));}
       await new Promise(resolve=>setImmediate(resolve));
     },
     async replyAccount(code='ACCOUNT_INFO_READY'){
@@ -85,20 +86,18 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   };
 }
 
-test('startup serializes role and punch reads instead of competing for the same script lock', async () => {
-  const h = await harness();assert.equal(h.sent.length,1);assert.equal(h.sent[0].action,'bridgeCheckStaffEnrollment');assert.equal(h.node('manager-tab').disabled,true);
-  await h.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');assert.equal(h.node('manager-tab').disabled,true); assert.equal(h.node('workforce-tabs').hidden, false);
-  assert.equal(h.node('punch-section').hidden, false); assert.equal(h.node('employee-work-panel').hidden, false);
-  assert.equal(h.node('manager-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
-  for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
+test('startup makes one POST for role, punch and today; employee denial keeps management closed',async()=>{
+ const h=await harness();assert.equal(h.wire.length,1);assert.equal(h.wire[0].action,'bridgeReadHomeV1');
+ assert.deepEqual(h.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness','bridgeGetAttendanceJournalV2']);
+ assert.equal(h.node('manager-tab').disabled,true);await h.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(h.wire.length,1);
+ assert.equal(h.node('manager-tab').disabled,true);assert.equal(h.node('punch-status').textContent,'打刻受付は停止中です。');
+ assert.equal(h.node('journal-status').attributes['aria-busy'],'false');
+ for(const id of ['punch-in','punch-out','punch-break-start','punch-break-end'])assert.equal(h.node(id).hidden,true);
 });
-
-test('startup roster and approval count wait behind punch and today reads; failed role check cannot stall employee reads forever',async()=>{
- const h=await harness();await h.replyAccess();assert.deepEqual(h.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness']);
- await h.replyPunch('PUNCH_DISABLED');assert.equal(h.sent[2].action,'bridgeGetAttendanceJournalV2');
- await h.replyJournalError();assert.equal(h.sent[3].action,'bridgeGetAdminOverview');assert.equal(h.sent.length,4);
- const failed=await harness();[...failed.timers.values()][0]();await new Promise(resolve=>setImmediate(resolve));
- assert.equal(failed.node('manager-tab').disabled,true);assert.deepEqual(failed.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness']);
+test('admin overview waits for the startup batch; timeout closes management and never retries writes',async()=>{
+ const h=await harness();await h.replyAccess();assert.equal(h.wire.length,2);assert.equal(h.wire[1].action,'bridgeGetAdminOverview');
+ const failed=await harness();for(const fn of [...failed.timers.values()])fn();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(failed.node('manager-tab').disabled,true);assert.equal(failed.wire.length,1);assert.ok(failed.sent.every(r=>r.action!=='bridgeRecordPunch'));
 });
 
 test('More tab loads own account inline once, reuses its result on return, and refreshes only by request',async()=>{
@@ -132,8 +131,8 @@ test('external first launch offers explicit LINE login without loops, saved toke
 test('login return uses normal startup; SDK failure and LIFF-internal state never offer unsupported login',async()=>{
   const returned=await harness({inClient:false});
   assert.equal(returned.node('home-line-login').hidden,true);assert.equal(returned.loginCalls.length,0);
-  assert.equal(returned.sent[0].action,'bridgeCheckStaffEnrollment');
-  assert.equal(returned.sent.length,1);assert.equal(returned.node('manager-tab').disabled,true);await returned.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(returned.sent[1].action,'bridgeGetPunchReadiness');
+  assert.equal(returned.wire[0].action,'bridgeReadHomeV1');
+  assert.equal(returned.sent.length,3);assert.equal(returned.node('manager-tab').disabled,true);await returned.replyAccess('TLH_ADMIN_REQUIRED');assert.equal(returned.wire.length,1);
   for(const options of [{loggedIn:false,inClient:true},{loggedIn:false,inClient:false,initFailure:true}]){
     const h=await harness(options);assert.equal(h.node('home-line-login').hidden,true);h.click('home-line-login');assert.equal(h.loginCalls.length,0);assert.equal(h.sent.length,0);
   }
@@ -147,7 +146,7 @@ test('tabs change only wrapper visibility, not permissions, pending values, comm
   h.click('manager-tab');h.click('manager-employees-choice'); assert.equal(h.node('manager-registration-panel').hidden, false);
   assert.equal(h.node('employee-registration-panel').hidden, true); assert.equal(h.node('staff-admin').hidden, true);
   assert.equal(h.node('staff-issued-code').value, 'fake-private-draft'); assert.equal(h.node('staff-check').disabled, true);
-  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');
+  assert.equal(h.node('staff-status').textContent, '処理中です。'); assert.equal(h.sent.length,4);assert.equal(h.sent[3].action,'bridgeGetAdminOverview');
 });
 test('arrow/Home/End navigation maintains selected tab, focus and tab stop; other keys are untouched', async () => {
   const h = await harness();await h.replyAccess(); assert.equal(h.key('employee-tab', 'ArrowRight'), true); assert.equal(h.focused(), 'records-tab');
@@ -164,7 +163,7 @@ test('four destinations expose only their wrappers and queue lazy reads without 
   h.click('more-tab');assert.equal(h.node('employee-registration-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,false);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('records-work-panel').hidden,true);
   h.click('manager-tab');assert.equal(h.node('manager-tools-panel').hidden,false);assert.equal(h.node('more-tools-panel').hidden,true);
-  assert.equal(h.sent.length,2);assert.equal(h.sent[1].action,'bridgeGetPunchReadiness');
+  assert.equal(h.sent.length,4);assert.equal(h.sent[3].action,'bridgeGetAdminOverview');
 });
 
 test('developer demo also separates manager issue/release from personal invitation claim',async()=>{
@@ -173,7 +172,7 @@ test('developer demo also separates manager issue/release from personal invitati
   assert.match(admin,/id="demo-issue"/);assert.match(admin,/id="demo-release"/);assert.doesNotMatch(admin,/id="demo-claim"/);
   const personal=html.slice(html.indexOf('<section id="personal-demo-panel"'),html.indexOf('<section class="card" aria-live="polite">',html.indexOf('<section id="personal-demo-panel"')));
   assert.match(personal,/id="demo-claim"/);assert.doesNotMatch(personal,/id="demo-(?:issue|release)"/);
-  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,2);
+  h.click('more-tab');assert.equal(h.node('manager-test-panel').hidden,true);assert.equal(h.node('more-tools-panel').hidden,false);assert.equal(h.sent.length,4);
 });
 test('missing login or proof keeps business sections and nav closed, while diagnostics remain accessible', async () => {
   for (const options of [{ loggedIn: false }, { proof: '' }]) {
@@ -182,13 +181,13 @@ test('missing login or proof keeps business sections and nav closed, while diagn
     h.click('manager-tab'); assert.equal(h.node('staff-section').hidden, true); assert.equal(h.node('maintenance-section').hidden, true);
   }
 });
-test('signed closed-reception response stays closed through view changes and does not create a punch', async () => {
-  const h = await harness();await h.replyAccess('TLH_ADMIN_REQUIRED'); h.click('punch-check'); assert.equal(h.sent.length, 2);
-  await h.replyPunch('PUNCH_DISABLED'); h.click('manager-tab'); h.click('employee-tab');
-  assert.equal(h.node('punch-status').textContent, '打刻受付は停止中です。');
-  for (const id of ['punch-in', 'punch-out', 'punch-break-start', 'punch-break-end']) assert.equal(h.node(id).hidden, true);
-  assert.equal(h.sent.length, 3); assert.equal(h.sent[1].action, 'bridgeGetPunchReadiness');assert.equal(h.sent[2].action,'bridgeGetAttendanceJournalV2');
+test('signed closed reception in startup stays closed through view changes and sends no punch',async()=>{
+ const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');h.click('manager-tab');h.click('employee-tab');
+ assert.equal(h.node('punch-status').textContent,'打刻受付は停止中です。');
+ for(const id of ['punch-in','punch-out','punch-break-start','punch-break-end'])assert.equal(h.node(id).hidden,true);
+ assert.equal(h.wire.length,1);assert.equal(h.sent.length,3);
 });
+
 test('layout source cannot send, store, authorize, expose secret values or overwrite controller controls', () => {
   assert.ok(!/\b(?:fetch|XMLHttpRequest|localStorage|sessionStorage|liff|crypto|submit|confirm)\s*[.(]/.test(layout));
   assert.ok(!/\.value\s*=|\.textContent\s*=/.test(layout));
@@ -202,7 +201,7 @@ test('employee cannot click or keyboard into management and a thousand tab attem
   for(let i=0;i<1000;i++){h.click('manager-tab');h.key('records-tab','ArrowRight');}
   assert.equal(h.node('manager-tab').disabled,true);assert.equal(h.node('manager-tools-panel').hidden,true);
   assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.node('admin-demo-panel').hidden,true);
-  assert.equal(h.focused(),'schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,2);
+  assert.equal(h.focused(),'schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,3);
 });
 
 test('shift tab contains viewing and personal requests; administration moves to authorized management category',async()=>{
@@ -233,6 +232,6 @@ test('management categories retain inputs and pending state, hide unrelated form
 });
 test('management choices stay closed for employees; labor checks are last after all business forms',async()=>{
  const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance','schedule']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
- assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,2);
+ assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,3);
  assert.ok(html.indexOf('id="labor-policy-section"')>html.indexOf('id="manager-test-panel"'));assert.ok(html.indexOf('id="labor-policy-section"')<html.indexOf('id="more-tools-panel"'));
 });

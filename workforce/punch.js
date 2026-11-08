@@ -109,6 +109,7 @@
       if(typeof idToken!=='string'||!idToken){requireLogin();return;}
       const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now()};pending=r;controls();status.textContent='処理中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish('timeout');},30000);
+      if(action===READ&&options.readTransport){options.readTransport.request({action,nonce:r.nonce,responseKey:r.responseKey,idToken}).then(data=>receive(r,data)).catch(error=>{if(pending===r&&!stopped){if(error.code==='LINE_VERIFY_REJECTED')requireLogin();else status.textContent='応答を確認できません。打刻前の状態を確認し直してください。';finish('send_error');}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPunchFrame';form.hidden=true;
       Object.entries({...fields,action,nonce:r.nonce,responseKey:r.responseKey,idToken}).forEach(([name,value])=>{
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
@@ -119,8 +120,12 @@
     function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish('send_error');});}
     global.addEventListener('message',async event=>{
       const r=pending;if(!r||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
+      await receive(r,event.data);
+    });
+    async function receive(r,value){
+      if(stopped||pending!==r)return;
       try{
-        const d=event.data,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
+        const d=value,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
         if(!await verifyResponse(data,r)||pending!==r)return;status.textContent=messages[data.code];
         if(data.code!=='LINE_VERIFY_REJECTED')loginRequired=false;
         if(data.code==='LINE_VERIFY_REJECTED'){requireLogin();}
@@ -130,7 +135,7 @@
         finish();
         if(r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED'))options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
       }catch(_error){/* 未検証の応答を表示しない。 */}
-    });
+    }
     check.addEventListener('click',()=>{if(pending||draft||blocked||loginRequired||loginPending||stopped)return;ready=null;controls();invoke(READ);});
     Object.entries(buttons).forEach(([type,button])=>button.addEventListener('click',()=>{
       if(pending||draft||blocked||loginRequired||loginPending||stopped||!ready||!allowed[ready.code].includes(type))return;

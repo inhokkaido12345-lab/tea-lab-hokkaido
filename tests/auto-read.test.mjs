@@ -9,6 +9,17 @@ function harness(){
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
+test('fixed home read group starts together, waits before other reads and refuses a mixed write group',async()=>{
+ const h=harness();h.api.together(['punch','today']);h.api.once('monthly');await tick();assert.deepEqual(h.sent,['punch-check','journal-check']);
+ h.finish('punch');await tick();assert.equal(h.sent.length,2);h.finish('journal');await tick();assert.deepEqual(h.sent,['punch-check','journal-check','monthly-work-check']);
+ h.api.together(['punch','commit'],()=>true,true);await tick();assert.equal(h.sent.length,3);
+});
+test('confirmed-save invalidation fetches fresh after an earlier pending read, and hidden records load on next visit',async()=>{
+ const h=harness();h.api.together(['punch','today']);await tick();h.api.invalidate(['today','daily','monthly']);h.api.together(['punch','today'],()=>true,true);
+ h.finish('punch');h.finish('journal');await tick();assert.deepEqual(h.sent,['punch-check','journal-check','punch-check','journal-check']);
+ h.finish('punch');h.finish('journal');await tick();h.api.together(['daily','monthly']);await tick();assert.deepEqual(h.sent.slice(-2),['daily-summary-check','monthly-work-check']);
+});
+
 test('shift tab activation schedules only its read once and never submits a preference',async()=>{
  const h=harness();for(let i=0;i<100;i++)h.api.once('schedule');await tick();assert.deepEqual(h.sent,['schedule-refresh']);h.finish('schedule');await tick();h.api.once('schedule');await tick();assert.equal(h.sent.length,1);
 });

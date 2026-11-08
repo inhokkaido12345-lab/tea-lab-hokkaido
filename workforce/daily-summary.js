@@ -83,17 +83,18 @@
   function init(options){
     const button=document.getElementById('daily-summary-check'),status=document.getElementById('daily-summary-status'),
       result=document.getElementById('daily-summary-result');
-    let pending=null,blocked=false;
+    let pending=null,blocked=false,stopped=false;
     function clear(){result.hidden=true;for(const id of ['date','count','gross','break','worked','open'])document.getElementById('daily-summary-'+id).textContent='';}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;status.setAttribute?.('aria-busy','false');button.disabled=blocked;}
     async function check(){
-      if(pending||blocked)return;
+      if(pending||blocked||stopped)return;
       clear();
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       const idToken=options.liff&&options.liff.getIDToken();
       if(typeof idToken!=='string'||!idToken){status.textContent='LINE本人確認情報がありません。';return;}
       const request={action:ACTION,nonce:random(16),responseKey:random(32)};pending=request;status.setAttribute?.('aria-busy','true');button.disabled=true;status.textContent='確認中です。';
       request.timer=setTimeout(()=>{if(pending!==request)return;status.textContent='応答を確認できませんでした。もう一度確認してください。';finish();},30000);
+      if(options.readTransport){options.readTransport.request({action:ACTION,nonce:request.nonce,responseKey:request.responseKey,idToken:idToken}).then(data=>receive(request,data)).catch(()=>{if(pending===request&&!stopped){status.textContent='応答を確認できませんでした。もう一度確認してください。';finish();}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhDailySummaryFrame';form.hidden=true;
       Object.entries({action:request.action,nonce:request.nonce,responseKey:request.responseKey,idToken}).forEach(([name,value])=>{
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
@@ -105,8 +106,12 @@
     global.addEventListener('message',async event=>{
       const request=pending;
       if(!request||!(event.origin==='null'||/^https:\/\/(?:[a-z0-9-]+\.)*(?:googleusercontent|google)\.com$/.test(event.origin)))return;
+      await receive(request,event.data);
+    });
+    async function receive(request,value){
+      if(stopped||pending!==request)return;
       try{
-        const d=event.data,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,summary:d&&d.summary,mac:d&&d.mac};
+        const d=value,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,summary:d&&d.summary,mac:d&&d.mac};
         if(!await verifyResponse(data,request)||pending!==request)return;
         clear();status.textContent=messages[data.code];
         if(data.code==='DAILY_SUMMARY_READY'){
@@ -120,7 +125,9 @@
         blocked=['WRITE_REVIEW_REQUIRED','WORK_STATE_STORAGE_NOT_READY','WORK_STATE_REVIEW_REQUIRED','WORK_STATE_CORRECTIONS_PENDING'].includes(data.code);
         finish();
       }catch(_error){/* 未検証の個人集計や内部例外は表示しない。 */}
-    });
+    }
+    global.addEventListener('pagehide',()=>{stopped=true;clear();finish();});
+    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}});
   }
   global.TlhDailySummary=Object.freeze({init,verifyResponse,parseSummary,duration});
 })(window);

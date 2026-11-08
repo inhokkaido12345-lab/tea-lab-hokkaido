@@ -48,6 +48,7 @@
         const random=size=>Array.from(crypto.getRandomValues(new Uint8Array(size)),b=>b.toString(16).padStart(2,'0')).join('');
         const request={nonce:random(16),responseKey:random(32)};pending=request;
         request.timer=setTimeout(()=>{if(pending===request)finish('unavailable');},30000);
+        if(options.readTransport){options.readTransport.request({action:ACTION,idToken,nonce:request.nonce,responseKey:request.responseKey}).then(data=>receive(request,data)).catch(()=>{if(pending===request&&!stopped)finish('unavailable');});return;}
         const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAdminAccessFrame';form.hidden=true;
         Object.entries({action:ACTION,idToken,nonce:request.nonce,responseKey:request.responseKey}).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);});
         document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}finally{form.remove();}
@@ -56,10 +57,14 @@
     global.addEventListener('message',async event=>{
       const request=pending;if(stopped||!request||!related(event.source,options.frame.contentWindow)||
         !(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
-      const source=event.data,data={type:source&&source.type,action:source&&source.action,nonce:source&&source.nonce,code:source&&source.code,mac:source&&source.mac};
+      await receive(request,event.data);
+    });
+    async function receive(request,value){
+      if(stopped||pending!==request)return;
+      const source=value,data={type:source&&source.type,action:source&&source.action,nonce:source&&source.nonce,code:source&&source.code,mac:source&&source.mac};
       let valid=false;try{valid=await verify(data,request);}catch(_e){}if(!valid||pending!==request||stopped)return;
       finish(data.code==='STAFF_ADMIN_READY'?'allowed':data.code==='TLH_ADMIN_REQUIRED'?'denied':'unavailable');
-    });
+    }
     global.addEventListener('pagehide',()=>{stopped=true;finish('closed');});
     return Object.freeze({start});
   }
