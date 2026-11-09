@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- 月型の管理者編集。未保存入力はページ内だけ。公開/希望締切は既存の半月別画面で扱う。
+     魔改造: schedule-bulk-model(変換) / schedule-bulk(状態と通信) / bulk.css(見た目)を分ける。
+     通信をセル変更イベントへ足さない。送信前の全件検査・同じ操作の再確認を維持する。 -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>月間シフトをまとめて編集 | TLH Workforce</title>
+<link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-store1"><link rel="stylesheet" href="schedule-bulk.css?v=20261109-bulk1">
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="current-workplace.js?v=20261105-store2"></script><script defer src="auto-read.js?v=20261108-batch1"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261104-periods"></script><script defer src="schedule.js?v=20261105-store1"></script><script defer src="schedule-bulk-model.js?v=20261109-bulk1"></script><script defer src="schedule-bulk.js?v=20261109-bulk1" data-bootstrap="true"></script>
+</head><body class="secondary-page bulk-page"><header><strong>TLH Workforce</strong><a href="index.html">アプリへ戻る</a></header>
+<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
+<main><h1>月間シフトをまとめて編集</h1><p>全従業員・月全体をまとめて編集し、最後に1回保存します。入力途中の通信はありません。招待待ちの従業員も対象です。</p>
+<button id="bulk-login" type="button" hidden>LINEログイン</button>
+<div class="bulk-toolbar"><label>対象月<input id="bulk-month" type="month" disabled></label><button id="bulk-load" type="button" disabled>この月を読み込む</button><a href="admin-schedule.html">半月の締切・希望確認・確定公開</a></div>
+<p id="bulk-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="bulk-phases"></p>
+<details class="tool-help"><summary>入力のしかた・保存の注意</summary><p>勤務は <strong>09:00-18:00/60</strong>（予定休憩60分）。「/分数」を省略した場合は予定休憩0分です。中抜けは改行かカンマで <strong>09:00-12:00/0,14:00-18:00/30</strong>。日跨ぎは <strong>22:00-翌06:00/60</strong>。</p><p>休暇は「公休」「有給」「その他休暇」。既存予定を未定へ戻す時は「未定」と入力します。空欄は未入力で、公休扱いにしません。範囲をコピーして貼り付ける場合は勤務欄だけを選んでください。</p><p>選択中の日の公開メモ・非公開メモは下で編集できます。既存の用事は保持されます。用事の追加・分類は個別編集画面から行ってください。変更500日分まで1回で保存できます。</p><p>未確定期間は下書き保存。確定済み期間は変更理由を付けて本人の同意待ちにします。締切と確定公開は前半・後半で別々のままです。保存は確定公開の操作ではありません。</p></details>
+<div class="bulk-pager"><button id="bulk-prev" type="button" disabled>前の従業員</button><span id="bulk-page"></span><button id="bulk-next" type="button" disabled>次の従業員</button></div>
+<p class="footnote">月末までは表を横にスクロールできます。氏名と日付の見出しは固定されます。25人を超える場合も、ページを切り替えて編集した内容をまとめて保存できます。</p>
+<div class="bulk-grid-wrap" tabindex="0" role="region" aria-label="月間シフト編集表"><table id="bulk-grid"><caption>氏名と日付を確認して勤務を入力</caption><thead id="bulk-head"></thead><tbody id="bulk-rows"></tbody></table></div>
+<fieldset id="bulk-detail" disabled><legend id="bulk-selected">セルを選ぶと、その日のメモを編集できます</legend><p id="bulk-appointments"></p><label>全員に公開するメモ<textarea id="bulk-public-note" maxlength="1000" rows="2"></textarea></label><label>非公開メモ（本人・管理者だけ）<textarea id="bulk-note" maxlength="1000" rows="2"></textarea></label><a href="admin-schedule.html" target="_blank" rel="noopener">用事・個別シフト編集を別画面で開く</a></fieldset>
+<div class="bulk-savebar"><p id="bulk-count" role="status" aria-live="polite">未保存の変更：0日分</p><label>確定済み期間の変更理由（該当する場合のみ必須）<textarea id="bulk-reason" maxlength="500" rows="2"></textarea></label><button id="bulk-save" type="button" disabled>変更をまとめて保存</button><button id="bulk-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button></div>
+<iframe id="bulk-frame" name="tlhScheduleBulkFrame" title="月間シフトの署名付き応答" hidden></iframe>
+</main></body></html>
