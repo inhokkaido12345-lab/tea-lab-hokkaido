@@ -28,7 +28,7 @@ test('all ten business entry pages carry the same mark and load the scope helper
 });
 test('changed business pages refresh their changed scripts and shared stylesheet together',()=>{
  const assets=new Set(['app.css','account-info.js','account-recovery.js','admin-access.js','admin-overview.js','attendance-journal.js','daily-summary.js','day-change.js','demo-invitation.js','labor-policy.js','monthly-work-summary.js','pending-approvals.js','punch.js','schedule.js','staff-code-change.js','staff-enrollment.js','staff-maintenance.js','work-state.js','current-workplace.js']);
- const versions={'schedule.js':'20261109-cleanup1','current-workplace.js':'20261105-store2','punch.js':'20261108-batch1','admin-overview.js':'20261105-timing1','attendance-journal.js':'20261108-batch1','admin-access.js':'20261108-batch1','daily-summary.js':'20261108-batch1','monthly-work-summary.js':'20261108-batch1','account-info.js':'20261105-more1'};
+ const versions={'schedule.js':'20261109-workspace1','current-workplace.js':'20261105-store2','punch.js':'20261108-batch1','admin-overview.js':'20261105-timing1','attendance-journal.js':'20261108-batch1','admin-access.js':'20261108-batch1','daily-summary.js':'20261108-batch1','monthly-work-summary.js':'20261108-batch1','account-info.js':'20261105-more1'};
  for(const page of ['index','account-info','staff-code-change','recovery','timecard-records','admin-timecard-records','day-change','admin-day-change','schedule','admin-schedule','admin-schedule-bulk']){
   const html=fs.readFileSync(new URL('../workforce/'+page+'.html',import.meta.url),'utf8');
   for(const m of html.matchAll(/(?:src|href)="([^"?]+)\?v=([^\"]+)"/g))if(assets.has(m[1]))assert.equal(m[2],versions[m[1]]||'20261105-store1',page+':'+m[1]);

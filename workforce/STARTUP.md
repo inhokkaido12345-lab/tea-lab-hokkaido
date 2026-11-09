@@ -1,3 +1,9 @@
+## 統合シフトの起動
+
+schedule-workspace.jsが既存LIFFとauto-readを共用。本人monthRead→管理者monthRead→シート用batchReadを順に1回ずつ開始。従業員へは管理者READを送らず、タブ往復でも重複しません。共通月の変更/保存成功後も同じキューでREADだけを更新します。
+
+単独3ページを正本に `python scripts/sync-schedule-workspace.py` でindexの明示範囲を再生成。続いて `python scripts/build-workforce-design-preview.py` で操作無効の見本を更新します。schedule-admin- prefixとtlhScheduleAdminFrameはcontroller/生成器/検査で同期。生成物やGASを手編集しません。
+
 <!-- current-doc-status:start -->
 > 2026-11-05資料整理：機能仕様と保守資料。現在の公開・設定・未達状況は[最新状態](CURRENT-STATUS.md)を優先してください。本文の過去の日付・版・検査件数は当時の記録です。恒久的な安全方針は引き続き適用します。
 <!-- current-doc-status:end -->

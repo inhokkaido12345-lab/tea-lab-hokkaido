@@ -38,10 +38,14 @@
   }
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),v=>v.toString(16).padStart(2,'0')).join('');
   function related(source,target){for(let i=0;source&&i<6;i++){if(source===target)return true;try{if(source.parent===source)break;source=source.parent;}catch(_e){break;}}return false;}
+  /** 両半月を別々に検査し、同じ本人/月/役割/取得時刻の月暦だけ採用する。 */
+  function validateMonth(v,month,admin){return !!v&&Object.keys(v).sort().join(',')==='halves,month,version'&&v.version===1&&v.month===month&&v.halves&&Object.keys(v.halves).sort().join(',')==='FIRST,SECOND'&&['FIRST','SECOND'].every(part=>validate(v.halves[part],month,admin,part))&&v.halves.FIRST.employeeCode===v.halves.SECOND.employeeCode&&v.halves.FIRST.inputMode===v.halves.SECOND.inputMode&&v.halves.FIRST.serverNow===v.halves.SECOND.serverNow;}
   function init(options){
     const ids=['scope','availability','month','refresh','status','summary','published-at','calendar','requests','frame','editor','day','employee','leave','note','public-note','reason','kind','periods','appointments','add-period','add-appointment','save','month-form','deadline','event-form','event-day','event-title','event-note','publish','retry'];
-    const n=Object.fromEntries(ids.map(k=>[k,document.getElementById('schedule-'+k)]));
-    const admin=options.audience==='admin',reportUi=global.TlhScheduleReport.init();let snapshot=null,pending=null,uncertain=null,stopped=false;const periods=[],appointments=[];
+    // 同一タブの本人/管理者をIDと返信iframeごと分離。defaultは既存単独ページと互換。
+    const byId=id=>document.getElementById(id.replace(/^schedule-/,options.idPrefix||'schedule-'));
+    const n=Object.fromEntries(ids.map(k=>[k,byId('schedule-'+k)]));
+    const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false;const periods=[],appointments=[];
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function canRequest(){
       if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
@@ -56,15 +60,16 @@
       n.save.disabled=locked||!admin&&!canRequest();
       // 管理者の編集は署名済み旧モードだけ。未確認/失敗/退場では隠し、本人申請とは区別する。
       const sheet=admin&&snapshot?.inputMode==='SHEET',hideAdminEditor=admin&&(!snapshot||sheet);n.editor.hidden=hideAdminEditor;n['event-form'].hidden=!admin||!snapshot||sheet;n.editor.disabled=n.editor.disabled||sheet;n['event-form'].disabled=n['event-form'].disabled||sheet;n.save.disabled=n.save.disabled||sheet;
-      if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=document.getElementById(id);if(node)node.hidden=hideAdminEditor;}const banner=document.getElementById('schedule-source-banner');if(banner)banner.hidden=!sheet;}
+      if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=byId(id);if(node)node.hidden=hideAdminEditor;}const banner=byId('schedule-source-banner');if(banner)banner.hidden=!sheet;}
       n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(snapshot.phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(snapshot.phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':snapshot.phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
       if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。希望休・変更申請はアプリで受け付けます。承認前に申請と同じ内容をシートへ記入してください。';
       n.scope.disabled=stopped||!!pending||!!uncertain;
       n.month.disabled=stopped||!!pending||!!uncertain;n.refresh.disabled=stopped||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.status.setAttribute('aria-busy',String(!!pending));
       reportUi.setEnabled(!locked&&snapshot?.phase==='PUBLISHED');
+      options.onNavigationLock?.(stopped||!!pending||!!uncertain);
     }
-    function clear(){snapshot=null;reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
+    function clear(){snapshot=null;monthSnapshots=null;const banner=admin?null:byId('schedule-request-deadline');if(banner)banner.textContent='希望休の締切を確認しています。';reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function field(parent,label,type,value=''){const l=el('label',label,parent),i=el('input',undefined,l);i.type=type;i.value=value;return i;}
     function select(parent,label,values,value){const l=el('label',label,parent),s=el('select',undefined,l);for(const [v,title]of values){const o=el('option',title,s);o.value=v;}s.value=value;return s;}
@@ -92,20 +97,24 @@
     function render(s){
       // 一般化: 一つの保存モデルから複数の画面モデルを作る。管理画面のDOMを印刷へ流用しない。
       // 出力担当へ渡すのは共有plans/eventsだけ。ownPlans/drafts/requestsは渡さない。
+      if(monthSnapshots&&s.month===n.month.value&&Object.hasOwn(monthSnapshots,s.period))monthSnapshots[s.period]=s;
       snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
       reportUi.setShared({phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
       // 全員が見ている公開版の更新日。下書き/希望の保存では更新せず、署名済みサーバー時刻をJST表示。
       n['published-at'].textContent=s.publishedAt?'確定シフト 最終更新：'+new Date(s.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（日本時間）':'この月のシフトはまだ確定公開されていません。';
+      if(monthSnapshots&&s.period!=='MONTH')n['published-at'].textContent=['FIRST','SECOND'].map((part,i)=>{const current=monthSnapshots[part];return(i?'後半':'前半')+'：'+(current.publishedAt?'最終更新 '+new Date(current.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'未公開');}).join(' ｜ ');
       const range=global.TlhScheduleView.periodRange(s.month,s.period);
       n.day.min=range.start;n.day.max=range.end;n['event-day'].min=range.start;n['event-day'].max=range.end;
       if(!date(n.day.value)||n.day.value<range.start||n.day.value>range.end)n.day.value=range.start;
-      document.getElementById('schedule-legacy-option').hidden=!s.legacyAvailable;
+      byId('schedule-legacy-option').hidden=!s.legacyAvailable;
       const periodLabel=s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体（従来データ）';
       const state={NOT_OPEN:'未作成（希望受付前でも下書き作成できます）',DRAFT:'下書き作成中・希望受付は未開始',COLLECTING:Date.parse(s.serverNow)>=Date.parse(s.deadline)?'初回希望締切済み・下書き作成':'希望受付中・下書き作成',PUBLISHED:'確定公開済み'}[s.phase];n.summary.textContent=s.month+' '+periodLabel+'：'+state+(s.deadline?' / 希望締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
       // 未認証名簿は管理者の予定対象。本人認可や共有DTOには転用しない。GAS/検査/登録後引継ぎも同期。
       n.employee.replaceChildren();for(const p of s.employees){const o=el('option',p.employeeCode+'（'+p.employeeName+'）'+(p.registrationStatus==='PENDING_LINK'?'［未認証］':''),n.employee);o.value=p.employeeCode;}
+      if(admin)n.publish.textContent=(s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体')+'の下書きを確定公開';
       n.deadline.value=s.deadline?new Date(Date.parse(s.deadline)+32400000).toISOString().slice(0,16):'';
-      renderCalendar(s);
+      if(!options.lazyCalendar||byId('schedule-overview')?.open)renderCalendar(s);
+      const deadlineBanner=admin?null:byId('schedule-request-deadline');if(deadlineBanner)deadlineBanner.textContent=periodLabel+'の希望休締切：'+(s.deadline?new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）'+(Date.parse(s.serverNow)>=Date.parse(s.deadline)?'／締切済み':''):'未設定。管理者が期間と締切を設定するまで通常の希望は提出できません。');
       renderRequests(s);
       loadEditor();
       controls();
@@ -113,10 +122,11 @@
 
     /** 日別索引はこの描画中だけ有効。本人用の索引は共有出力へ渡さない。 */
     function renderCalendar(s){
-      const range=global.TlhScheduleView.periodRange(s.month,s.period),first=Number(range.start.slice(8)),count=Number(range.end.slice(8)),source=admin?s.drafts:s.plans;
+      const parts=monthSnapshots&&s.period!=='MONTH'?[monthSnapshots.FIRST,monthSnapshots.SECOND]:[s],range=global.TlhScheduleView.periodRange(s.month,parts.length===2?'MONTH':s.period),first=Number(range.start.slice(8)),count=Number(range.end.slice(8)),source=parts.flatMap(part=>admin?part.drafts:part.plans);
+      n.calendar.className='schedule-calendar'+(parts.length===2?' schedule-month-calendar':'');
       const plansByDay=global.TlhScheduleView.groupByDay(source);
-      const eventsByDay=global.TlhScheduleView.groupByDay(admin?s.draftEvents:s.events);
-      const ownByDay=global.TlhScheduleView.groupByDay(s.ownPlans);
+      const eventsByDay=global.TlhScheduleView.groupByDay(parts.flatMap(part=>admin?part.draftEvents:part.events));
+      const ownByDay=global.TlhScheduleView.groupByDay(parts.flatMap(part=>part.ownPlans));
       for(const name of '日月火水木金土')el('div',name,n.calendar).className='schedule-weekday';
       for(let i=0;i<new Date(range.start+'T00:00:00Z').getUTCDay();i++){const blank=el('div','',n.calendar);blank.className='schedule-blank';blank.setAttribute('aria-hidden','true');}
       n.save.textContent=admin?(s.phase==='PUBLISHED'?'変更案を本人へ送る':'この予定を下書き保存'):'希望・申出を提出する';
@@ -124,7 +134,7 @@
         const day=s.month+'-'+String(i).padStart(2,'0'),card=el('article',undefined,n.calendar);card.className='schedule-day';const week=new Date(day+'T00:00:00Z').getUTCDay();
         el('h3',i+'日（'+'日月火水木金土'[week]+'）',card);card.dataset.weekday=String(week);
         const events=eventsByDay.get(day)||[];for(const e of events)el('p',e.title+(e.note?' / '+e.note:''),card).className='schedule-event';
-        const plans=plansByDay.get(day)||[];if(!plans.length)el('p','予定未設定',card).className='subtle';
+        const plans=plansByDay.get(day)||[];if(!plans.length)el('p',admin||(parts.length===2?parts[i<=15?0:1]:s).phase==='PUBLISHED'?'予定未設定':'未公開',card).className='subtle';
         for(const p of plans){const line=el('div',undefined,card);el('strong',p.employeeName+'（'+p.employeeCode+'）',line);
           el('p',admin?planText(p.plan):sharedPlanText(p),line);
           if(!admin&&p.publicNote)el('p','共有事項：'+p.publicNote,line).className='schedule-public-note';
@@ -165,26 +175,27 @@
       if(pending||stopped)return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(typeof proof!=='string'||!proof){clear();n.status.textContent='LINEログインが必要です。';return;}
-      const r={...request,nonce:random(16),key:random(32)};pending=r;if(r.command==='read')clear();controls();n.status.textContent='通信中です。';
-      const unknown=()=>{if(pending!==r)return;if(r.command!=='read')uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='read'?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
-      const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhScheduleFrame';form.hidden=true;
+      const r={...request,nonce:random(16),key:random(32)};pending=r;if(isRead(r.command))clear();controls();n.status.textContent='通信中です。';
+      const unknown=()=>{if(pending!==r)return;if(!isRead(r.command))uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=isRead(r.command)?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
+      const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target=options.frameName||'tlhScheduleFrame';form.hidden=true;
       Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
-    async function read(){if(pending||stopped)return;await send({command:'read',input:JSON.stringify({month:n.month.value,...(n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
+    async function read(){if(pending||uncertain||stopped)return;const monthly=options.monthly&&n.scope.value!=='MONTH';await send({command:monthly?'monthRead':'read',input:JSON.stringify({month:n.month.value,...(!monthly&&n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
     global.addEventListener('message',async event=>{
       const r=pending,d=event.data;if(!r||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       if(!d||d.type!==TYPE||d.action!==ACTION||d.command!==r.command||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.data!=='string'||d.data.length>1500000||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac))return;
       let ok=false;try{const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.key),{name:'HMAC',hash:'SHA-256'},false,['verify']);ok=await crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),v=>parseInt(v,16)),enc.encode([TYPE,ACTION,d.command,d.nonce,d.code,d.data].join('\n')));}catch(_e){}if(!ok||pending!==r||stopped)return;
-      let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}if(!validate(value,JSON.parse(r.input).month,admin,JSON.parse(r.input).period))return;}
+      let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}const expected=JSON.parse(r.input);if(r.command==='monthRead'){if(!validateMonth(value,expected.month,admin))return;monthSnapshots=value.halves;value=monthSnapshots[n.scope.value]||monthSnapshots.FIRST;}else if(!validate(value,expected.month,admin,expected.period))return;}
       if(['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code)&&!value)return;
-      if(value){if(r.command!=='read')uncertain=null;finish();render(value);}else{
-        if(r.command!=='read')uncertain=['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED'].includes(d.code)?{command:r.command,input:r.input,operationId:r.operationId}:null;
+      if(value){if(!isRead(r.command))uncertain=null;finish();render(value);}else{
+        if(!isRead(r.command))uncertain=['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED'].includes(d.code)?{command:r.command,input:r.input,operationId:r.operationId}:null;
         clear();finish();
       }
+      if(!isRead(r.command)&&value&&['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code))options.onSaved?.();
       n.status.textContent=d.code==='SCHEDULE_PERMISSION_REQUIRED'&&!admin?'希望の提出には有効な従業員登録が必要です。管理者に登録・LINE紐付け・利用状態を確認してください。':messages[d.code];
     });
-    n.refresh.addEventListener('click',()=>void read());n.month.addEventListener('change',()=>{if(!pending&&!uncertain)void read();});n.retry.addEventListener('click',()=>{if(uncertain&&!pending)void send({...uncertain});});
-    n.scope.addEventListener('change',()=>{if(!pending&&!uncertain)void read();});
+    n.refresh.addEventListener('click',()=>void read());n.month.addEventListener('change',()=>{if(!pending&&!uncertain){if(options.onMonthChange)options.onMonthChange();else void read();}});n.retry.addEventListener('click',()=>{if(uncertain&&!pending)void send({...uncertain});});
+    n.scope.addEventListener('change',()=>{if(pending||uncertain)return;if(monthSnapshots&&Object.hasOwn(monthSnapshots,n.scope.value)&&monthSnapshots.FIRST.month===n.month.value)render(monthSnapshots[n.scope.value]);else void read();});
     n.kind.addEventListener('change',controls);n.leave.addEventListener('change',controls);
     n.day.addEventListener('change',loadEditor);n.employee.addEventListener('change',loadEditor);n['add-period'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain)period();});n['add-appointment'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain)appointment();});
     n.save.addEventListener('click',()=>{
@@ -196,20 +207,22 @@
       if(admin){input.employeeCode=n.employee.value;input.expectedPlanRevision=snapshot.phase==='PUBLISHED'?snapshot.monthRevision:selected()?.revision||0;write('plan',input,'対象：'+n.employee.value+' / '+input.day+'\n'+(snapshot.phase==='PUBLISHED'?'変更案を本人へ送り、同意を確認します。':'この日の予定を下書き保存します。')+'\n続けますか？');}
       else{input.kind=n.kind.value;input.expectedPlanRevision=snapshot.phase==='PUBLISHED'?snapshot.monthRevision:0;write('request',input,input.day+' の希望・申出を提出します。提出だけでは予定は確定しません。続けますか？');}
     });
-    document.getElementById('schedule-month-save').addEventListener('click',()=>{if(!snapshot)return;let deadline;try{deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='締切日時を入力してください。';return;}write('month',{...base(),deadline},'選択中の期間の希望受付と締切を設定しますか？');});
-    document.getElementById('schedule-event-save').addEventListener('click',()=>{if(!snapshot)return;write('event',{...base(),day:n['event-day'].value,title:n['event-title'].value,note:n['event-note'].value,expectedEventRevision:snapshot.draftEvents.find(e=>e.day===n['event-day'].value)?.revision||0},'営業上のイベントを下書き保存しますか？個人の用事は予定の用事欄へ入力してください。');});
-    n.publish.addEventListener('click',()=>{if(snapshot)write('publish',base(),'選択中の期間の下書きを全員へ確定公開します。未設定の日は未設定のままです。内容を確認しましたか？');});
+    byId('schedule-month-save').addEventListener('click',()=>{if(!snapshot)return;let deadline;try{deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='締切日時を入力してください。';return;}write('month',{...base(),deadline},'選択中の期間の希望受付と締切を設定しますか？');});
+    byId('schedule-event-save').addEventListener('click',()=>{if(!snapshot)return;write('event',{...base(),day:n['event-day'].value,title:n['event-title'].value,note:n['event-note'].value,expectedEventRevision:snapshot.draftEvents.find(e=>e.day===n['event-day'].value)?.revision||0},'営業上のイベントを下書き保存しますか？個人の用事は予定の用事欄へ入力してください。');});
+    n.publish.addEventListener('click',()=>{if(snapshot)write('publish',base(),global.TlhScheduleView.periodRange(snapshot.month,snapshot.period).start+'〜'+global.TlhScheduleView.periodRange(snapshot.month,snapshot.period).end+' の下書きを全員へ確定公開します。未設定の日は未設定のままです。内容を確認しましたか？');});
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();n.reason.value='';n.note.value='';n.periods.replaceChildren();n.appointments.replaceChildren();periods.length=0;appointments.length=0;});
+    if(options.lazyCalendar){const overview=byId('schedule-overview');overview?.addEventListener('toggle',()=>{if(overview.open&&snapshot)renderCalendar(snapshot);else n.calendar.replaceChildren();});}
+    if(options.monthly&&!n.scope.value)n.scope.value='FIRST';
     controls();return Object.freeze({read});
   }
-  global.TlhSchedule=Object.freeze({init,validate,validatePlan:validPlan});
+  global.TlhSchedule=Object.freeze({init,validate,validateMonth,validatePlan:validPlan});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
     const login=document.getElementById('schedule-login'),status=document.getElementById('schedule-status');
     login.addEventListener('click',()=>global.liff.login());
     try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){login.hidden=false;status.textContent='LINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
       document.getElementById('schedule-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date());
       document.getElementById('schedule-scope').value=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',day:'numeric'}).format(new Date()))<=15?'FIRST':'SECOND';
-      const ui=init({gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec',liff:global.liff,audience:document.body.dataset.audience});await ui.read();
+      const ui=init({gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec',liff:global.liff,audience:document.body.dataset.audience,monthly:true});await ui.read();
     }catch(_e){status.textContent='接続を開始できません。LINEから開き直してください。';status.setAttribute('aria-busy','false');}
   });
 })(window);

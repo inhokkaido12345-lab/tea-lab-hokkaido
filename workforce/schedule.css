@@ -55,3 +55,13 @@
  .schedule-host-page #schedule-work-panel>*{display:none!important}
  .schedule-host-page #schedule-report:not([hidden]){display:block!important}
 }
+
+/* 月表示は1日〜末日を7曜日で保つ。スマホは日別縦リストへ崩さず横にスクロールする。
+   halfの選択は希望/承認/公開の保存対象だけ。予定未設定を0時間/休日として装飾しない。 */
+.schedule-calendar-scroll{max-width:100%;overflow-x:auto;padding-bottom:12px}
+.schedule-month-calendar{min-width:980px;grid-template-columns:repeat(7,minmax(130px,1fr))}
+.schedule-month-calendar .schedule-weekday,.schedule-month-calendar .schedule-blank{display:block}
+.schedule-deadline-banner{padding:16px;border-left:4px solid var(--teal,#2F5452);background:var(--soft,#E5EBE9);font-weight:600;margin-bottom:20px}
+#schedule-admin-entry{border-top:2px solid var(--teal,#2F5452);margin-top:36px;padding-top:24px}
+#schedule-import-section,#schedule-manage-review{scroll-margin-top:24px}
+.schedule-task-nav .button{margin:0;text-decoration:none}

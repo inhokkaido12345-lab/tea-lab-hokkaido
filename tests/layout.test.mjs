@@ -204,19 +204,17 @@ test('employee cannot click or keyboard into management and a thousand tab attem
   assert.equal(h.focused(),'schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,3);
 });
 
-test('shift tab contains viewing and personal requests; administration moves to authorized management category',async()=>{
- const h=await harness();h.click('schedule-tab');assert.equal(h.node('schedule-work-panel').hidden,false);assert.equal(h.node('records-work-panel').hidden,true);assert.equal(h.node('schedule-admin-entry').hidden,true);
- await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('schedule-work-panel').hidden,false);
- const records=html.slice(html.indexOf('<div id="records-work-panel"'),html.indexOf('<div id="schedule-work-panel"'));assert.doesNotMatch(records,/href="(?:admin-)?schedule.html"/);
- h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');
- assert.equal(h.node('manager-attendance-panel').hidden,false);h.click('manager-schedule-choice');assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,true);
- const shift=html.slice(html.indexOf('<div id="schedule-work-panel"'),html.indexOf('<div id="manager-tools-panel"'));assert.doesNotMatch(shift,/admin-schedule.html|schedule-admin-entry/);
- assert.match(shift,/id="schedule-calendar"/);assert.match(shift,/id="schedule-editor"/);assert.match(shift,/id="schedule-scope"/);assert.doesNotMatch(shift,/href="schedule.html"/);
- assert.match(html,/if\(name==='schedule'\)\{autoReads.once\('schedule',visible\);\}/);
+test('shift workspace unifies calendar, personal requests and role-gated sheet/admin controls without page navigation',async()=>{
+ const h=await harness();h.click('schedule-tab');assert.equal(h.node('schedule-work-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
+ await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,false);
+ h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');assert.equal(h.node('manager-attendance-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
+ const shift=html.slice(html.indexOf('<div id="schedule-work-panel"'),html.indexOf('<div id="manager-tools-panel"'));
+ for(const id of ['schedule-calendar','schedule-editor','schedule-request-deadline','bulk-sheet-read','schedule-admin-requests','schedule-admin-month-save','schedule-admin-publish'])assert.match(shift,new RegExp('id="'+id+'"'));
+ assert.doesNotMatch(shift,/href="(?:admin-)?schedule(?:-bulk)?\.html"/);assert.doesNotMatch(html,/id="manager-schedule-choice"/);
 });
 
 test('leaving closes the shift administration entry; late authorization cannot reopen it',async()=>{
- const h=await harness();await h.replyAccess();h.click('manager-tab');h.click('manager-schedule-choice');assert.equal(h.node('schedule-admin-entry').hidden,false);
+ const h=await harness();await h.replyAccess();h.click('schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,false);
  h.depart();assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-tab').disabled,true);const before=h.sent.length;
  await h.replyAccess();h.click('manager-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,before);
 });
@@ -225,13 +223,15 @@ test('management categories retain inputs and pending state, hide unrelated form
  const h=await harness();await h.replyAccess();h.click('manager-tab');const before=h.sent.length;
  assert.equal(h.node('manager-attendance-panel').hidden,false);assert.equal(h.node('manager-registration-panel').hidden,true);
  h.node('staff-name').value='保持する架空名';h.node('staff-status').textContent='処理中です。';h.node('staff-check').disabled=true;
- for(let i=0;i<20;i++){h.click('manager-employees-choice');h.click('manager-schedule-choice');h.click('manager-attendance-choice');}
+ for(let i=0;i<20;i++){h.click('manager-employees-choice');h.click('manager-attendance-choice');}
  h.click('manager-employees-choice');assert.equal(h.node('manager-registration-panel').hidden,false);assert.equal(h.node('manager-maintenance-panel').hidden,false);assert.equal(h.node('manager-attendance-panel').hidden,true);assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('staff-status-host').hidden,false);
  assert.equal(h.node('staff-name').value,'保持する架空名');assert.equal(h.node('staff-status').textContent,'処理中です。');assert.equal(h.node('staff-check').disabled,true);assert.equal(h.sent.length,before);
  h.click('more-tab');h.click('manager-tab');assert.equal(h.node('manager-registration-panel').hidden,false);assert.equal(h.node('manager-employees-choice').attributes['aria-pressed'],'true');
 });
 test('management choices stay closed for employees; labor checks are last after all business forms',async()=>{
- const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance','schedule']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
+ const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
  assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,3);
  assert.ok(html.indexOf('id="labor-policy-section"')>html.indexOf('id="manager-test-panel"'));assert.ok(html.indexOf('id="labor-policy-section"')<html.indexOf('id="more-tools-panel"'));
 });
+
+test('employee shift activation cannot reveal or request administrator controls',async()=>{const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');h.click('schedule-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.node('schedule-admin-entry').hidden,true);assert.ok(!h.wire.some(r=>r.action==='bridgeScheduleV1'&&JSON.parse(r.input).audience==='admin'));});

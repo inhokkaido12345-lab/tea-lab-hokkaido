@@ -1,0 +1,15 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
+function month(h){const halves={};for(const part of ['FIRST','SECOND'])halves[part]={...h.snapshot(),period:part,rangeStart:'2026-11-'+(part==='FIRST'?'01':'16'),rangeEnd:'2026-11-'+(part==='FIRST'?'15':'30')};return{version:1,month:'2026-11',halves};}
+const text=n=>n.textContent+' '+n.children.map(text).join(' ');
+test('one signed monthly read displays every date and a deadline above requests; switching half is local',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();assert.equal(h.sent[0].command,'monthRead');assert.deepEqual(JSON.parse(h.sent[0].input),{month:'2026-11',audience:'employee'});
+ const value=month(h);value.halves.SECOND.deadline='2026-11-25T00:00:00.000Z';await h.reply(h.sent[0],value);
+ const days=h.n('calendar').children.filter(n=>n.tagName==='article');assert.equal(days.length,30);assert.match(text(days.at(-1)),/30日/);assert.match(h.n('request-deadline').textContent,/前半.*11.*20/);
+ h.n('scope').value='SECOND';h.n('scope').events.change();assert.equal(h.sent.length,1);assert.match(h.n('request-deadline').textContent,/後半.*11.*25/);assert.equal(h.n('day').min,'2026-11-16');assert.match(h.n('calendar').className,/schedule-month-calendar/);
+});
+test('monthly reply rejects wrong half/role/identity/month/time and cannot show private administrator data',async()=>{
+ for(const change of [v=>v.halves.SECOND.period='FIRST',v=>v.halves.SECOND.admin=true,v=>v.halves.SECOND.employeeCode='OTHER',v=>v.halves.SECOND.month='2026-12',v=>v.halves.SECOND.serverNow='2026-11-05T00:00:00.000Z']){const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();const v=month(h);change(v);await h.reply(h.sent[0],v);assert.equal(h.n('calendar').children.length,0);assert.equal(h.n('editor').disabled,true);}
+});
+test('month read timeout offers a read refresh, never a write retry; departure clears both halves and deadline',async()=>{const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();[...h.timers.values()][0]();assert.equal(h.n('retry').hidden,true);assert.equal(h.sent.length,1);await h.api.read();await h.reply(h.sent[1],month(h));h.events.pagehide();assert.equal(h.n('calendar').children.length,0);assert.match(h.n('request-deadline').textContent,/確認/);});
+
+test('monthly calendars keep the exact February length and a numbered last day in common and leap years',async()=>{for(const [key,last]of [['2026-02',28],['2028-02',29]]){const h=scheduleUiHarness('employee',{monthly:true});h.n('month').value=key;await h.api.read();const v=month(h);v.month=key;for(const part of ['FIRST','SECOND']){v.halves[part].month=key;v.halves[part].rangeStart=key+(part==='FIRST'?'-01':'-16');v.halves[part].rangeEnd=key+'-'+(part==='FIRST'?'15':last);}await h.reply(h.sent[0],v);const days=h.n('calendar').children.filter(n=>n.tagName==='article');assert.equal(days.length,last);assert.match(text(days.at(-1)),new RegExp(last+'日'));}});
