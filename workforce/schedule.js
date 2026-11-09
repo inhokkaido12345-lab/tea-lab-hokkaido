@@ -9,12 +9,14 @@
 (function(global){'use strict';
   const TYPE='TLH_BRIDGE_SCHEDULE',ACTION='bridgeScheduleV1';
   const messages={SCHEDULE_NOT_COLLECTING:'この期間は下書き作成中です。通常の希望受付はまだ開始していません。',SCHEDULE_READY:'最新のシフトを表示しました。',SCHEDULE_SAVED:'保存しました。',SCHEDULE_ALREADY_DONE:'保存済みの操作です。最新状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'変更案を保存しました。本人の同意後に管理者が承認します。',SCHEDULE_INVALID:'日付・時刻・入力内容を確認してください。',SCHEDULE_CHANGED:'確認後に内容が変わりました。更新して確認し直してください。',SCHEDULE_PERMISSION_REQUIRED:'この画面の利用権限がありません。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。',SCHEDULE_NOT_OPEN:'管理者が選択中の期間の希望受付を設定してください。',SCHEDULE_PUBLISHED_LOCKED:'確定済みです。従業員ごとの変更案・変更申請を使ってください。',SCHEDULE_DEADLINE_CLOSED:'通常の希望締切を過ぎています。年休等の申出は別の区分で提出できます。',SCHEDULE_DEADLINE_NOT_REACHED:'希望締切前は確定公開できません。締切設定を確認してください。',SCHEDULE_REQUEST_PENDING:'同じ日・区分の申請が未処理です。先に内容を確認・取消ししてください。',SCHEDULE_OPERATION_REUSED:'操作番号と内容が一致しません。更新して状態を確認してください。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入が未確認です。管理者が分類と根拠を確定してください。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外すことはできません。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務予定が重なっています。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の整合性確認が必要です。手編集せず、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できませんでした。変更は戻されています。同じ操作で再確認できます。',SCHEDULE_CAPACITY:'対象データが処理上限を超えています。管理者へ連絡してください。',SCHEDULE_UNAVAILABLE:'シフトを取得できませんでした。更新して確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて更新してください。'};
+  Object.assign(messages,{SCHEDULE_SHEET_SOURCE_REQUIRED:'シフトの作成・訂正は正本スプレッドシートで行ってください。',SCHEDULE_SHEET_CONTENT_REQUIRED:'申請・下書きと正本シートの内容が一致しません。シートを確認して取り込み直してください。',SCHEDULE_SHEET_CHANGED:'確認後に正本シートが変わりました。取り込み直してください。',SCHEDULE_SHEET_AUX_REQUIRED:'用事・休暇詳細・共有イベントの入力タブを用意してください。',SCHEDULE_SHEET_FORMAT_REQUIRED:'正本シートの形式を確認してください。',SCHEDULE_SHEET_ROSTER_REQUIRED:'正本シートに全従業員の行が必要です。',SCHEDULE_SHEET_CONFIGURATION_REQUIRED:'正本シートの接続設定を確認してください。',SCHEDULE_SHEET_INVALID:'正本シートの入力を確認してください。'});
   const code=v=>typeof v==='string'&&/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(v),text=(v,max)=>typeof v==='string'&&v.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
   const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
   const iso=v=>typeof v==='string'&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString()===v;
   const time=v=>typeof v==='string'&&/^([01]\d|2[0-3]):[0-5]\d$/.test(v);
   function validPlan(p){return p&&date(p.day)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.appointments)&&p.appointments.length<=20&&p.appointments.every(q=>text(q.title,200)&&text(q.location,200)&&(!q.start||time(q.start))&&(!q.end||time(q.end))&&typeof q.countsAsWork==='boolean')&&p.leave&&['NONE','PUBLIC_OFF','PAID','OTHER'].includes(p.leave.type)&&text(p.leave.note,500)&&text(p.note,1000)&&(p.publicNote===undefined||text(p.publicNote,1000));}
   function validate(s,month,admin,period){
+    if(s?.inputMode!==undefined&&s.inputMode!=='SHEET')return false;
     if(period&&s?.period!==period)return false;
     if(s?.period!==undefined&&!'FIRST SECOND MONTH'.split(' ').includes(s.period))return false;
     const range=global.TlhScheduleView.periodRange(month,s?.period);
@@ -26,7 +28,7 @@
     for(const key of ['plans','ownPlans','drafts','requests','events','draftEvents'])if(!Array.isArray(s[key])||s[key].length>10000)return false;
     if(!admin&&(s.employees.length||s.drafts.length||s.draftEvents.length))return false;
     const identity=p=>p&&code(p.employeeCode)&&text(p.employeeName,80)&&date(p.day)&&p.day>=range.start&&p.day<=range.end&&Number.isSafeInteger(p.revision)&&p.revision>0;
-    if(!s.plans.every(p=>identity(p)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.workIntervals)&&p.workIntervals.every(q=>iso(q.startAtUtc)&&iso(q.endAtUtc))&&Number.isInteger(p.plannedMinutes)&&p.plannedMinutes>=0&&['NONE','PUBLIC_OFF','LEAVE'].includes(p.leaveType)&&(p.publicNote===undefined||text(p.publicNote,1000))))return false;
+    if(!s.plans.every(p=>identity(p)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.workIntervals)&&p.workIntervals.every(q=>iso(q.startAtUtc)&&iso(q.endAtUtc))&&(Number.isInteger(p.plannedMinutes)&&p.plannedMinutes>=0||s.inputMode==='SHEET'&&p.plannedMinutes===null&&!p.periods.length&&!p.workIntervals.length&&p.leaveType==='NONE')&&['NONE','PUBLIC_OFF','LEAVE'].includes(p.leaveType)&&(p.publicNote===undefined||text(p.publicNote,1000))))return false;
     if(![...s.ownPlans,...s.drafts].every(p=>identity(p)&&validPlan(p.plan))||!s.ownPlans.every(p=>p.employeeCode===s.employeeCode))return false;
     if(!s.requests.every(r=>r&&/^[-A-Za-z0-9_]{1,100}$/.test(r.requestId)&&code(r.employeeCode)&&text(r.employeeName,80)&&Number.isSafeInteger(r.revision)&&r.revision>0&&['PENDING','APPROVED','REJECTED','CANCELLED','AWAITING_CONSENT'].includes(r.status)&&['SHIFT_PREFERENCE','ANNUAL_LEAVE','STATUTORY_LEAVE','ADMIN_CHANGE'].includes(r.kind)&&r.payload&&validPlan(r.payload.plan)&&r.payload.plan.day>=range.start&&r.payload.plan.day<=range.end&&text(r.payload.reason,500)&&(!r.payload.decisionReason||text(r.payload.decisionReason,500))&&iso(r.submittedAt)&&(!admin?r.employeeCode===s.employeeCode:true)))return false;
     return [...s.events,...s.draftEvents].every(e=>date(e.day)&&e.day>=range.start&&e.day<=range.end&&text(e.title,200)&&text(e.note,500));
@@ -36,7 +38,7 @@
   function init(options){
     const ids=['scope','availability','month','refresh','status','summary','published-at','calendar','requests','frame','editor','day','employee','leave','note','public-note','reason','kind','periods','appointments','add-period','add-appointment','save','month-form','deadline','event-form','event-day','event-title','event-note','publish','retry'];
     const n=Object.fromEntries(ids.map(k=>[k,document.getElementById('schedule-'+k)]));
-    const admin=options.audience==='admin',reportUi=global.TlhScheduleReport.init();let snapshot=null,pending=null,uncertain=null,stopped=false;const periods=[],appointments=[];
+    const admin=options.audience==='admin',reportUi=global.TlhScheduleReport.init();let snapshot=null,pending=null,uncertain=null,stopped=false,sheetLayout=false;const periods=[],appointments=[];
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function canRequest(){
       if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
@@ -49,7 +51,10 @@
       const locked=stopped||!!pending||!!uncertain||!snapshot;
       n.editor.disabled=locked;n['month-form'].disabled=locked;n['event-form'].disabled=locked||!admin;n.publish.disabled=locked||!admin||snapshot?.phase==='PUBLISHED'||snapshot?.phase==='NOT_OPEN'||snapshot?.phase==='DRAFT';
       n.save.disabled=locked||!admin&&!canRequest();
+      const sheet=admin&&snapshot?.inputMode==='SHEET';n.editor.hidden=sheet;n['event-form'].hidden=sheet;n.editor.disabled=n.editor.disabled||sheet;n['event-form'].disabled=n['event-form'].disabled||sheet;n.save.disabled=n.save.disabled||sheet;
+      if(sheet||sheetLayout){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=document.getElementById(id);if(node)node.hidden=sheet;}const banner=document.getElementById('schedule-source-banner');if(banner)banner.hidden=!sheet;}sheetLayout=sheet;
       n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(snapshot.phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(snapshot.phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':snapshot.phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
+      if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。希望休・変更申請はアプリで受け付けます。承認前に申請と同じ内容をシートへ記入してください。';
       n.scope.disabled=stopped||!!pending||!!uncertain;
       n.month.disabled=stopped||!!pending||!!uncertain;n.refresh.disabled=stopped||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.status.setAttribute('aria-busy',String(!!pending));
@@ -121,13 +126,14 @@
           if(!admin&&p.publicNote)el('p','共有事項：'+p.publicNote,line).className='schedule-public-note';
           // 共通のカレンダーへ他人の用事を混ぜない。署名済みの本人限定DTOだけを別の詳細欄へ。
           if(!admin&&p.employeeCode===s.employeeCode){const mine=ownByDay.get(p.day)?.[0];if(mine){const detail=el('details',undefined,line);detail.className='tool-help';el('summary','自分の用事・特記事項',detail);el('p',planText(mine.plan),detail);}}
-          if(admin){const edit=el('button','この予定を編集',line);edit.type='button';edit.className='text-button';edit.addEventListener('click',()=>{if(pending||uncertain)return;n.employee.value=p.employeeCode;n.day.value=p.day;loadEditor();n.day.focus();});}
+          if(admin&&s.inputMode!=='SHEET'){const edit=el('button','この予定を編集',line);edit.type='button';edit.className='text-button';edit.addEventListener('click',()=>{if(pending||uncertain)return;n.employee.value=p.employeeCode;n.day.value=p.day;loadEditor();n.day.focus();});}
         }
       }
     }
 
     /** 共有DTO専用の表示。本人の用事詳細や希望理由をこの関数へ混ぜない。 */
     function sharedPlanText(plan){
+      if(plan.plannedMinutes===null)return'予定未設定（勤務時間の計算対象外）';
       const work=global.TlhScheduleView.workText(plan.workIntervals,plan.day);
       const rest=plan.periods.reduce((sum,period)=>sum+period.breakMinutes,0);
       const fallback={PUBLIC_OFF:'公休',LEAVE:'休暇'}[plan.leaveType]||'勤務区間なし';
@@ -192,7 +198,7 @@
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();n.reason.value='';n.note.value='';n.periods.replaceChildren();n.appointments.replaceChildren();periods.length=0;appointments.length=0;});
     controls();return Object.freeze({read});
   }
-  global.TlhSchedule=Object.freeze({init,validate});
+  global.TlhSchedule=Object.freeze({init,validate,validatePlan:validPlan});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
     const login=document.getElementById('schedule-login'),status=document.getElementById('schedule-status');
     login.addEventListener('click',()=>global.liff.login());

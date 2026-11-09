@@ -1,5 +1,10 @@
 import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{scheduleUiHarness,snapshot}from'./helpers/schedule-harness.mjs';
 
+test('Sheet authority hides manager content editors but leaves employee preference submission and admin workflow controls',async()=>{
+ const admin=scheduleUiHarness('admin'),a={...admin.snapshot(),inputMode:'SHEET'};await admin.api.read();await admin.reply(admin.sent[0],a);assert.equal(admin.n('editor').hidden,true);assert.equal(admin.n('editor').disabled,true);assert.equal(admin.n('event-form').hidden,true);assert.equal(admin.n('month-form').disabled,false);assert.match(admin.n('availability').textContent,/正本シート/);
+ const employee=scheduleUiHarness(),e={...employee.snapshot(),inputMode:'SHEET'};await employee.api.read();await employee.reply(employee.sent[0],e);assert.equal(employee.n('editor').hidden,false);assert.equal(employee.n('save').disabled,false);employee.n('reason').value='希望休';employee.click('save');assert.equal(employee.sent[1].command,'request');
+});
+
 test('manager can select pre-registered staff with an unlinked marker; older responses remain compatible',async()=>{
  const h=scheduleUiHarness('admin'),s=h.snapshot();s.employees.push({employeeCode:'UNLINK001',employeeName:'架空未認証社員',registrationStatus:'PENDING_LINK'});
  await h.api.read();await h.reply(h.sent[0],s);assert.match(h.n('employee').children.at(-1).textContent,/UNLINK001（架空未認証社員）.*未認証/);

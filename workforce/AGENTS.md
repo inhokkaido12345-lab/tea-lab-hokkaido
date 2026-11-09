@@ -1,3 +1,5 @@
+未公開候補: 署名済みinputMode=SHEETで管理者の予定編集/イベント編集/CSV/旧保存を隠す。本人の希望休/変更申請は残す。sheetRead.authorityはGASが計算した差分だけ、sheetImportへdigest2個と理由を送りplanを送らない。結果不明は同じinput/操作IDで再確認。空欄=削除はモード有効後だけ。未設定の現役挙動は変えない。
+
 2026-11-09両PR #31から承認後公開済み: schedule-sheet.jsはV1互換/V2勤務・公開・非公開の3行。空欄は保持、【空にする】だけ削除。備考の変更前後をtextContentで表示、編集表の勤務テキストへ混入させない。初回管理者batchReadの任意inputSheetUrlは署名/月/DTO/Google URL形式検査後だけ表示。公開sourceへ実ファイルIDや備考を記録しない。
 
 2026-11-09直接接続は承認後に公開/接続/12月空タブ作成・直接READ確認済み：sheetRead/sheetCreateは明示ボタンだけ。署名/snapshot/月/Google Sheets URLの固定形式を検査し、直接READでも既存の全件previewを共用。作成結果不明は同じID/月で再確認し、原簿保存へ変換しない。公開順はGAS→固定入力接続設定→画面。CSV互換と既存月の入力保持を維持。
