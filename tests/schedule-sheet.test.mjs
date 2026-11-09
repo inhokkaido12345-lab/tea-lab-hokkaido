@@ -62,3 +62,19 @@ test('V2 preview applies notes separately from work text and one published save 
  const {h,s,sheet}=fixture(1);s.halves.FIRST.phase='PUBLISHED';s.halves.FIRST.monthRevision=3;s.halves.FIRST.publishedAt='2026-11-01T00:00:00.000Z';await h.api.load();await h.reply(h.sent[0],s);
  const rows=sheet.read(sheet.template(s,scope));rows[3][2]='公休';rows[4][2]='帰省';rows[5][2]='本人と調整';await h.api.previewFile(file(sheet.csv(rows)));h.click('import-apply');assert.equal(h.cell('EMP001','2026-11-01').value,'公休');h.click('save');assert.equal(h.sent.length,1);h.n('reason').value='備考を確認';h.click('save');const req=h.sent[1],p=JSON.parse(req.input).changes[0].plan;assert.equal(p.publicNote,'帰省');assert.equal(p.note,'本人と調整');for(const timer of [...h.timers.values()])timer();h.click('retry');assert.equal(h.sent[2].operationId,req.operationId);assert.equal(h.sent[2].input,req.input);
 });
+
+test('authoritative preview treats sheet blanks as removal while existing additive import remains unchanged',()=>{
+ const {h,s,sheet}=fixture(1),rows=sheet.read(sheet.template(s,scope)),old=h.model.parse('09:00-18:00/60');old.note='古い非公開';old.publicNote='古い公開';s.halves.FIRST.drafts.push({employeeCode:'EMP001',day:'2026-11-01',revision:4,plan:old});
+ assert.equal(sheet.preview(sheet.csv(rows),s,scope).changes.length,0);const result=sheet.preview(sheet.csv(rows),s,scope,{mode:'authoritative'});assert.equal(result.changes.length,1);const p=result.changes[0].plan;assert.equal(p.periods.length,0);assert.equal(p.leave.type,'NONE');assert.equal(p.note,'');assert.equal(p.publicNote,undefined);
+ rows[3][2]='10:00-18:00/60';rows[4][2]='【空にする】';const changed=sheet.preview(sheet.csv(rows),s,scope,{mode:'authoritative'}).changes[0].plan;assert.equal(changed.periods[0].start,'10:00');assert.equal(changed.note,'');assert.equal(changed.publicNote,'【空にする】');
+});
+
+test('authoritative preview requires complete V2 roster; missing employees, legacy files and unknown modes fail without partial updates',()=>{
+ const {s,sheet,rows}=fixture(2);assert.throws(()=>sheet.preview(sheet.csv(rows),s,scope,{mode:'authoritative'}),/3行/);const all=sheet.read(sheet.template(s,scope));all.splice(6,3);all[3][2]='公休';assert.throws(()=>sheet.preview(sheet.csv(all),s,scope,{mode:'authoritative'}),/欠け/);assert.throws(()=>sheet.preview(sheet.csv(all),s,scope,{mode:'guess'}),/方式/);
+});
+
+test('authoritative preview refuses to silently discard unrepresented appointments or special leave metadata',()=>{
+ for(const mutate of [p=>p.appointments=[{title:'会議'}],p=>p.leave={type:'PAID',unit:'HOURS',minutes:60,note:''},p=>p.leave.note='特別な条件']){
+ const {h,s,sheet}=fixture(1),rows=sheet.read(sheet.template(s,scope)),old=h.model.parse('09:00-18:00/60');mutate(old);s.halves.FIRST.drafts.push({employeeCode:'EMP001',day:'2026-11-01',revision:4,plan:old});assert.throws(()=>sheet.preview(sheet.csv(rows),s,scope,{mode:'authoritative'}),/移すまで/);
+ }
+});
