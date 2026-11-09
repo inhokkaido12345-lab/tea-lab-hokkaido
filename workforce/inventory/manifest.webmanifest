@@ -1,0 +1,27 @@
+{
+  "id": "/workforce/inventory/",
+  "name": "TLH Inventory",
+  "short_name": "TLH Inventory",
+  "description": "TLHアカウントで使う在庫・発注管理",
+  "lang": "ja",
+  "start_url": "/workforce/inventory/",
+  "scope": "/workforce/inventory/",
+  "display": "standalone",
+  "background_color": "#F3EFE7",
+  "theme_color": "#2F5452",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/workforce/icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/workforce/icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
