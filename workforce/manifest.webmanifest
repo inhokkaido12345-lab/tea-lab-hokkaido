@@ -1,8 +1,8 @@
 {
   "id": "/workforce/",
-  "name": "TLH 従業員・勤怠・シフト",
-  "short_name": "TLH勤怠",
-  "description": "TLHの従業員情報、出退勤、シフトを管理するオンラインWebアプリです。",
+  "name": "TLH Work Time",
+  "short_name": "TLH Work Time",
+  "description": "TLH Work Time：従業員情報、出退勤、シフトを管理するオンラインWebアプリです。",
   "lang": "ja",
   "start_url": "/workforce/",
   "scope": "/workforce/",
@@ -11,7 +11,17 @@
   "theme_color": "#2F5452",
   "prefer_related_applications": false,
   "icons": [
-    { "src": "icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    {
+      "src": "icons/app-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

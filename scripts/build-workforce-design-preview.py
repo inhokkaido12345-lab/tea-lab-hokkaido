@@ -48,7 +48,7 @@ for name, body in parts.items():
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         '<meta name="robots" content="noindex">'
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; font-src \'self\'; form-action \'none\'; base-uri \'none\'">'
-        '<title>' + title + 'の表示見本 | TLH Workforce</title>'
+        '<title>' + title + 'の表示見本 | TLH Work Time</title>'
         '<link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1">'
         '<link rel="stylesheet" href="../app.css?v=20261104-manager-sections"></head>'
         '<body class="home-page"><div class="app"><main>'
