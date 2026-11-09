@@ -48,7 +48,7 @@
       try{const p=model.parse(value,base===undefined?old:old?base:{...base,periods:[],leave:{type:'NONE',unit:'DAY',minutes:null,note:''}});drafts.set(target,p);errors.delete(target);}
       catch(error){errors.set(target,error.message);}
       const cell=cells.get(target);if(cell){cell.setAttribute('aria-invalid',String(errors.has(target)));cell.title=errors.get(target)||'';cell.parentElement?.classList?.toggle('is-dirty',errors.has(target)||drafts.has(target));}
-      if(errors.has(target))n.status.textContent=errors.get(target);controls();
+      n.status.textContent=errors.has(target)?errors.get(target):'入力を変更しました。まだ保存していません。';controls();
     }
     function paste(code,day,event){
       const text=event.clipboardData?.getData('text/plain');if(!text||!text.includes('\t')||pending||uncertain||stopped)return;
