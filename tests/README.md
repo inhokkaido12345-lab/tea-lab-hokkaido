@@ -1,14 +1,6 @@
-<!-- current-doc-status:start -->
-> 2026-11-05資料整理：機能仕様と保守資料。現在の公開・設定・未達状況は[最新状態](../workforce/CURRENT-STATUS.md)を優先してください。本文の過去の日付・版・検査件数は当時の記録です。恒久的な安全方針は引き続き適用します。
-<!-- current-doc-status:end -->
+# TLH Work Time画面の模擬テスト
 
-# Workforce画面の模擬テスト
-
-Workforceの今回の監査対象は従業員情報/出退勤/シフト。startup-loadingが本文と18外部script/起動順、pwa-preparationがmanifestの範囲/画像/秘密のない起動URLと未導入の保存境界を検査。従来の全UI・署名・失権・再送・離脱・出力試験は維持します。
-
-2026-11-02: account-recovery.test.mjsを11件追加。全体80件がローカル成功。
-実WebCryptoでiframe source/origin/nonce/action/HMAC、所有者確認、二重送信/応答喪失、取消し/拒否、pagehide消去を検査。
-recovery.html専用で既存indexの固定版は変更しません。実LINE/Google保存/端末表示の確認とは別です。
+画面268件の検査が成功。半月管理画面の初期非表示と本人申請維持も検査します。確定件数は[整理記録](../workforce/CLEANUP-20261109.md)。古い件数は当時の記録です。
 
 このフォルダは架空DOM/LIFFと実際の暗号計算でcontrollerを検査します。
 実LINEへログインせず、実GASへHTTP送信も実社員登録も行いません。

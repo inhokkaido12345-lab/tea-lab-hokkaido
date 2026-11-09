@@ -1,4 +1,4 @@
-# Workforceの現在地
+# TLH Work Timeと公式サイト
 
 従業員向けアプリは[最新状態](workforce/CURRENT-STATUS.md)、[利用・保守手順](workforce/README.md)、[説明書索引](workforce/DOCUMENTS.md)へ。運営画面は公開済み・専用台帳未設定です。
 
@@ -6,7 +6,7 @@
 
 `tealabhokkaido.com` で公開するための、最小構成の静的サイトです。GitHub Pagesでそのまま配信できるよう、HTML、CSS、ドメイン設定用の `CNAME` を中心に構成しています。
 
-React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。現在はJavaScriptも使用しておらず、HTML、CSS、SVGだけで主要機能が成立します。`script.js`もありません。
+React、Vue、Next.js、npm、bundler、CSS framework、JavaScript framework、外部CMSは使用していません。公式サイトのルートページではJavaScriptを使用しておらず、HTML、CSS、SVGだけで主要機能が成立します。別サービスの`workforce/`はLINE認証・打刻・シフトのためJavaScriptを使用します。`script.js`もありません。
 
 このREADMEはサイトの設計図と改造時の診断書です。コードにはその場所の設計理由を、ここには概念のつながり・公開までの流れ・故障の調べ方をまとめます。ロゴ原本の扱いは [ブランドアセットの説明](assets/brand/README.md) を参照してください。
 
