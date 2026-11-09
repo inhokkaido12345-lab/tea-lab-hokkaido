@@ -86,6 +86,8 @@
     function render(value){
       clearImport();
       snapshot=value;page=0;needReload=false;drafts.clear();texts.clear();errors.clear();selected=null;n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';
+      // 管理者認可済みの返信だけから固定入力先を表示。公開ソースにファイルIDを埋め込まない。
+      if(value.inputSheetUrl){n['sheet-open'].hidden=false;n['sheet-open'].href=value.inputSheetUrl;}
       const labels={NOT_OPEN:'未設定',DRAFT:'下書き',COLLECTING:'希望受付中',PUBLISHED:'確定済（変更は本人同意待ち）'};
       n.phases.textContent=['FIRST','SECOND'].map((part,i)=>(i?'後半':'前半')+'：'+labels[value.halves[part].phase]+(value.halves[part].deadline?' / 希望締切 '+new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',dateStyle:'short',timeStyle:'short'}).format(new Date(value.halves[part].deadline)):'' )).join('　｜　');renderGrid();
       if(value.halves.FIRST.legacyAvailable)n.phases.textContent+='　従来の月全体データもあります。個別画面の「従来の月全体データ」で確認してください。';
@@ -166,7 +168,7 @@
     }
     function applyImport(){
       if(stopped||pending||uncertain||!importPreview)return;
-      const saveDirect=directImport;for(const change of importPreview.changes){const k=model.key(change.employeeCode,change.day);drafts.set(k,change.plan);texts.set(k,change.after);}
+      const saveDirect=directImport;for(const change of importPreview.changes){const k=model.key(change.employeeCode,change.day);drafts.set(k,change.plan);texts.set(k,change.workText??model.format(change.plan));}
       clearImport();renderGrid();n.status.textContent='CSVの変更を編集表へ反映しました。内容を確認し「変更をまとめて保存」を押してください。まだ保存していません。';
       if(saveDirect)save();
     }

@@ -37,6 +37,7 @@
     try{
       days(month);
       if(!value||value.version!==1||value.admin!==true||value.month!==month||!value.halves||Object.keys(value.halves).sort().join(',')!=='FIRST,SECOND')return false;
+      if(Object.hasOwn(value,'inputSheetUrl')&&(typeof value.inputSheetUrl!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit$/.test(value.inputSheetUrl)))return false;
       for(const part of ['FIRST','SECOND'])if(!global.TlhSchedule.validate(value.halves[part],month,true,part))return false;
       const a=value.halves.FIRST.employees,b=value.halves.SECOND.employees;
       return JSON.stringify(a)===JSON.stringify(b)&&new Set(a.map(p=>p.employeeCode)).size===a.length;

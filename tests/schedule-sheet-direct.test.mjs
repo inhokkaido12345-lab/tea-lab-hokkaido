@@ -22,3 +22,9 @@ test('failed configuration/missing month or invalid row do not create a save; lo
  h.click('sheet-read');const reply=data(h,s),sheet=h.window.TlhScheduleSheet,rows=sheet.read(reply.csv);rows[3][2]='invalid';reply.csv=sheet.csv(rows);await h.reply(h.sent[2],reply,'SCHEDULE_SHEET_READY');assert.equal(h.n('save').disabled,true);assert.equal(h.sent.length,3);
  h.edit('EMP001','2026-11-01','公休');h.click('sheet-read');h.click('sheet-create');assert.equal(h.sent.length,3);h.events.pagehide();h.click('sheet-read');assert.equal(h.sent.length,3);assert.equal(h.n('sheet-open').hidden,true);
 });
+
+test('authenticated initial month read exposes configured source link without importing or creating; unsafe links and denial never expose it',async()=>{
+ const h=scheduleBulkHarness(),s=bulkSnapshot(1);s.inputSheetUrl='https://docs.google.com/spreadsheets/d/fake-sheet/edit';await h.api.load();await h.reply(h.sent[0],s);assert.equal(h.sent.length,1);assert.equal(h.n('sheet-open').hidden,false);assert.equal(h.n('sheet-open').href,s.inputSheetUrl);assert.equal(h.n('import-preview').hidden,true);h.events.pagehide();assert.equal(h.n('sheet-open').hidden,true);
+ const denied=scheduleBulkHarness();await denied.api.load();await denied.reply(denied.sent[0],null,'SCHEDULE_PERMISSION_REQUIRED');assert.equal(denied.n('sheet-open').hidden,true);
+ const bad=scheduleBulkHarness();s.inputSheetUrl='https://evil.test/';await bad.api.load();await bad.reply(bad.sent[0],s);assert.equal(bad.n('sheet-open').hidden,true);
+});
