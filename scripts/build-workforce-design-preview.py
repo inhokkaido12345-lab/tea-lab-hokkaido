@@ -23,12 +23,12 @@ parts = {
 }
 # 切替ボタンを動かさず、選択ごとの静的見本を作る。権限確認/通信を含む現役JSは読み込まない。
 parts['manager-employees'] = parts['manager']
-parts['manager-schedule'] = parts['manager']
+parts['manager-schedule'] = source[source.index('<div id="schedule-work-panel"'):source.index('<div id="manager-tools-panel"')]
 dest = root / 'design'
 dest.mkdir(exist_ok=True)
 for name, body in parts.items():
     body = re.sub(r'<(?:iframe|script)\b[\s\S]*?</(?:iframe|script)>', '', body)
-    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|manager-support-panel|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
+    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|manager-support-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
     if name.startswith('manager'):
         selected={'manager':'attendance','manager-employees':'employees','manager-schedule':'schedule'}[name]
         groups={'manager-attendance-panel':'attendance','manager-registration-panel':'employees','manager-maintenance-panel':'employees','schedule-admin-entry':'schedule'}
@@ -53,7 +53,9 @@ for name, body in parts.items():
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; font-src \'self\'; form-action \'none\'; base-uri \'none\'">'
         '<title>' + title + 'の表示見本 | TLH Work Time</title>'
         '<link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1">'
-        '<link rel="stylesheet" href="../app.css?v=20261104-manager-sections"></head>'
+        '<link rel="stylesheet" href="../app.css?v=20261104-manager-sections">'
+        '<link rel="stylesheet" href="../schedule.css?v=20261109-workspace1">'
+        '<link rel="stylesheet" href="../schedule-bulk.css?v=20261109-sheet1"></head>'
         '<body class="home-page"><div class="app"><main>'
         '<p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。'
         ' <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p>'

@@ -1,11 +1,10 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'"><title>従業員の管理の表示見本 | TLH Work Time</title><link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="../app.css?v=20261104-manager-sections"></head><body class="home-page"><div class="app"><main><p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。 <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p><div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab"><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'"><title>従業員の管理の表示見本 | TLH Work Time</title><link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="../app.css?v=20261104-manager-sections"><link rel="stylesheet" href="../schedule.css?v=20261109-workspace1"><link rel="stylesheet" href="../schedule-bulk.css?v=20261109-sheet1"></head><body class="home-page"><div class="app"><main><p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。 <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p><div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab"><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
 <p><a class="guide-link" href="#preview-notice">管理画面の使い方 →</a></p>
 
 <!-- 管理内の切替は表示専用。保存ボタン/入力/再送状態は各controllerの担当。 -->
 <div id="manager-sections" class="manager-sections" role="group" aria-label="管理する項目">
 <button id="manager-employees-choice" type="button" aria-pressed="true" aria-controls="manager-registration-panel manager-maintenance-panel" disabled>従業員の管理</button>
 <button id="manager-attendance-choice" type="button" aria-pressed="false" aria-controls="manager-attendance-panel" disabled>出退勤の管理 <span data-approval-badge class="approval-badge" hidden></span></button>
-<button id="manager-schedule-choice" type="button" aria-pressed="false" aria-controls="schedule-admin-entry" disabled>シフトの管理</button>
 </div><div id="manager-attendance-panel" hidden>
 <section class="card management-section"><h2><span class="tool-step" aria-hidden="true">01</span>勤務記録・本社提出</h2><p class="tool-intro">社員と月を選び、出退勤の一覧をCSV・PDFで保存します。</p><a class="button primary full" href="#preview-notice">月次記録・提出用出力を開く →</a></section>
 
@@ -13,7 +12,7 @@
 <p class="tool-intro">従業員から届いた申請を確認・承認するか、管理者として勤務記録を直接訂正します。</p>
 <!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
 <section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p></section>
-<a class="menu-item" href="#preview-notice"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="schedule-admin-entry" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><h2>シフト管理</h2><p class="tool-intro">希望受付前から下書きを作成できます。希望の確認・受付設定・確定公開もこちらです。</p><a class="button primary full" href="#preview-notice">シフトの入力・取込み →</a><p class="footnote">スプレッドシートを開いて記入し、アプリで取込み内容を確認します。希望受付・確定公開は半月別です。</p><a class="button full" href="#preview-notice">希望確認・半月の締切・確定公開 →</a></section><div id="manager-registration-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab">
+<a class="menu-item" href="#preview-notice"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><div id="manager-registration-panel" class="management-section" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab">
       <h2><span class="tool-step" aria-hidden="true">01</span>従業員登録</h2>
       <!-- 説明とカードは表示専用。id/hiddenは登録controllerとの契約なので維持する。
            削除すると招待方式の案内がなくなる。手順変更時はadmin-guide.htmlも同期する。 -->
@@ -22,7 +21,7 @@
 <details class="tool-help"><summary>登録の流れ・管理者登録との違い</summary><p>管理者を追加する機能ではありません。</p>
       <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p></details>
       <button id="staff-check" class="bridge-button" type="button" disabled>従業員の登録フォームを表示</button>
-      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a href="#preview-notice">登録手順の詳細</a></p>
+      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a class="button secondary" href="#preview-notice">登録手順の詳細</a></p>
       <div id="staff-admin">
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
@@ -30,7 +29,7 @@
             <label>氏名<input id="staff-name" aria-describedby="staff-name-help" required maxlength="80" autocomplete="off" disabled></label>
             <label>入社日（任意）<input id="staff-hire-date" type="date" disabled></label>
           </fieldset>
-          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a href="#preview-notice">照合できないときの確認</a></p>
+          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a class="button secondary" href="#preview-notice">照合できないときの確認</a></p>
           <button id="staff-issue" class="bridge-button" type="submit" disabled>従業員を事前登録して招待を発行</button>
         </form>
         <div id="staff-invite-box" hidden>
@@ -48,13 +47,13 @@
     <section id="maintenance-section" class="staff-section management-section">
       <h2><span class="tool-step" aria-hidden="true">02</span>従業員情報・利用停止</h2>
       <p class="tool-intro">氏名・入社日の訂正、退職などに伴う勤怠の利用停止を行います。</p>
-      <p><a href="#preview-notice">打刻履歴を保持して社員番号を変更する →</a></p>
+      <p><a class="button secondary" href="#preview-notice">打刻履歴を保持して社員番号を変更する →</a></p>
 <details class="tool-help"><summary>対象の確認方法・打刻訂正との違い</summary><p>出退勤や休憩の時刻は、「出退勤の管理」の「訂正と承認」から変更します。</p>
-      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="#preview-notice">訂正・停止の違いと手順</a></p></details>
+      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a class="button secondary" href="#preview-notice">訂正・停止の違いと手順</a></p></details>
       <form id="maintenance-target-form">
         <fieldset id="maintenance-target-fields" class="staff-fields">
           <label>対象の社員番号<select id="maintenance-code" required disabled><option value="">従業員一覧を確認してください</option></select></label>
-          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a href="#preview-notice">氏名照合の説明</a></p>
+          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a class="button secondary" href="#preview-notice">氏名照合の説明</a></p>
           <label>現在の氏名<input id="maintenance-old-name" aria-describedby="maintenance-name-help" required maxlength="80" autocomplete="off" disabled></label>
           <label>現在の入社日（未指定なら空欄）<input id="maintenance-old-date" type="date" disabled></label>
         </fieldset>

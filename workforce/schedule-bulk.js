@@ -61,6 +61,7 @@
       n.count.textContent='未保存の変更：'+count+'日分'+(errors.size?' / 入力エラー：'+errors.size+'件':'');
       n.save.disabled=locked||needReload||!!errors.size||count===0||count>500;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.retry.textContent=uncertain?.command==='sheetCreate'?'同じ操作で作成結果を再確認':'同じ操作で保存結果を再確認';
+      options.onNavigationLock?.(stopped||!!pending||!!uncertain||importing||!!importPreview||createReview||unsaved());
     }
     function clearImport(){importPreview=null;directImport=false;authority=null;n.file.value='';n['import-preview'].hidden=true;n['import-rows'].replaceChildren();n['import-summary'].textContent='';n['import-apply'].textContent='この内容を編集表へ反映';}
     function clear(){snapshot=null;createReview=false;clearImport();n['sheet-open'].hidden=true;n['sheet-open'].href='';drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='勤務日のメモ';controls();}
@@ -164,6 +165,7 @@
         needReload=['SCHEDULE_CHANGED','SCHEDULE_EMPLOYEE_REQUIRED','SCHEDULE_OPERATION_REUSED'].includes(d.code);finish();
       }
       n.status.textContent=messages[d.code];
+      if(value&&['batchPlan','sheetImport'].includes(r.command)&&['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code))options.onSaved?.();
     });
     /** 同じプレビューをCSVと直接READで共用。直接READもここまでは原簿を保存しない。 */
     function showImport(result,direct=false){

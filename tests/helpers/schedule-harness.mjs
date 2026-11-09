@@ -1,6 +1,6 @@
 /** Isolated DOM/LINE transport, real WebCrypto and real schedule.js. No browser, network or storage. */
 import fs from 'node:fs';import vm from 'node:vm';import{webcrypto,createHmac}from'node:crypto';
-export function scheduleUiHarness(audience='employee'){
+export function scheduleUiHarness(audience='employee',options={}){
  const nodes=new Map(),events={},timers=new Map(),sent=[];let seq=0;
  function make(tag='div'){return{tagName:tag,children:[],events:{},attrs:{},dataset:{},value:'',textContent:'',disabled:false,hidden:false,
  addEventListener(k,fn){this.events[k]=fn;},setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k]??null;},focus(){},
@@ -8,12 +8,12 @@ export function scheduleUiHarness(audience='employee'){
  submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
  const n=k=>{if(!nodes.has(k))nodes.set(k,make());return nodes.get(k);};n('month').value='2026-11';n('day').value='2026-11-05';n('kind').value='SHIFT_PREFERENCE';n('leave').value='PUBLIC_OFF';n('frame').contentWindow={};
  const window={top:null,confirm:()=>true,prompt:()=> '判断を確認',addEventListener(k,fn){const previous=events[k];events[k]=previous?(...args)=>{previous(...args);return fn(...args);}:fn;}};window.top=window;
- const document={currentScript:null,getElementById:id=>n(id.replace('schedule-','')),createElement:make,body:make('body')};
+ const document={currentScript:null,getElementById:id=>n(id.replace(options.idPrefix||'schedule-','')),createElement:make,body:make('body')};
  const runtime={window,document,crypto:webcrypto,Uint8Array,TextEncoder,Date,Intl,Blob,URL,setTimeout(fn){const id=++seq;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);}};
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-view.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-report.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule.js',import.meta.url),'utf8'),runtime);
- const api=window.TlhSchedule.init({audience,gasUrl:'https://offline.invalid/exec',liff:{getIDToken:()=> 'fake.jwt.proof'}});
+ const api=window.TlhSchedule.init({audience,...options,gasUrl:'https://offline.invalid/exec',liff:{getIDToken:()=> 'fake.jwt.proof'}});
  async function reply(request,data,code='SCHEDULE_READY',patch={},source=n('frame').contentWindow){
   const d={type:'TLH_BRIDGE_SCHEDULE',action:'bridgeScheduleV1',command:request.command,nonce:request.nonce,code,data:typeof data==='string'?data:JSON.stringify(data)};d.mac=createHmac('sha256',request.responseKey).update([d.type,d.action,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');await events.message({source,origin:'null',data:{...d,...patch}});
  }
