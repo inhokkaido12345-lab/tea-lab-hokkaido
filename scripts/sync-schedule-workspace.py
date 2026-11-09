@@ -40,7 +40,7 @@ bulk = bulk.replace('href="admin-schedule.html"', 'href="#schedule-manage-review
 navigation = '<nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav>'
 shortcuts = '<nav id="schedule-admin-shortcuts" class="schedule-task-nav" aria-label="管理者のシフト作業" hidden><a class="button primary" href="#schedule-import-section">シートを開く・取り込む</a><a class="button secondary" href="#schedule-admin-review">希望を確認する</a><a class="button secondary" href="#schedule-admin-collection">締切を設定する</a><a class="button secondary" href="#schedule-admin-release">確定公開する</a></nav>'
 employee = employee.replace('<h2>月間シフト・希望の提出</h2>', '<h1>月間シフト・希望</h1>')
-employee = employee.replace('</div></div>', '</div></div>' + navigation, 1)
+employee = employee.replace('</div></div>', '</div></div>' + navigation + '<p id="schedule-draft-notice" class="footnote" role="status" hidden></p>', 1)
 employee_block = ('<!-- schedule-workspace:start -->\n'
     '<div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>\n'
     + employee + '</div>\n<!-- schedule-workspace:end -->\n')

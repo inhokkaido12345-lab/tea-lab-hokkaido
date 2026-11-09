@@ -102,7 +102,7 @@
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <!-- schedule-workspace:start -->
 <div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>
-<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav>
+<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><p id="schedule-draft-notice" class="footnote" role="status" hidden></p>
 <button id="schedule-login" type="button" hidden>LINEログイン</button>
 <div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>希望申請・出力の対象期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
 <p class="footnote">カレンダーは1日〜月末の月全体です。半月の選択は希望・変更申請と出力の対象期間です。スマホではカレンダーを横にスクロールできます。</p>
@@ -467,7 +467,7 @@
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261109-authority1"></script>
-  <script src="schedule.js?v=20261109-preference1"></script>
+  <script src="schedule.js?v=20261109-role-split1"></script>
   <script src="schedule-bulk-model.js?v=20261109-authority1"></script>
   <script src="schedule-sheet.js?v=20261109-authority1"></script>
   <script src="schedule-bulk.js?v=20261109-workspace1"></script>

@@ -70,3 +70,7 @@ test('personal calendar details use only the matching verified employee, and mis
  assert.equal(h.module.validate({...s,ownPlans:[{...s.ownPlans[0],employeeCode:'OTHER001'}]},s.month,false),false);
  await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('calendar')),/本人だけの打合せ/);assert.match(text(h.n('calendar')),/自分の用事・特記事項/);
 });
+
+test('employee controller exposes unsent edits and pending results so automatic role refresh can preserve them',async()=>{
+ const h=scheduleUiHarness();assert.equal(h.api.hasUnsavedInput(),false);await h.api.read();assert.equal(h.api.hasUnsavedInput(),true);await h.reply(h.sent[0],h.snapshot());assert.equal(h.api.hasUnsavedInput(),false);h.n('reason').value='入力途中の希望';h.n('editor').events.input();assert.equal(h.api.hasUnsavedInput(),true);assert.equal(h.n('reason').value,'入力途中の希望');h.events.pagehide();assert.equal(h.n('reason').value,'');
+});
