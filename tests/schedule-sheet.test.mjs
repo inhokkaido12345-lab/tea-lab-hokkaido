@@ -1,7 +1,8 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {scheduleBulkHarness,bulkSnapshot} from './helpers/schedule-bulk-harness.mjs';
 const scope={organizationId:'org_example',workplaceId:'wp_example'};
-function fixture(count=2){const h=scheduleBulkHarness(),s=bulkSnapshot(count),sheet=h.window.TlhScheduleSheet,rows=sheet.read(sheet.template(s,scope));return {h,s,sheet,rows};}
+// 元のV1入力ファイルの互換性を引き続き検査。V2は下の備考専用ケースで扱う。
+function fixture(count=2){const h=scheduleBulkHarness(),s=bulkSnapshot(count),sheet=h.window.TlhScheduleSheet,all=sheet.read(sheet.template(s,scope)),rows=all.filter((_,i)=>i<3||(i-3)%3===0);rows[0][0]='TLH_SHIFT_INPUT_V1';return {h,s,sheet,rows};}
 function file(text){return {size:Buffer.byteLength(text),text:async()=>text};}
 test('spreadsheet CSV handles quoted multiline split shifts, BOM, CRLF, commas and doubled quotes',()=>{
  const {s,sheet,rows}=fixture();rows[3][2]='09:00-12:00/0\n14:00-18:00/30';rows[3][1]='表示,補助"氏名';rows[4][3]='有給';
@@ -41,4 +42,23 @@ test('cancel/error/discarded asynchronous read cannot modify local plans or re-e
 test('published imported changes stay consent proposals and save still requires a reason; local unsaved changes block new imports',async()=>{
  const {h,s,sheet,rows}=fixture();s.halves.FIRST.phase='PUBLISHED';s.halves.FIRST.monthRevision=2;s.halves.FIRST.publishedAt='2026-11-01T00:00:00.000Z';await h.api.load();await h.reply(h.sent[0],s);rows[3][2]='公休';await h.api.previewFile(file(sheet.csv(rows)));h.click('import-apply');h.click('save');assert.equal(h.sent.length,1);assert.match(h.n('status').textContent,/理由/);h.n('reason').value='本人と調整';h.click('save');assert.equal(JSON.parse(h.sent[1].input).changes[0].expectedPlanRevision,2);
  const other=fixture();await other.h.api.load();await other.h.reply(other.h.sent[0],other.s);other.h.edit('EMP001','2026-11-01','有給');await other.h.api.previewFile(file(other.sheet.csv(other.rows)));assert.equal(other.h.n('import-preview').hidden,true);
+});
+
+test('V2 has three explicit rows per employee; note-only and combined changes preserve work, leave and appointments',()=>{
+ const {h,s,sheet}=fixture(1),rows=sheet.read(sheet.template(s,scope));assert.equal(rows.length,6);assert.equal(rows[0][0],'TLH_SHIFT_INPUT_V2');
+ const plan=h.model.parse('09:00-18:00/60');plan.note='既存非公開';plan.publicNote='既存公開';plan.appointments=[{title:'保持'}];plan.leave={type:'PAID',unit:'HOUR',minutes:60,note:'保持'};
+ s.halves.FIRST.drafts.push({employeeCode:'EMP001',day:'2026-11-01',revision:4,plan});rows[4][2]='帰省中';
+ const result=sheet.preview(sheet.csv(rows),s,scope),p=result.changes[0].plan;assert.equal(p.publicNote,'帰省中');assert.equal(p.note,'既存非公開');assert.equal(p.periods[0].start,'09:00');assert.equal(p.leave.unit,'HOUR');assert.equal(p.appointments[0].title,'保持');assert.match(result.changes[0].after,/公開備考：帰省中/);assert.match(result.changes[0].before,/非公開備考：既存非公開/);
+ rows[3][2]='10:00-18:00/60';assert.throws(()=>sheet.preview(sheet.csv(rows),s,scope),/時間休/);plan.leave={type:'NONE',unit:'DAY',minutes:null,note:''};rows[5][2]='医療情報は公開しない';const combined=sheet.preview(sheet.csv(rows),s,scope).changes[0];assert.equal(combined.plan.periods[0].start,'10:00');assert.equal(combined.plan.note,'医療情報は公開しない');assert.equal(combined.workText,'10:00-18:00/60');
+});
+
+test('V2 blank notes retain existing data; explicit clearing is distinct and malformed groups/oversized notes reject the whole import',()=>{
+ const {h,s,sheet}=fixture(1),rows=sheet.read(sheet.template(s,scope)),plan=h.model.parse('公休');plan.note='秘密';plan.publicNote='公開';s.halves.FIRST.drafts.push({employeeCode:'EMP001',day:'2026-11-01',revision:1,plan});
+ assert.equal(sheet.preview(sheet.csv(rows),s,scope).changes.length,0);rows[4][2]='【空にする】';rows[5][2]='【空にする】';const p=sheet.preview(sheet.csv(rows),s,scope).changes[0].plan;assert.equal(p.note,'');assert.equal(p.publicNote,undefined);assert.equal(p.leave.type,'PUBLIC_OFF');
+ for(const mutate of [r=>r[4][1]='非公開備考',r=>r[5][0]='EMP002',r=>r.pop(),r=>r[3]=[],r=>r[5][2]='長'.repeat(1001),r=>r[5][2]='bad\u0007']){const copy=structuredClone(rows);mutate(copy);assert.throws(()=>sheet.preview(sheet.csv(copy),s,scope));}
+});
+
+test('V2 preview applies notes separately from work text and one published save still requires reason and fixed retry',async()=>{
+ const {h,s,sheet}=fixture(1);s.halves.FIRST.phase='PUBLISHED';s.halves.FIRST.monthRevision=3;s.halves.FIRST.publishedAt='2026-11-01T00:00:00.000Z';await h.api.load();await h.reply(h.sent[0],s);
+ const rows=sheet.read(sheet.template(s,scope));rows[3][2]='公休';rows[4][2]='帰省';rows[5][2]='本人と調整';await h.api.previewFile(file(sheet.csv(rows)));h.click('import-apply');assert.equal(h.cell('EMP001','2026-11-01').value,'公休');h.click('save');assert.equal(h.sent.length,1);h.n('reason').value='備考を確認';h.click('save');const req=h.sent[1],p=JSON.parse(req.input).changes[0].plan;assert.equal(p.publicNote,'帰省');assert.equal(p.note,'本人と調整');for(const timer of [...h.timers.values()])timer();h.click('retry');assert.equal(h.sent[2].operationId,req.operationId);assert.equal(h.sent[2].input,req.input);
 });
