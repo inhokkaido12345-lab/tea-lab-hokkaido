@@ -10,6 +10,7 @@
   const ACTION='bridgeScheduleV1',TYPE='TLH_BRIDGE_SCHEDULE',PAGE_SIZE=25;
   const messages={SCHEDULE_READY:'この月のシフトを読み込みました。',SCHEDULE_SAVED:'変更をまとめて下書き保存しました。確定公開は半月別の画面で行ってください。',SCHEDULE_ALREADY_DONE:'同じ操作は保存済みです。最新の状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'下書きと確定後の変更案を保存しました。確定済みの日は本人の同意・承認後に反映されます。',SCHEDULE_INVALID:'日付・勤務区間・休暇・変更理由を確認してください。',SCHEDULE_CHANGED:'他の操作で予定が変わりました。入力はこの画面に残しています。最新状態を読み直して調整してください。',SCHEDULE_PERMISSION_REQUIRED:'管理者権限を確認できません。管理者のLINEでログインしてください。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。最新の従業員一覧を読み直してください。',SCHEDULE_REQUEST_PENDING:'変更対象の日に未処理の申請があります。個別画面で確認してください。',SCHEDULE_OPERATION_REUSED:'操作番号と入力が一致しません。保存状態を確認してください。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務・用事が重なっています。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外せません。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入の確認が必要です。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の確認が必要です。入力を残し、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できず、今回の変更は戻されています。入力を確認して再実行できます。',SCHEDULE_CAPACITY:'処理上限を超えています。一度の変更は500日分までです。',SCHEDULE_UNAVAILABLE:'応答を確認できません。保存操作は同じ操作で結果を再確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて再確認してください。'};
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),v=>v.toString(16).padStart(2,'0')).join('');
+  Object.assign(messages,{SCHEDULE_SHEET_READY:'入力シートを確認しました。',SCHEDULE_SHEET_CONFIGURATION_REQUIRED:'入力シートの接続設定が必要です。管理者へ連絡してください。',SCHEDULE_SHEET_NOT_FOUND:'この月の入力シートはありません。「入力シートを作成」から用意してください。',SCHEDULE_SHEET_INVALID:'入力シートの形式・店舗・日付を確認してください。既存の入力は上書きしていません。',SCHEDULE_SHEET_REVIEW_REQUIRED:'入力シートの作成結果を確認してください。再作成や上書きは行っていません。'});
   function related(source,target){try{for(let i=0;source&&i<8;i++){if(source===target)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
   async function verify(d,r){
     if(!d||d.type!==TYPE||d.action!==ACTION||d.command!==r.command||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.data!=='string'||d.data.length>1500000||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac))return false;
@@ -17,11 +18,12 @@
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,ACTION,d.command,d.nonce,d.code,d.data].join('\n')));
   }
   function init(options){
-    const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','template','file','import-preview','import-summary','import-rows','import-apply','import-cancel'].map(id=>[id,document.getElementById('bulk-'+id)]));
+    const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','template','file','import-preview','import-summary','import-rows','import-apply','import-cancel','sheet-read','sheet-create','sheet-open'].map(id=>[id,document.getElementById('bulk-'+id)]));
     let snapshot=null,pending=null,uncertain=null,stopped=false,page=0,selected=null,needReload=false;
     const drafts=new Map(),texts=new Map(),errors=new Map(),cells=new Map();
-    let importPreview=null,importing=false;
+    let importPreview=null,importing=false,directImport=false;
     const scope=()=>options.scope||global.TlhCurrentWorkplace?.config;
+    n['sheet-open'].hidden=true;
     function el(tag,text,parent){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;parent?.appendChild(node);return node;}
     function people(){return snapshot?.halves.FIRST.employees||[];}
     function current(code,day){return drafts.get(model.key(code,day))||model.input(model.oldPlan(snapshot,code,day)?.plan);}
@@ -31,16 +33,19 @@
       const locked=stopped||!!pending||!!uncertain||!snapshot||importing||!!importPreview;
       n.status.setAttribute('aria-busy',String(!!pending||importing));n.month.disabled=stopped||!!pending||!!uncertain||importing||!!importPreview;n.load.disabled=n.month.disabled;
       n.template.disabled=locked||needReload;n.file.disabled=locked||unsaved()||needReload;
+      n['sheet-read'].disabled=n.file.disabled;n['sheet-create'].disabled=n.file.disabled;
+      n['sheet-create'].textContent=n.month.value?Number(n.month.value.slice(0,4))+'年'+Number(n.month.value.slice(5))+'月用の入力シートを作成':'選択月の入力シートを作成';
       n['import-apply'].disabled=stopped||!!pending||!!uncertain||!importPreview?.changes.length;n['import-cancel'].disabled=stopped||!!pending||!!uncertain;
       n.prev.disabled=locked||page===0;n.next.disabled=locked||(page+1)*PAGE_SIZE>=people().length;
-      n.detail.disabled=locked||!selected;n.reason.disabled=locked;
+      n.detail.disabled=locked||!selected;n.reason.disabled=stopped||!!pending||!!uncertain||!snapshot||importing;
       for(const cell of cells.values())cell.disabled=locked;
       let count=0;try{count=currentPayload()?.changes.length||0;}catch(_e){count=drafts.size;}
       n.count.textContent='未保存の変更：'+count+'日分'+(errors.size?' / 入力エラー：'+errors.size+'件':'');
       n.save.disabled=locked||needReload||!!errors.size||count===0||count>500;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
+      n.retry.textContent=uncertain?.command==='sheetCreate'?'同じ操作で作成結果を再確認':'同じ操作で保存結果を再確認';
     }
-    function clearImport(){importPreview=null;n.file.value='';n['import-preview'].hidden=true;n['import-rows'].replaceChildren();n['import-summary'].textContent='';}
-    function clear(){snapshot=null;clearImport();drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';controls();}
+    function clearImport(){importPreview=null;directImport=false;n.file.value='';n['import-preview'].hidden=true;n['import-rows'].replaceChildren();n['import-summary'].textContent='';n['import-apply'].textContent='この内容を編集表へ反映';}
+    function clear(){snapshot=null;clearImport();n['sheet-open'].hidden=true;n['sheet-open'].href='';drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';controls();}
     function selectCell(code,day){
       selected={code,day};const person=people().find(p=>p.employeeCode===code),p=current(code,day);
       n.selected.textContent=(person?.employeeName||code)+'（'+code+'） '+day;
@@ -89,8 +94,8 @@
       if(pending||stopped)return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}if(typeof proof!=='string'||!proof){n.status.textContent='LINEログインが必要です。';n.login.hidden=false;return;}
-      const r={...request,nonce:random(16),responseKey:random(32)};pending=r;controls();n.status.textContent=request.command==='batchRead'?'月全体を読み込んでいます。':'変更をまとめて保存しています。';
-      function unknown(){if(pending!==r||stopped)return;if(r.command==='batchPlan')uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='batchPlan'?'保存結果を確認できません。入力を変更せず「同じ操作で保存結果を再確認」を押してください。':'読込み結果を確認できません。もう一度読み込んでください。';finish();}
+      const r={...request,nonce:random(16),responseKey:random(32)};pending=r;controls();n.status.textContent={batchRead:'月全体を読み込んでいます。',sheetRead:'入力シートから直接読み込んでいます。',sheetCreate:'選択月の入力シートを用意しています。'}[request.command]||'変更をまとめて保存しています。';
+      function unknown(){if(pending!==r||stopped)return;if(['batchPlan','sheetCreate'].includes(r.command))uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='sheetCreate'?'作成結果を確認できません。同じ操作で再確認してください。既存の月は上書きしません。':r.command==='batchPlan'?'保存結果を確認できません。入力を変更せず「同じ操作で保存結果を再確認」を押してください。':'読込み結果を確認できません。もう一度読み込んでください。';finish();}
       r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhScheduleBulkFrame';form.hidden=true;
       for(const [name,value]of Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.responseKey})){const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;form.appendChild(field);}
@@ -117,16 +122,33 @@
     global.addEventListener('message',async event=>{
       const r=pending;if(stopped||!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||stopped||pending!==r)return;
-      const d=event.data;let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}if(!model.validate(value,JSON.parse(r.input).month))return;}
-      if(['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code)&&!value)return;
+      const d=event.data;let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}
+        if(['sheetRead','sheetCreate'].includes(r.command)){
+          if(d.code!=='SCHEDULE_SHEET_READY'||!value||Object.keys(value).sort().join(',')!=='csv,month,sheet,snapshot,version'||value.version!==1||value.month!==JSON.parse(r.input).month||!model.validate(value.snapshot,value.month)||typeof value.csv!=='string'||value.csv.length>1000000||!value.sheet||Object.keys(value.sheet).sort().join(',')!=='created,url'||typeof value.sheet.created!=='boolean'||typeof value.sheet.url!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit#gid=\d+$/.test(value.sheet.url)||(r.command==='sheetCreate'&&value.csv!==''))return;
+          uncertain=null;finish();render(value.snapshot);n['sheet-open'].href=value.sheet.url;n['sheet-open'].hidden=false;
+          if(r.command==='sheetRead'){try{showImport(global.TlhScheduleSheet.preview(value.csv,snapshot,scope()),true);}catch(error){n.status.textContent=error.message;controls();}}
+          else n.status.textContent=value.sheet.created?'入力シートを作成しました。「入力シートを開く」から記入できます。':'この月の入力シートは作成済みです。既存の入力を保持しています。';
+          return;
+        }
+        if(!model.validate(value,JSON.parse(r.input).month))return;
+      }
+      if(['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED','SCHEDULE_SHEET_READY'].includes(d.code)&&!value)return;
       if(value){uncertain=null;finish();render(value);}else{
-        if(r.command==='batchPlan'&&['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED'].includes(d.code))uncertain={command:r.command,input:r.input,operationId:r.operationId};
+        if(['batchPlan','sheetCreate'].includes(r.command)&&['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED','SCHEDULE_SHEET_REVIEW_REQUIRED'].includes(d.code))uncertain={command:r.command,input:r.input,operationId:r.operationId};
         else uncertain=null;
         if(d.code==='SCHEDULE_PERMISSION_REQUIRED')clear();
         needReload=['SCHEDULE_CHANGED','SCHEDULE_EMPLOYEE_REQUIRED','SCHEDULE_OPERATION_REUSED'].includes(d.code);finish();
       }
       n.status.textContent=messages[d.code];
     });
+    /** 同じプレビューをCSVと直接READで共用。直接READもここまでは原簿を保存しない。 */
+    function showImport(result,direct=false){
+      importPreview=result;directImport=direct;n['import-rows'].replaceChildren();
+      for(const change of result.changes){const tr=el('tr',undefined,n['import-rows']);for(const text of [change.employeeCode+'（'+change.employeeName+'）',change.day,change.before,change.after,change.published?'本人同意待ちの変更案':'下書き'])el('td',text,tr);}
+      n['import-summary'].textContent=result.month+' / 変更 '+result.changes.length+'日分 / 空欄読飛ばし '+result.blanks+' / 同内容 '+result.unchanged+'。まだ保存していません。';
+      n['import-apply'].textContent=direct?'確認した内容を一括保存':'この内容を編集表へ反映';n['import-preview'].hidden=false;
+      n.status.textContent=direct?'入力シートを直接読み込みました。変更前後を確認して一括保存してください。':'変更前後を確認し「この内容を編集表へ反映」を押してください。保存・確定公開は別の操作です。';controls();
+    }
     /** CSVは台帳ではない。ファイル選択/プレビュー/反映はローカルだけで、saveだけが既存batchPlanへ送信する。 */
     async function previewFile(file){
       if(stopped||pending||uncertain||importing||importPreview||!snapshot||needReload||unsaved())return;
@@ -135,28 +157,32 @@
         if(!file||file.size>global.TlhScheduleSheet.MAX_BYTES)throw Error('UTF-8のCSV（2MB以内）を選んでください。');
         const text=await file.text();if(stopped||snapshot!==source)return;
         const result=global.TlhScheduleSheet.preview(text,source,scope());
-        importPreview=result;n['import-rows'].replaceChildren();
-        for(const change of result.changes){const tr=el('tr',undefined,n['import-rows']);for(const text of [change.employeeCode+'（'+change.employeeName+'）',change.day,change.before,change.after,change.published?'本人同意待ちの変更案':'下書き'])el('td',text,tr);}
-        n['import-summary'].textContent=result.month+' / 変更 '+result.changes.length+'日分 / 空欄読飛ばし '+result.blanks+' / 同内容 '+result.unchanged+'。まだ保存していません。';
-        n['import-preview'].hidden=false;n.status.textContent='変更前後を確認し「この内容を編集表へ反映」を押してください。保存・確定公開は別の操作です。';
+        showImport(result);
       }catch(error){if(!stopped)n.status.textContent=error.message;}
       finally{importing=false;n.file.value='';controls();}
     }
     function applyImport(){
       if(stopped||pending||uncertain||!importPreview)return;
-      for(const change of importPreview.changes){const k=model.key(change.employeeCode,change.day);drafts.set(k,change.plan);texts.set(k,change.after);}
+      const saveDirect=directImport;for(const change of importPreview.changes){const k=model.key(change.employeeCode,change.day);drafts.set(k,change.plan);texts.set(k,change.after);}
       clearImport();renderGrid();n.status.textContent='CSVの変更を編集表へ反映しました。内容を確認し「変更をまとめて保存」を押してください。まだ保存していません。';
+      if(saveDirect)save();
     }
     n.template.addEventListener('click',()=>{
       if(stopped||pending||uncertain||!snapshot||importing||importPreview||needReload)return;
       try{const text=global.TlhScheduleSheet.template(snapshot,scope()),url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=url;a.download='TLH-shift-input-'+snapshot.month+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);n.status.textContent='この月の空の入力ひな形を保存しました。既存のシフトは含めず、空欄は取込み時に読み飛ばします。';}catch(error){n.status.textContent=error.message;}
     });
     n.file.addEventListener('change',()=>void previewFile(n.file.files?.[0]));n['import-apply'].addEventListener('click',applyImport);n['import-cancel'].addEventListener('click',()=>{if(!stopped&&!pending&&!uncertain){clearImport();controls();n.status.textContent='CSVの取込みを取り消しました。保存はしていません。';}});
+    function sheetRequest(command){
+      if(stopped||pending||uncertain||!snapshot||unsaved()||importPreview||importing||needReload)return;
+      if(command==='sheetCreate'&&!global.confirm(snapshot.month+'用の入力タブを用意します。既にある月の入力は上書きしません。勤怠や確定シフトは変更しません。続けますか？'))return;
+      void send({command,input:JSON.stringify({month:snapshot.month,audience:'admin'}),operationId:command==='sheetCreate'?random(16):''});
+    }
+    n['sheet-read'].addEventListener('click',()=>sheetRequest('sheetRead'));n['sheet-create'].addEventListener('click',()=>sheetRequest('sheetCreate'));
     n.load.addEventListener('click',()=>void load());n.month.addEventListener('change',()=>void load());n.save.addEventListener('click',save);
     n.retry.addEventListener('click',()=>{if(uncertain&&!pending&&!stopped)void send({...uncertain});});
     n.prev.addEventListener('click',()=>{if(!pending&&!uncertain&&page>0){page--;renderGrid();}});n.next.addEventListener('click',()=>{if(!pending&&!uncertain&&(page+1)*PAGE_SIZE<people().length){page++;renderGrid();}});
     for(const id of ['note','public-note'])n[id].addEventListener('input',()=>{if(!selected||pending||uncertain||stopped)return;const p=current(selected.code,selected.day);p.note=n.note.value;if(n['public-note'].value)p.publicNote=n['public-note'].value;else delete p.publicNote;drafts.set(model.key(selected.code,selected.day),p);controls();});
-    global.addEventListener('beforeunload',event=>{if(!stopped&&(unsaved()||uncertain||pending?.command==='batchPlan')){event.preventDefault();event.returnValue='';}});
+    global.addEventListener('beforeunload',event=>{if(!stopped&&(unsaved()||uncertain||['batchPlan','sheetCreate'].includes(pending?.command))){event.preventDefault();event.returnValue='';}});
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();});controls();
     return Object.freeze({load,previewFile});
   }
