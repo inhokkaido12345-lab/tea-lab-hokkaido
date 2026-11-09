@@ -34,8 +34,14 @@
     if(!s.plans.every(p=>identity(p)&&Array.isArray(p.periods)&&p.periods.length<=10&&p.periods.every(q=>time(q.start)&&time(q.end)&&typeof q.endNextDay==='boolean'&&Number.isInteger(q.breakMinutes)&&q.breakMinutes>=0)&&Array.isArray(p.workIntervals)&&p.workIntervals.every(q=>iso(q.startAtUtc)&&iso(q.endAtUtc))&&(Number.isInteger(p.plannedMinutes)&&p.plannedMinutes>=0||s.inputMode==='SHEET'&&p.plannedMinutes===null&&!p.periods.length&&!p.workIntervals.length&&p.leaveType==='NONE')&&['NONE','PUBLIC_OFF','LEAVE'].includes(p.leaveType)&&(p.publicNote===undefined||text(p.publicNote,1000))))return false;
     if(![...s.ownPlans,...s.drafts].every(p=>identity(p)&&validPlan(p.plan))||!s.ownPlans.every(p=>p.employeeCode===s.employeeCode))return false;
     if(!s.requests.every(r=>r&&/^[-A-Za-z0-9_]{1,100}$/.test(r.requestId)&&code(r.employeeCode)&&text(r.employeeName,80)&&Number.isSafeInteger(r.revision)&&r.revision>0&&['PENDING','APPROVED','REJECTED','CANCELLED','AWAITING_CONSENT'].includes(r.status)&&['SHIFT_PREFERENCE','ANNUAL_LEAVE','STATUTORY_LEAVE','ADMIN_CHANGE'].includes(r.kind)&&r.payload&&validPlan(r.payload.plan)&&r.payload.plan.day>=range.start&&r.payload.plan.day<=range.end&&text(r.payload.reason,500)&&(!r.payload.decisionReason||text(r.payload.decisionReason,500))&&iso(r.submittedAt)&&(!admin?r.employeeCode===s.employeeCode:true)))return false;
+    if(s.requests.some(r=>r.payload.sheetPreference!==undefined&&!(s.inputMode==='SHEET'&&r.status==='APPROVED'&&r.kind==='SHIFT_PREFERENCE'&&r.payload.plan.leave.type==='PUBLIC_OFF'&&r.payload.plan.leave.unit==='DAY'&&!r.payload.plan.periods.length&&!r.payload.plan.appointments.length&&r.payload.sheetPreference&&Object.keys(r.payload.sheetPreference).sort().join(',')==='conflict,version'&&r.payload.sheetPreference.version===1&&typeof r.payload.sheetPreference.conflict==='boolean')))return false;
     return [...s.events,...s.draftEvents].every(e=>date(e.day)&&e.day>=range.start&&e.day<=range.end&&text(e.title,200)&&text(e.note,500));
   }
+  // 承認結果の定型案内。自由記載やシートURLをHTMLへ差し込まず、検証済みメタデータだけ使う。
+  // 希望休の承認と勤務の確定は別。競合しても既存勤務を削除せず、管理者が正本を調整する。
+  function preferenceNotice(result){return result.conflict?
+    '希望休を承認し、正本シートの非公開備考へ「希望休」「【希望休と競合】」を追記しました。既存のシフト・予定は残しています。スプレッドシートを開いて編集してください。':
+    '希望休を承認し、正本シートの非公開備考へ「希望休」を記入しました。勤務欄・確定シフトは変更していません。シフト作成時に確認してください。';}
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),v=>v.toString(16).padStart(2,'0')).join('');
   function related(source,target){for(let i=0;source&&i<6;i++){if(source===target)return true;try{if(source.parent===source)break;source=source.parent;}catch(_e){break;}}return false;}
   /** 両半月を別々に検査し、同じ本人/月/役割/取得時刻の月暦だけ採用する。 */
@@ -62,7 +68,7 @@
       const sheet=admin&&snapshot?.inputMode==='SHEET',hideAdminEditor=admin&&(!snapshot||sheet);n.editor.hidden=hideAdminEditor;n['event-form'].hidden=!admin||!snapshot||sheet;n.editor.disabled=n.editor.disabled||sheet;n['event-form'].disabled=n['event-form'].disabled||sheet;n.save.disabled=n.save.disabled||sheet;
       if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=byId(id);if(node)node.hidden=hideAdminEditor;}const banner=byId('schedule-source-banner');if(banner)banner.hidden=!sheet;}
       n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(snapshot.phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(snapshot.phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':snapshot.phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
-      if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。希望休・変更申請はアプリで受け付けます。承認前に申請と同じ内容をシートへ記入してください。';
+      if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。全日の希望休は、承認時に非公開備考へ「希望休」を自動記入します。既存予定があれば「【希望休と競合】」を併記するため、シートで調整してください。勤務変更・年休等は承認前に申請と同じ内容をシートへ記入してください。';
       n.scope.disabled=stopped||!!pending||!!uncertain;
       n.month.disabled=stopped||!!pending||!!uncertain;n.refresh.disabled=stopped||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.status.setAttribute('aria-busy',String(!!pending));
@@ -156,11 +162,11 @@
 
     /** 申請/同意/承認の操作を表示。ボタン押下時の版検査と保存は従来のwrite/GASへ任せる。 */
     function renderRequests(s){
-      for(const r of s.requests){const card=el('article',undefined,n.requests);card.className='record-item';el('h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);el('p',({SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'管理者からの変更案'}[r.kind])+' / '+({PENDING:'管理者確認待ち',AWAITING_CONSENT:'本人同意待ち',APPROVED:'承認済み',REJECTED:'見送り・同意なし',CANCELLED:'取消済み'}[r.status]),card);el('p',planText(r.payload.plan),card);el('p','理由：'+r.payload.reason,card);if(r.payload.decisionReason)el('p','判断理由：'+r.payload.decisionReason,card);
+      for(const r of s.requests){const card=el('article',undefined,n.requests);card.className='record-item';el('h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);el('p',({SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'管理者からの変更案'}[r.kind])+' / '+({PENDING:'管理者確認待ち',AWAITING_CONSENT:'本人同意待ち',APPROVED:'承認済み',REJECTED:'見送り・同意なし',CANCELLED:'取消済み'}[r.status]),card);el('p',planText(r.payload.plan),card);el('p','理由：'+r.payload.reason,card);if(r.payload.decisionReason)el('p','判断理由：'+r.payload.decisionReason,card);if(r.payload.sheetPreference)el('p',preferenceNotice(r.payload.sheetPreference),card);
         if(admin&&r.status==='PENDING'){
           const reasonLabel=el('label','判断理由',card),reasonField=el('textarea',undefined,reasonLabel);reasonField.maxLength=500;reasonField.rows=2;
           for(const [decision,label]of [['APPROVE','この内容を承認'],['REJECT','見送りを記録']]){
-            const action=button(card,label,'review',()=>{const reason=reasonField.value;if(!reason.trim()){reasonField.focus();throw Error('REASON_REQUIRED');}const current=s.drafts.find(p=>p.employeeCode===r.employeeCode&&p.day===r.payload.plan.day);return{...requestBase('review',r),expectedPlanRevision:s.phase==='PUBLISHED'?s.monthRevision:current?.revision||0,decision,reason};},r.employeeName+' / '+r.payload.plan.day+'\n'+planText(r.payload.plan)+'\n'+label+'しますか？');
+            const action=button(card,label,'review',()=>{const reason=reasonField.value;if(!reason.trim()){reasonField.focus();throw Error('REASON_REQUIRED');}const current=s.drafts.find(p=>p.employeeCode===r.employeeCode&&p.day===r.payload.plan.day);return{...requestBase('review',r),expectedPlanRevision:s.phase==='PUBLISHED'?s.monthRevision:current?.revision||0,decision,reason};},r.employeeName+' / '+r.payload.plan.day+'\n'+planText(r.payload.plan)+'\n'+(decision==='APPROVE'&&s.inputMode==='SHEET'&&r.kind==='SHIFT_PREFERENCE'&&r.payload.plan.leave.type==='PUBLIC_OFF'&&r.payload.plan.leave.unit==='DAY'&&!r.payload.plan.periods.length&&!r.payload.plan.appointments.length?'希望休を非公開備考へ記入します。既存の勤務・予定は残し、競合する場合はシートでの編集が必要です。\n':'')+label+'しますか？');
             if(decision==='REJECT')action.className='schedule-reject';
           }
         }
@@ -192,7 +198,8 @@
         clear();finish();
       }
       if(!isRead(r.command)&&value&&['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code))options.onSaved?.();
-      n.status.textContent=d.code==='SCHEDULE_PERMISSION_REQUIRED'&&!admin?'希望の提出には有効な従業員登録が必要です。管理者に登録・LINE紐付け・利用状態を確認してください。':messages[d.code];
+      const reviewed=admin&&r.command==='review'&&value&&['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE'].includes(d.code)?value.requests.find(item=>item.requestId===JSON.parse(r.input).requestId&&item.status==='APPROVED'&&item.payload.sheetPreference):null;
+      n.status.textContent=d.code==='SCHEDULE_PERMISSION_REQUIRED'&&!admin?'希望の提出には有効な従業員登録が必要です。管理者に登録・LINE紐付け・利用状態を確認してください。':reviewed?preferenceNotice(reviewed.payload.sheetPreference):messages[d.code];
     });
     n.refresh.addEventListener('click',()=>void read());n.month.addEventListener('change',()=>{if(!pending&&!uncertain){if(options.onMonthChange)options.onMonthChange();else void read();}});n.retry.addEventListener('click',()=>{if(uncertain&&!pending)void send({...uncertain});});
     n.scope.addEventListener('change',()=>{if(pending||uncertain)return;if(monthSnapshots&&Object.hasOwn(monthSnapshots,n.scope.value)&&monthSnapshots.FIRST.month===n.month.value)render(monthSnapshots[n.scope.value]);else void read();});
