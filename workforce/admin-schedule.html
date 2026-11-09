@@ -11,7 +11,7 @@
 </head><body class="secondary-page schedule-page" data-audience="admin"><header><strong>TLH Workforce</strong><a href="index.html">アプリへ戻る</a></header>
 <aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
 <main><div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>シフト作成・希望の確認</h1></div></div>
-<p><a class="button primary" href="admin-schedule-bulk.html">全従業員・月全体をまとめて編集 →</a></p><p class="footnote">まとめ編集ではスプレッドシートのCSV取込みも使えます。入力途中の通信がなく、最後に1回保存します。この画面では従来の個別編集・希望確認・半月別の締切と公開を扱います。</p>
+<p><a class="button primary" href="admin-schedule-bulk.html">シフトの入力・取込み →</a></p><p class="footnote">入力シートの記入と取込みは上の画面へ。ここでは希望確認・半月別の締切と公開を扱います。正本モードではシフトの手編集を表示しません。</p>
 <button id="schedule-login" type="button" hidden>LINEログイン</button><aside id="schedule-source-banner" class="management-section" hidden><h2>シフトの入力・訂正はスプレッドシートで</h2><p>勤務・備考・用事・休暇詳細・共有イベントは正本シートで記入し、取込み画面で反映します。希望休・変更申請はアプリで受け付けます。承認前に申請と同じ内容をシートへ記入してください。</p><a href="admin-schedule-bulk.html">正本シートを開く・取り込む</a></aside>
 <div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>対象の期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" disabled>最新の状態に更新</button></div>
 <p id="schedule-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="schedule-summary"></p><p id="schedule-published-at" class="schedule-updated" aria-live="polite"></p>
