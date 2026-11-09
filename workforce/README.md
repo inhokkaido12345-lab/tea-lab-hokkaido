@@ -28,7 +28,7 @@ monthReadは両半月を1回の署名付きREADで取得。取得済みの半月
 
 # TLH Work Time：利用・開発・改造の入口
 
-勤怠・シフト管理のオンラインWebアプリです。制作元は **TEA LABORATRY HOKKAIDO**。表示名だけを変更しており、URLと内部識別子の `/workforce/` は維持します。
+勤怠・シフト管理のオンラインWebアプリです。制作元は **TEA LABORATORY HOKKAIDO/SOFTWARE/xxx**。`SOFTWARE`は部門、`xxx`は未定の部門ブランド名の仮表記です。名称決定時はホーム「その他」・従業員ヘルプ末尾と、この説明・AGENTS/PWA・表示見本を同期します。表示名だけを変更しており、URLと内部識別子の `/workforce/` は維持します。
 
 [現在地](CURRENT-STATUS.md) → [従業員ヘルプ](employee-help.html)／[管理者ガイド](admin-guide.html) → [シフト運用](SCHEDULE.md) → [説明書索引](DOCUMENTS.md) の順に読んでください。過去の改修メモは[整理前の記録](history/20261109-README.md)へ分離しました。
 

@@ -22,7 +22,7 @@ monthReadは両半月を1回の署名付きREADで取得。取得済みの半月
 
 ## サービス表示名（2026-11-09）
 
-勤怠・シフト管理のサービス名は **TLH Work Time** です。制作元は **TEA LABORATRY HOKKAIDO**。表示名を変える場合は、各画面の見出し・ページタイトル・manifestのname/short_name・表示見本の生成元を揃えます。既存インストールとLINEログインを維持するため、`/workforce/`、manifestのid/start_url/scope、API名・保存先・権限の識別子は変更しません。ホーム画面の名称更新はブラウザによって反映時期が異なります。
+勤怠・シフト管理のサービス名は **TLH Work Time** です。制作元は **TEA LABORATORY HOKKAIDO/SOFTWARE/xxx**。表示名を変える場合は、各画面の見出し・ページタイトル・manifestのname/short_name・表示見本の生成元を揃えます。既存インストールとLINEログインを維持するため、`/workforce/`、manifestのid/start_url/scope、API名・保存先・権限の識別子は変更しません。ホーム画面の名称更新はブラウザによって反映時期が異なります。
 
 2026-11-09両PR #32/UI #33から承認後公開・切替済み: 署名済みinputMode=SHEETで管理者の予定編集/イベント編集/CSV/旧保存を隠す。本人の希望休/変更申請は残す。sheetRead.authorityはGASが計算した差分だけ、sheetImportへdigest2個と理由を送りplanを送らない。結果不明は同じinput/操作IDで再確認。現在の正本モードは空欄=削除。旧CSVの空欄保持は未設定環境の互換処理だけ。
 
