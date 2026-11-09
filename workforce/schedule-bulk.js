@@ -2,7 +2,10 @@
  * 月型シフトの状態→表示→一括通信。セル入力/コピペ/従業員ページ切替はページ内だけ。
  * 削除影響: 月型編集の入口が停止。既存半月画面/原簿/従業員の希望受付は維持。
  * 概念: local draft / one bulk command / fixed-id retry / authenticated snapshot。
+ * 呼出元: admin-schedule-bulk.html。Modelは変換、Sheetは旧CSV、sendは署名付き通信を担当。
  * 魔改造: 描画はrenderGrid、入力記号はModel、保存はsend。セルイベントでsendを呼ばない。
+ * 軽量化: SHEETでは編集用DOM/イベント/下書き差分を作らない。旧モードだけ互換編集を維持。
+ * 検証: schedule-sheet-authority / schedule-bulk試験で両モードと固定ID再送を確認する。
  * 境界: 固定iframe・nonce/command・全体HMAC・両半月DTOを照合してから表示。GASが最終認可。
  * 未保存データ/token/再送IDをStorage/URL/ログへ保存しない。離脱は破棄し自動再送しない。
  */
@@ -36,7 +39,7 @@
     function people(){return snapshot?.halves.FIRST.employees||[];}
     function current(code,day){return drafts.get(model.key(code,day))||model.input(model.oldPlan(snapshot,code,day)?.plan);}
     function unsaved(){try{return !!errors.size||!!currentPayload()?.changes.length;}catch(_e){return drafts.size>0;}}
-    function currentPayload(){return snapshot?model.payload(snapshot,drafts,n.reason.value):null;}
+    function currentPayload(){return snapshot&&!sheetMode()?model.payload(snapshot,drafts,n.reason.value):null;}
     function controls(){
       const locked=stopped||!!pending||!!uncertain||!snapshot||importing||!!importPreview||createReview;
       n.status.setAttribute('aria-busy',String(!!pending||importing));n.month.disabled=stopped||!!pending||!!uncertain||importing||!!importPreview||createReview;n.load.disabled=n.month.disabled;
@@ -85,9 +88,11 @@
       }catch(error){n.status.textContent=error.message;}
     }
     function renderGrid(){
-      n.head.replaceChildren();n.rows.replaceChildren();cells.clear();if(!snapshot)return;
-      const calendar=model.days(snapshot.month),header=el('tr',undefined,n.head);el('th','従業員',header);
-      for(const day of calendar){const date=new Date(day+'T00:00:00+09:00'),th=el('th',Number(day.slice(8))+'日',header);el('small',new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',weekday:'short'}).format(date),th);if(['土','日'].includes(new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',weekday:'short'}).format(date)))th.className='is-weekend';if(day.endsWith('-16'))th.className+=' is-second';}
+      n.head.replaceChildren();n.rows.replaceChildren();cells.clear();
+      // 正本モードは差分プレビューだけが必要。隠れた人数×日数の編集表を生成しない。
+      if(!snapshot||sheetMode()){n.page.textContent='';controls();return;}
+      const calendar=model.days(snapshot.month),weekdayFormat=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',weekday:'short'}),header=el('tr',undefined,n.head);el('th','従業員',header);
+      for(const day of calendar){const weekday=weekdayFormat.format(new Date(day+'T00:00:00+09:00')),th=el('th',Number(day.slice(8))+'日',header);el('small',weekday,th);if(['土','日'].includes(weekday))th.className='is-weekend';if(day.endsWith('-16'))th.className+=' is-second';}
       const visible=people().slice(page*PAGE_SIZE,(page+1)*PAGE_SIZE);
       for(const person of visible){const tr=el('tr',undefined,n.rows),th=el('th',person.employeeName,tr);th.scope='row';el('small',person.employeeCode+(person.registrationStatus==='PENDING_LINK'?' / 招待待ち':''),th);
         for(const day of calendar){const k=model.key(person.employeeCode,day),td=el('td',undefined,tr),field=el('textarea',undefined,td);field.rows=2;field.maxLength=2000;field.value=texts.has(k)?texts.get(k):model.format(model.oldPlan(snapshot,person.employeeCode,day)?.plan);

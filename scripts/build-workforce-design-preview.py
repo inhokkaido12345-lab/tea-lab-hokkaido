@@ -39,9 +39,12 @@ for name, body in parts.items():
             body=re.sub(r'<(?:div|section)\b[^>]*\bid="'+panel+r'"[^>]*>', visibility, body)
         for category in ['employees','attendance','schedule']:
             body=re.sub(r'(<button\b[^>]*id="manager-'+category+r'-choice"[^>]*aria-pressed=")[^"]+"',lambda m:m[1]+str(category==selected).lower()+'"',body)
-    body = re.sub(r'<(button|input|select|textarea)\b', r'<\1 disabled', body)
+    # 本番のdisabledを保持し、同じ属性を重複させず全操作を無効化する。
+    body = re.sub(r'<(?:button|input|select|textarea)\b[^>]*>',
+                  lambda m: m[0] if re.search(r'\sdisabled(?:\s|=|>)', m[0]) else m[0][:-1] + ' disabled>', body)
     body = re.sub(r'href="[^"]*"', 'href="#preview-notice"', body)
     assert not re.search(r'<script|<iframe|action=|\bon\w+=', body)
+    body = '\n'.join(line.rstrip() for line in body.split('\n'))
     title = {'manager':'出退勤の管理','manager-employees':'従業員の管理','manager-schedule':'シフトの管理','more':'その他'}[name]
     (dest / (name + '.html')).write_text(
         '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
@@ -54,5 +57,5 @@ for name, body in parts.items():
         '<body class="home-page"><div class="app"><main>'
         '<p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。'
         ' <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p>'
-        + body + '</main></div></body></html>\n', encoding='utf-8')
+        + body + '</main></div></body></html>\n', encoding='utf-8', newline='\n')
 print('Generated four inert presentation previews from current HTML/CSS')

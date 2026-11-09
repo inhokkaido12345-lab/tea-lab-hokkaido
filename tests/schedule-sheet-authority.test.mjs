@@ -1,3 +1,4 @@
+import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
 import fs from 'node:fs';import test from 'node:test';import assert from 'node:assert/strict';import {scheduleBulkHarness,bulkSnapshot} from './helpers/schedule-bulk-harness.mjs';
 function fixture(){const h=scheduleBulkHarness(),s=bulkSnapshot(1);for(const p of ['FIRST','SECOND'])s.halves[p].inputMode='SHEET';return{h,s};}
 function response(h,s){const plan={day:'2026-11-01',...h.model.parse('公休')};return{version:1,month:s.month,snapshot:s,csv:'',sheet:{url:'https://docs.google.com/spreadsheets/d/fake-sheet/edit#gid=123',created:false},authority:{sourceDigest:'a'.repeat(64),targetDigest:'b'.repeat(64),preview:{month:s.month,changes:[{employeeCode:'EMP001',employeeName:'架空社員1',day:plan.day,before:'勤務あり',after:'公休',workText:'公休',plan,published:false,expectedPlanRevision:0}],blanks:29,unchanged:29,eventChanges:0,eventDetails:[]}}};}
@@ -28,4 +29,21 @@ test('manual guidance stays hidden before authentication, on failed reads and af
  await h.api.load();await h.reply(h.sent[0],null,'SCHEDULE_PERMISSION_REQUIRED');assert.equal(h.n('manual').hidden,true);
  await h.api.load();await h.reply(h.sent.at(-1),s);assert.equal(h.n('manual').hidden,true);h.events.pagehide();assert.equal(h.n('manual').hidden,true);
  const legacy=scheduleBulkHarness();await legacy.api.load();await legacy.reply(legacy.sent[0],bulkSnapshot(1));assert.equal(legacy.n('manual').hidden,false);assert.equal(legacy.n('csv-tools').hidden,false);
+});
+
+test('sheet import skips the hidden employee-day editor while legacy editing still renders the full month',async()=>{
+ const h=scheduleBulkHarness(),s=bulkSnapshot(25);for(const half of Object.values(s.halves))half.inputMode='SHEET';
+ await h.api.load();await h.reply(h.sent[0],s);assert.equal(h.n('rows').children.length,0);assert.equal(h.n('head').children.length,0);
+ assert.equal(h.n('sheet-read').disabled,false);assert.equal(h.n('sheet-create').disabled,false);assert.equal(h.sent.length,1);
+ const legacy=scheduleBulkHarness();await legacy.api.load();await legacy.reply(legacy.sent[0],bulkSnapshot(25));
+ assert.equal(legacy.n('rows').children.length,25);assert.equal(legacy.cell('EMP025','2026-11-30').disabled,false);
+});
+
+test('admin plan and event editors remain hidden until verified legacy mode; employee request forms remain available',async()=>{
+ const admin=scheduleUiHarness('admin');assert.equal(admin.n('editor').hidden,true);assert.equal(admin.n('event-form').hidden,true);
+ await admin.api.read();const s=admin.snapshot();s.inputMode='SHEET';await admin.reply(admin.sent[0],s);assert.equal(admin.n('editor').hidden,true);assert.equal(admin.n('event-form').hidden,true);assert.match(admin.n('availability').textContent,/正本シート/);
+ admin.events.pagehide();assert.equal(admin.n('editor').hidden,true);
+ const legacy=scheduleUiHarness('admin');await legacy.api.read();await legacy.reply(legacy.sent[0],legacy.snapshot());assert.equal(legacy.n('editor').hidden,false);
+ const employee=scheduleUiHarness();await employee.api.read();await employee.reply(employee.sent[0],employee.snapshot());assert.equal(employee.n('editor').hidden,false);
+ const html=fs.readFileSync(new URL('../workforce/admin-schedule.html',import.meta.url),'utf8');for(const id of ['compose','compose-nav','event-section'])assert.match(html,new RegExp('<[^>]+id="schedule-'+id+'"[^>]* hidden'));
 });
