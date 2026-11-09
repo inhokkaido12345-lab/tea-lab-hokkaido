@@ -20,8 +20,15 @@ test('在庫PWAに独自の端末保存・オフライン送信・未認証の�
   const app=read('app.js'),transport=read('employee-transport.js');
   assert.doesNotMatch(app+transport,/localStorage\.|sessionStorage\.|indexedDB\.|caches\.|serviceWorker\./);
   assert.equal(app.includes("fetch('/api/"),false);
-  assert.match(app,/初回棚卸未登録/);assert.match(app,/TLHアカウントと有効な従業員登録/);
+  assert.match(app,/在庫基準未登録/);assert.match(app,/TLHアカウントと有効な従業員登録/);
   assert.match(transport,/crypto\.subtle\.verify/);
   assert.match(transport,/responseKey/);assert.match(transport,/pagehide/);
   assert.match(transport,/workforce\/inventory\//);
+});
+
+test('計測は単発で閉じ、次袋を自動開始しない',()=>{
+ const app=read('app.js');
+ assert.match(app,/消費速度の計測を開始/);
+ assert.match(app,/FINISH_SAMPLE/);assert.match(app,/CANCEL_SAMPLE/);
+ assert.doesNotMatch(app,/使い切って次を開封/);
 });
