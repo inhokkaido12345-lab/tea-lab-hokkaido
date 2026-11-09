@@ -204,7 +204,7 @@
     n.file.addEventListener('change',()=>void previewFile(n.file.files?.[0]));n['import-apply'].addEventListener('click',applyImport);n['import-cancel'].addEventListener('click',()=>{if(!stopped&&!pending&&!uncertain){clearImport();controls();n.status.textContent='CSVの取込みを取り消しました。保存はしていません。';}});
     function sheetRequest(command){
       if(stopped||pending||uncertain||!snapshot||unsaved()||importPreview||importing||needReload||createReview)return;
-      if(command==='sheetCreate'){createReview=true;n['sheet-question'].textContent=snapshot.month+'用の入力タブを用意します。既にある月の入力は上書きしません。勤怠や確定シフトは変更しません。';controls();return;}
+      if(command==='sheetCreate'){createReview=true;n['sheet-question'].textContent=snapshot.month+'用の入力タブを用意します。月共通の「従業員メモ」も用意し、社員番号・氏名の参照と不足する従業員の行だけ更新します。既存の勤務・備考・継続メモは上書きしません。勤怠や確定シフトは変更しません。';controls();return;}
       void send({command,input:JSON.stringify({month:snapshot.month,audience:'admin'}),operationId:command==='sheetCreate'?random(16):''});
     }
     // ブラウザ標準confirmが表示されない端末でも、対象月の明示確認を画面内で完了させる。
