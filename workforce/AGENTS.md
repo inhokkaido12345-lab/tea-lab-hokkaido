@@ -1,4 +1,4 @@
-2026-11-09直接接続候補：sheetRead/sheetCreateは明示ボタンだけ。署名/snapshot/月/Google Sheets URLの固定形式を検査し、直接READでも既存の全件previewを共用。作成結果不明は同じID/月で再確認し、原簿保存へ変換しない。公開順はGAS→固定入力接続設定→画面。CSV互換と既存月の入力保持を維持。
+2026-11-09直接接続は承認後に公開/接続/12月空タブ作成・直接READ確認済み：sheetRead/sheetCreateは明示ボタンだけ。署名/snapshot/月/Google Sheets URLの固定形式を検査し、直接READでも既存の全件previewを共用。作成結果不明は同じID/月で再確認し、原簿保存へ変換しない。公開順はGAS→固定入力接続設定→画面。CSV互換と既存月の入力保持を維持。
 
 2026-11-09 CSV追加は承認後に両PR #27から公開済み：schedule-sheet.jsは純粋なCSV/差分だけ。CSVの公開識別子/対象月/日付/社員コードを全件照合し、プレビュー/明示反映だけでは通信しない。既存batchPlanの期待版/固定ID/認可/全行読戻しを維持。ファイルと名簿はStorage/URL/ログへ残さず退場で消去。SHEET-INPUT.mdと両repo検査/固定source参照を同期。
 
