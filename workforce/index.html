@@ -179,7 +179,7 @@
 </section></section></div>
 <!-- schedule-workspace:end -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
-<p><a class="guide-link" href="admin-guide.html">管理画面の使い方 →</a></p>
+<nav class="schedule-task-nav" aria-label="管理の案内"><a class="button secondary" href="admin-guide.html">管理画面の使い方</a><a class="button secondary" href="labor-policy.html">労務設定の要対応事項を確認 →</a></nav><p class="footnote">労務設定の未確定事項は専用ページで至急確認・確定してください。閲覧だけでは解消しません。</p>
 
 <!-- 管理内の切替は表示専用。保存ボタン/入力/再送状態は各controllerの担当。 -->
 <div id="manager-sections" class="manager-sections" role="group" aria-label="管理する項目">
@@ -303,8 +303,6 @@
 
     </div>
 </details></div>
-<!-- 管理の末尾。展開しても作業選択や各フォームを押し下げない。 -->
-<div id="manager-support-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><section id="labor-policy-section" class="card management-section" hidden><p class="eyebrow">至急確認</p><h2>労務設定の要対応事項</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>至急確認事項を読み込む</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section></div>
 <div id="more-tools-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab" hidden>    <details class="diagnostics">
       <summary>接続診断・開発用の試験</summary><p class="tool-intro">接続の確認や開発時の試験に使う補助機能です。普段の打刻・勤務記録の確認には使いません。</p>
 
@@ -403,7 +401,7 @@
 <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel"><span aria-hidden="true">◷</span>打刻</button>
 <button id="records-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="records-work-panel"><span aria-hidden="true">▤</span>記録</button>
 <button id="schedule-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="schedule-work-panel"><span aria-hidden="true">▦</span>シフト</button>
-<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel manager-test-panel manager-support-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
+<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel manager-test-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
 </nav><footer class="app-footer">TLH Work Time <span>UI2</span></footer>
 </div>
@@ -472,7 +470,6 @@
   <script src="schedule-workspace.js?v=20261109-workspace1"></script>
   <script src="layout.js?v=20261109-workspace1"></script>
   <script src="admin-access.js?v=20261108-batch1"></script>
-  <script src="labor-policy.js?v=20261105-store1"></script>
   <script>
     /**
      * TLH Work Time / LINE認証・TLH一般アカウント作成 診断画面 D8。
@@ -532,15 +529,15 @@
       if(name==='schedule'){scheduleWorkspace?.activate();}
       if(name==='records'){autoReads.together(['daily','monthly'],visible);}
       if(name==='more'){autoReads.once('account',visible);} // 初回だけ本人読取。タブの往復で重複送信しない。
-      if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);autoReads.once('labor',permitted);}
+      if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);}
     }
     const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
-    const laborPolicyUi = TlhLaborPolicy.init({gasUrl:GAS_URL,liff:window.liff});
     const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,autoLoad:false,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
+    // 別ページから#managerへ戻るときも、最新権限の確認成功後だけ管理タブを開く。
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);laborPolicyUi.setAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
+      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
     // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
     // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。

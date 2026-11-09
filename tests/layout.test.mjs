@@ -228,10 +228,10 @@ test('management categories retain inputs and pending state, hide unrelated form
  assert.equal(h.node('staff-name').value,'保持する架空名');assert.equal(h.node('staff-status').textContent,'処理中です。');assert.equal(h.node('staff-check').disabled,true);assert.equal(h.sent.length,before);
  h.click('more-tab');h.click('manager-tab');assert.equal(h.node('manager-registration-panel').hidden,false);assert.equal(h.node('manager-employees-choice').attributes['aria-pressed'],'true');
 });
-test('management choices stay closed for employees; labor checks are last after all business forms',async()=>{
+test('management choices stay closed for employees; labor review has a separate page',async()=>{
  const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
  assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,3);
- assert.ok(html.indexOf('id="labor-policy-section"')>html.indexOf('id="manager-test-panel"'));assert.ok(html.indexOf('id="labor-policy-section"')<html.indexOf('id="more-tools-panel"'));
+ assert.doesNotMatch(html,/id="labor-policy-section"|laborPolicyUi|src="labor-policy.js/);assert.match(html,/href="labor-policy.html"/);
 });
 
 test('employee shift activation cannot reveal or request administrator controls',async()=>{const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');h.click('schedule-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.node('schedule-admin-entry').hidden,true);assert.ok(!h.wire.some(r=>r.action==='bridgeScheduleV1'&&JSON.parse(r.input).audience==='admin'));});

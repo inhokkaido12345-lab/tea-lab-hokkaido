@@ -16,8 +16,7 @@ source = (root / 'index.html').read_text(encoding='utf-8')
 parts = {
     'manager': source[source.index('<div id="manager-tools-panel"'):source.index('<section id="staff-section"')]
         + source[source.index('<div id="manager-registration-panel"'):source.index('<!-- claim/発行')]
-        + source[source.index('<div id="manager-maintenance-panel"'):source.index('<div id="manager-test-panel"')]
-        + source[source.index('<div id="manager-support-panel"'):source.index('<div id="more-tools-panel"')],
+        + source[source.index('<div id="manager-maintenance-panel"'):source.index('<div id="manager-test-panel"')],
     'more': source[source.index('<div id="employee-registration-panel"'):source.index('<div id="manager-registration-panel"')]
         + source[source.index('<div id="more-tools-panel"'):source.index('</main>')],
 }
@@ -28,7 +27,7 @@ dest = root / 'design'
 dest.mkdir(exist_ok=True)
 for name, body in parts.items():
     body = re.sub(r'<(?:iframe|script)\b[\s\S]*?</(?:iframe|script)>', '', body)
-    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|manager-support-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
+    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
     if name.startswith('manager'):
         selected={'manager':'attendance','manager-employees':'employees','manager-schedule':'schedule'}[name]
         groups={'manager-attendance-panel':'attendance','manager-registration-panel':'employees','manager-maintenance-panel':'employees','schedule-admin-entry':'schedule'}

@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- 労務の要対応一覧の専用入口。既存の管理者認可・署名付きREADだけを使う。
+     削除すると点検入口がなくなるが、打刻原簿・設定・権限は変更されない。
+     変更時はlabor-policy-page.js/controller/ホームの入口/専用検査/READMEを同期する。 -->
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>労務設定の要対応事項 | TLH Work Time</title>
+<link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-store1">
+<script defer src="current-workplace.js?v=20261105-store2"></script>
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script defer src="auto-read.js?v=20261109-workspace1"></script>
+<script defer src="admin-access.js?v=20261108-batch1"></script>
+<script defer src="labor-policy.js?v=20261105-store1"></script>
+<script defer src="labor-policy-page.js?v=20261109-page1"></script>
+</head><body class="secondary-page">
+<header><strong>TLH Work Time</strong><a class="button secondary" href="index.html#manager">管理へ戻る</a></header>
+<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"></aside>
+<main><h1>労務設定の要対応事項</h1>
+<p>不明な設定は放置せず、確認資料・手続をそろえて至急確定してください。</p>
+<button id="labor-login" type="button" hidden>LINEログイン</button>
+<p id="admin-access-status" role="status" aria-live="polite">管理者権限の確認前です。</p>
+<iframe id="admin-access-frame" name="tlhAdminAccessFrame" title="管理者権限の確認応答" hidden></iframe>
+<section id="labor-policy-section" class="card management-section" hidden><p class="eyebrow">至急確認</p><h2>未確定事項と対応の確認</h2><p>不明な設定は放置せず、確認資料・手続をそろえて確定してください。</p><button id="labor-policy-check" type="button" disabled>要対応事項を更新</button><p id="labor-policy-status" role="status" aria-live="polite">状態未確認：至急確認してください。</p><p id="labor-policy-source" class="footnote"></p><div id="labor-policy-list"></div><p class="footnote">閲覧・既読で解消にはなりません。実際の出退勤は、警告の有無にかかわらず記録します。</p><iframe id="labor-policy-frame" name="tlhLaborPolicyFrame" title="管理者の労務設定点検応答" hidden></iframe></section></main></body></html>
