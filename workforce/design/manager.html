@@ -19,9 +19,10 @@
       <p class="tool-intro">新しい従業員を事前登録し、本人に渡す招待コードを発行します。LINE未登録でも、事前登録した時点からシフトの作成・確定公開に組み込めます。</p>
       <p class="footnote">本人のLINE登録を待つ必要はありません。シフトでは［未認証］と表示します。招待の期限が切れても従業員情報や予定は消えません。本人が登録する時に、同じ社員番号・氏名で招待を再発行できます。</p>
 <details class="tool-help"><summary>登録の流れ・管理者登録との違い</summary><p>管理者を追加する機能ではありません。</p>
-      <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p></details>
-      <button id="staff-check" class="bridge-button" type="button" disabled>従業員の登録フォームを表示</button>
-      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a class="button secondary" href="#preview-notice">登録手順の詳細</a></p>
+      <p class="footnote">① 社員番号・氏名を入力して招待を発行 → ② 本人が「その他」の招待欄で受け取る、の順です。</p></details>
+      <!-- 自動読取キュー専用。表示ボタンは不要だが、固定READの入口IDは削除しない。権限確認後だけフォームを表示する。 -->
+      <button id="staff-check" class="bridge-button" type="button" hidden disabled>登録権限を確認</button>
+      <p class="footnote">管理者権限の確認後、登録フォームを自動表示します。入力後の発行操作で初めて事前登録します。<a class="button secondary" href="#preview-notice">登録手順の詳細</a></p>
       <div id="staff-admin">
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
