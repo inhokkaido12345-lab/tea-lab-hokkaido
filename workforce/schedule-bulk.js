@@ -121,10 +121,12 @@
     }
     global.addEventListener('message',async event=>{
       const r=pending;if(stopped||!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
-      let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||stopped||pending!==r)return;
+      let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(stopped||pending!==r)return;
+      if(!valid){if(['sheetRead','sheetCreate'].includes(r.command)&&event.data?.type===TYPE&&event.data?.nonce===r.nonce)n.status.textContent='入力シートの応答の署名を確認できません。保存は行っていません。';return;}
       const d=event.data;let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}
         if(['sheetRead','sheetCreate'].includes(r.command)){
-          if(d.code!=='SCHEDULE_SHEET_READY'||!value||Object.keys(value).sort().join(',')!=='csv,month,sheet,snapshot,version'||value.version!==1||value.month!==JSON.parse(r.input).month||!model.validate(value.snapshot,value.month)||typeof value.csv!=='string'||value.csv.length>1000000||!value.sheet||Object.keys(value.sheet).sort().join(',')!=='created,url'||typeof value.sheet.created!=='boolean'||typeof value.sheet.url!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit#gid=\d+$/.test(value.sheet.url)||(r.command==='sheetCreate'&&value.csv!==''))return;
+          const problem=d.code!=='SCHEDULE_SHEET_READY'||!value||Object.keys(value).sort().join(',')!=='csv,month,sheet,snapshot,version'?'D1':value.version!==1||value.month!==JSON.parse(r.input).month?'D2':!model.validate(value.snapshot,value.month)?'D3':typeof value.csv!=='string'||value.csv.length>1000000?'D4':!value.sheet||Object.keys(value.sheet).sort().join(',')!=='created,url'||typeof value.sheet.created!=='boolean'?'D5':typeof value.sheet.url!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit#gid=\d+$/.test(value.sheet.url)?'D6':r.command==='sheetCreate'&&value.csv!==''?'D7':'';
+          if(problem){finish();clear();n.status.textContent='入力シートの応答形式を確認できません（確認番号 '+problem+'）。保存は行っていません。';return;}
           uncertain=null;finish();render(value.snapshot);n['sheet-open'].href=value.sheet.url;n['sheet-open'].hidden=false;
           if(r.command==='sheetRead'){try{showImport(global.TlhScheduleSheet.preview(value.csv,snapshot,scope()),true);}catch(error){n.status.textContent=error.message;controls();}}
           else n.status.textContent=value.sheet.created?'入力シートを作成しました。「入力シートを開く」から記入できます。':'この月の入力シートは作成済みです。既存の入力を保持しています。';
