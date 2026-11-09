@@ -47,7 +47,7 @@
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
      列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
-      <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a href="employee-help.html#punch" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
+      <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a class="button secondary" href="employee-help.html#punch" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
 
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
       <button id="punch-check" class="bridge-button" type="button">勤務状態を更新 ↻</button>
@@ -142,7 +142,7 @@
 <div class="bulk-pager"><button id="bulk-prev" type="button" disabled>前の従業員</button><span id="bulk-page"></span><button id="bulk-next" type="button" disabled>次の従業員</button></div>
 <p class="footnote">月末までは表を横にスクロールできます。氏名と日付の見出しは固定されます。25人を超える場合も、ページを切り替えて編集した内容をまとめて保存できます。</p>
 <div class="bulk-grid-wrap" tabindex="0" role="region" aria-label="月間シフト編集表"><table id="bulk-grid"><caption>氏名と日付を確認して勤務を入力</caption><thead id="bulk-head"></thead><tbody id="bulk-rows"></tbody></table></div>
-<fieldset id="bulk-detail" disabled><legend id="bulk-selected">勤務日のメモ</legend><p id="bulk-appointments"></p><label>全員に公開するメモ<textarea id="bulk-public-note" maxlength="1000" rows="2"></textarea></label><label>非公開メモ（本人・管理者だけ）<textarea id="bulk-note" maxlength="1000" rows="2"></textarea></label><a href="#schedule-manage-review" target="_blank" rel="noopener">用事・個別シフト編集を別画面で開く</a></fieldset>
+<fieldset id="bulk-detail" disabled><legend id="bulk-selected">勤務日のメモ</legend><p id="bulk-appointments"></p><label>全員に公開するメモ<textarea id="bulk-public-note" maxlength="1000" rows="2"></textarea></label><label>非公開メモ（本人・管理者だけ）<textarea id="bulk-note" maxlength="1000" rows="2"></textarea></label><a class="button secondary" href="#schedule-manage-review" target="_blank" rel="noopener">用事・個別シフト編集を別画面で開く</a></fieldset>
 </div><div class="bulk-savebar"><p id="bulk-count" hidden role="status" aria-live="polite">未保存の変更：0日分</p><label>確定済み期間の変更理由（該当する場合のみ必須）<textarea id="bulk-reason" maxlength="500" rows="2"></textarea></label><button id="bulk-save" type="button" hidden disabled>変更をまとめて保存</button><button id="bulk-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button></div>
 <iframe id="bulk-frame" name="tlhScheduleBulkFrame" title="月間シフトの署名付き応答" hidden></iframe>
 </section><section id="schedule-manage-review"><div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h2>希望の確認・締切・確定公開</h2></div></div>
@@ -155,7 +155,7 @@
 <p class="footnote">時刻は日本時間。希望の提出だけでは予定は確定しません。未設定の日を公休や0時間とみなしません。勤務予定は実際の打刻とは別です。</p>
 <p class="footnote">確定後も正本シートから変更できます。勤務変更は理由・本人同意・管理者承認の手順を経て反映します。</p>
 <nav class="schedule-task-nav" aria-label="シフト管理の作業"><a class="button secondary" id="schedule-admin-compose-nav" hidden href="#schedule-admin-compose">下書き作成</a><a class="button secondary" href="#schedule-admin-review">希望の確認</a><a class="button secondary" href="#schedule-admin-collection">受付設定</a><a class="button secondary" href="#schedule-admin-release">確定公開</a></nav>
-<section id="schedule-admin-compose" class="management-section" hidden><h2>シフトの下書きを作る</h2><p class="tool-intro">希望や本人のLINE登録を待たずに作成できます。従業員・日付を選び、勤務区間や休みを入力して保存してください。保存だけでは全員へ公開されません。</p><p class="footnote">［未認証］の従業員も選べます。候補にいない人は、<a href="./">管理 → 従業員の管理</a>で社員番号・氏名を事前登録してください。後からLINE登録しても同じ従業員と予定を引き継ぎます。確定公開後の変更案へのLINE同意は、本人登録後に行います。</p><fieldset id="schedule-admin-editor" disabled>
+<section id="schedule-admin-compose" class="management-section" hidden><h2>シフトの下書きを作る</h2><p class="tool-intro">希望や本人のLINE登録を待たずに作成できます。従業員・日付を選び、勤務区間や休みを入力して保存してください。保存だけでは全員へ公開されません。</p><p class="footnote">［未認証］の従業員も選べます。候補にいない人は、<a class="button secondary" href="./">管理 → 従業員の管理</a>で社員番号・氏名を事前登録してください。後からLINE登録しても同じ従業員と予定を引き継ぎます。確定公開後の変更案へのLINE同意は、本人登録後に行います。</p><fieldset id="schedule-admin-editor" disabled>
 <label >対象の従業員<select id="schedule-admin-employee"></select></label>
 <label>勤務開始日・希望の日<input id="schedule-admin-day" type="date"></label>
 <label hidden>申請の区分<select id="schedule-admin-kind"><option value="SHIFT_PREFERENCE">勤務・希望休・特記の希望</option><option value="ANNUAL_LEAVE">年休の申出（希望締切とは別）</option><option value="STATUTORY_LEAVE">制度上の休暇等の申出（希望締切とは別）</option></select></label>
@@ -193,7 +193,7 @@
 <a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
       <!-- 表示専用ヘルプは別画面へ。未確定打刻の元画面を閉じず、登録/打刻を自動実行しない。employee-help.htmlと同期。 -->
-      <p class="tool-intro"><a href="employee-help.html" target="_blank" rel="noopener">従業員向けヘルプ：打刻・訂正申請・初回登録（別画面）</a></p>
+      <p class="tool-intro"><a class="button secondary" href="employee-help.html" target="_blank" rel="noopener">従業員向けヘルプ：打刻・訂正申請・初回登録（別画面）</a></p>
       <section class="service-section" aria-labelledby="more-account-heading">
         <h2 id="more-account-heading"><span class="tool-step" aria-hidden="true">01</span>自分のアカウント</h2>
         <p class="tool-intro">このタブを開くと、社員コード・氏名・ログインの連携方法を自動表示します。</p>
@@ -206,7 +206,7 @@
         <div id="account-info-result" hidden aria-labelledby="account-info-heading">
           <h3 id="account-info-heading">登録情報</h3><dl id="account-info-fields" class="review-values"></dl>
         </div>
-        <details class="tool-help"><summary>登録情報が違う・LINEを変更したとき</summary><p>社員コードと違っている項目を管理者へお知らせください。LINEの再連携受付は停止中です。この表示から登録・連携・権限は変更しません。</p><a href="account-info.html">アカウント情報だけを別画面で開く</a></details>
+        <details class="tool-help"><summary>登録情報が違う・LINEを変更したとき</summary><p>社員コードと違っている項目を管理者へお知らせください。LINEの再連携受付は停止中です。この表示から登録・連携・権限は変更しません。</p><a class="button secondary" href="account-info.html">アカウント情報だけを別画面で開く</a></details>
         <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
       </section>
 <details class="enrollment-details">
@@ -230,7 +230,7 @@
 <details class="tool-help"><summary>登録の流れ・管理者登録との違い</summary><p>管理者を追加する機能ではありません。</p>
       <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p></details>
       <button id="staff-check" class="bridge-button" type="button">従業員の登録フォームを表示</button>
-      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a href="admin-guide.html#registration">登録手順の詳細</a></p>
+      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a class="button secondary" href="admin-guide.html#registration">登録手順の詳細</a></p>
       <div id="staff-admin" hidden>
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
@@ -238,7 +238,7 @@
             <label>氏名<input id="staff-name" aria-describedby="staff-name-help" required maxlength="80" autocomplete="off"></label>
             <label>入社日（任意）<input id="staff-hire-date" type="date"></label>
           </fieldset>
-          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a href="admin-guide.html#name-match">照合できないときの確認</a></p>
+          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a class="button secondary" href="admin-guide.html#name-match">照合できないときの確認</a></p>
           <button id="staff-issue" class="bridge-button" type="submit">従業員を事前登録して招待を発行</button>
         </form>
         <div id="staff-invite-box" hidden>
@@ -258,13 +258,13 @@
     <section id="maintenance-section" class="staff-section management-section" hidden>
       <h2><span class="tool-step" aria-hidden="true">02</span>従業員情報・利用停止</h2>
       <p class="tool-intro">氏名・入社日の訂正、退職などに伴う勤怠の利用停止を行います。</p>
-      <p><a href="staff-code-change.html">打刻履歴を保持して社員番号を変更する →</a></p>
+      <p><a class="button secondary" href="staff-code-change.html">打刻履歴を保持して社員番号を変更する →</a></p>
 <details class="tool-help"><summary>対象の確認方法・打刻訂正との違い</summary><p>出退勤や休憩の時刻は、「出退勤の管理」の「訂正と承認」から変更します。</p>
-      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="admin-guide.html#maintenance">訂正・停止の違いと手順</a></p></details>
+      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a class="button secondary" href="admin-guide.html#maintenance">訂正・停止の違いと手順</a></p></details>
       <form id="maintenance-target-form">
         <fieldset id="maintenance-target-fields" class="staff-fields">
           <label>対象の社員番号<select id="maintenance-code" required><option value="">従業員一覧を確認してください</option></select></label>
-          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a href="admin-guide.html#name-match">氏名照合の説明</a></p>
+          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a class="button secondary" href="admin-guide.html#name-match">氏名照合の説明</a></p>
           <label>現在の氏名<input id="maintenance-old-name" aria-describedby="maintenance-name-help" required maxlength="80" autocomplete="off"></label>
           <label>現在の入社日（未指定なら空欄）<input id="maintenance-old-date" type="date"></label>
         </fieldset>

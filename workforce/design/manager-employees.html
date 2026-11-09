@@ -21,7 +21,7 @@
 <details class="tool-help"><summary>登録の流れ・管理者登録との違い</summary><p>管理者を追加する機能ではありません。</p>
       <p class="footnote">① 登録フォームを表示 → ② 社員番号・氏名を入力して招待を発行 → ③ 本人が「その他」の招待欄で受け取る、の順です。</p></details>
       <button id="staff-check" class="bridge-button" type="button" disabled>従業員の登録フォームを表示</button>
-      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a href="#preview-notice">登録手順の詳細</a></p>
+      <p class="footnote">このボタンは権限の確認とフォームの表示だけです。入力後の発行操作で初めて事前登録します。<a class="button secondary" href="#preview-notice">登録手順の詳細</a></p>
       <div id="staff-admin">
         <form id="staff-issue-form">
           <fieldset id="staff-fields" class="staff-fields">
@@ -29,7 +29,7 @@
             <label>氏名<input id="staff-name" aria-describedby="staff-name-help" required maxlength="80" autocomplete="off" disabled></label>
             <label>入社日（任意）<input id="staff-hire-date" type="date" disabled></label>
           </fieldset>
-          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a href="#preview-notice">照合できないときの確認</a></p>
+          <p id="staff-name-help" class="footnote">登録済みの人の招待を再発行するときは、姓名の間の半角・全角スペース、有無・個数まで登録済みの氏名と完全一致させてください。入社日も登録内容に合わせます。<a class="button secondary" href="#preview-notice">照合できないときの確認</a></p>
           <button id="staff-issue" class="bridge-button" type="submit" disabled>従業員を事前登録して招待を発行</button>
         </form>
         <div id="staff-invite-box" hidden>
@@ -47,13 +47,13 @@
     <section id="maintenance-section" class="staff-section management-section">
       <h2><span class="tool-step" aria-hidden="true">02</span>従業員情報・利用停止</h2>
       <p class="tool-intro">氏名・入社日の訂正、退職などに伴う勤怠の利用停止を行います。</p>
-      <p><a href="#preview-notice">打刻履歴を保持して社員番号を変更する →</a></p>
+      <p><a class="button secondary" href="#preview-notice">打刻履歴を保持して社員番号を変更する →</a></p>
 <details class="tool-help"><summary>対象の確認方法・打刻訂正との違い</summary><p>出退勤や休憩の時刻は、「出退勤の管理」の「訂正と承認」から変更します。</p>
-      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a href="#preview-notice">訂正・停止の違いと手順</a></p></details>
+      <p class="footnote">社員を選び、現在の氏名・入社日を確認してから「対象を確認する」を押します。内容を読み取るだけで、まだ変更しません。<a class="button secondary" href="#preview-notice">訂正・停止の違いと手順</a></p></details>
       <form id="maintenance-target-form">
         <fieldset id="maintenance-target-fields" class="staff-fields">
           <label>対象の社員番号<select id="maintenance-code" required disabled><option value="">従業員一覧を確認してください</option></select></label>
-          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a href="#preview-notice">氏名照合の説明</a></p>
+          <p id="maintenance-name-help" class="footnote">現在の氏名は、姓名の間のスペースの種類・有無・個数まで登録内容と一致させてください。<a class="button secondary" href="#preview-notice">氏名照合の説明</a></p>
           <label>現在の氏名<input id="maintenance-old-name" aria-describedby="maintenance-name-help" required maxlength="80" autocomplete="off" disabled></label>
           <label>現在の入社日（未指定なら空欄）<input id="maintenance-old-date" type="date" disabled></label>
         </fieldset>

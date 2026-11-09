@@ -20,7 +20,7 @@
 <p class="footnote">時刻は日本時間。希望の提出だけでは予定は確定しません。未設定の日を公休や0時間とみなしません。勤務予定は実際の打刻とは別です。</p>
 <p class="footnote">確定後も正本シートから変更できます。勤務変更は理由・本人同意・管理者承認の手順を経て反映します。</p>
 <nav class="schedule-task-nav" aria-label="シフト管理の作業"><a class="button secondary" id="schedule-compose-nav" hidden href="#schedule-compose">下書き作成</a><a class="button secondary" href="#schedule-review">希望の確認</a><a class="button secondary" href="#schedule-collection">受付設定</a><a class="button secondary" href="#schedule-release">確定公開</a></nav>
-<section id="schedule-compose" class="management-section" hidden><h2>シフトの下書きを作る</h2><p class="tool-intro">希望や本人のLINE登録を待たずに作成できます。従業員・日付を選び、勤務区間や休みを入力して保存してください。保存だけでは全員へ公開されません。</p><p class="footnote">［未認証］の従業員も選べます。候補にいない人は、<a href="./">管理 → 従業員の管理</a>で社員番号・氏名を事前登録してください。後からLINE登録しても同じ従業員と予定を引き継ぎます。確定公開後の変更案へのLINE同意は、本人登録後に行います。</p><fieldset id="schedule-editor" disabled>
+<section id="schedule-compose" class="management-section" hidden><h2>シフトの下書きを作る</h2><p class="tool-intro">希望や本人のLINE登録を待たずに作成できます。従業員・日付を選び、勤務区間や休みを入力して保存してください。保存だけでは全員へ公開されません。</p><p class="footnote">［未認証］の従業員も選べます。候補にいない人は、<a class="button secondary" href="./">管理 → 従業員の管理</a>で社員番号・氏名を事前登録してください。後からLINE登録しても同じ従業員と予定を引き継ぎます。確定公開後の変更案へのLINE同意は、本人登録後に行います。</p><fieldset id="schedule-editor" disabled>
 <label >対象の従業員<select id="schedule-employee"></select></label>
 <label>勤務開始日・希望の日<input id="schedule-day" type="date"></label>
 <label hidden>申請の区分<select id="schedule-kind"><option value="SHIFT_PREFERENCE">勤務・希望休・特記の希望</option><option value="ANNUAL_LEAVE">年休の申出（希望締切とは別）</option><option value="STATUTORY_LEAVE">制度上の休暇等の申出（希望締切とは別）</option></select></label>

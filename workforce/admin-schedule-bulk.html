@@ -24,7 +24,7 @@
 <div class="bulk-pager"><button id="bulk-prev" type="button" disabled>前の従業員</button><span id="bulk-page"></span><button id="bulk-next" type="button" disabled>次の従業員</button></div>
 <p class="footnote">月末までは表を横にスクロールできます。氏名と日付の見出しは固定されます。25人を超える場合も、ページを切り替えて編集した内容をまとめて保存できます。</p>
 <div class="bulk-grid-wrap" tabindex="0" role="region" aria-label="月間シフト編集表"><table id="bulk-grid"><caption>氏名と日付を確認して勤務を入力</caption><thead id="bulk-head"></thead><tbody id="bulk-rows"></tbody></table></div>
-<fieldset id="bulk-detail" disabled><legend id="bulk-selected">勤務日のメモ</legend><p id="bulk-appointments"></p><label>全員に公開するメモ<textarea id="bulk-public-note" maxlength="1000" rows="2"></textarea></label><label>非公開メモ（本人・管理者だけ）<textarea id="bulk-note" maxlength="1000" rows="2"></textarea></label><a href="admin-schedule.html" target="_blank" rel="noopener">用事・個別シフト編集を別画面で開く</a></fieldset>
+<fieldset id="bulk-detail" disabled><legend id="bulk-selected">勤務日のメモ</legend><p id="bulk-appointments"></p><label>全員に公開するメモ<textarea id="bulk-public-note" maxlength="1000" rows="2"></textarea></label><label>非公開メモ（本人・管理者だけ）<textarea id="bulk-note" maxlength="1000" rows="2"></textarea></label><a class="button secondary" href="admin-schedule.html" target="_blank" rel="noopener">用事・個別シフト編集を別画面で開く</a></fieldset>
 </div><div class="bulk-savebar"><p id="bulk-count" hidden role="status" aria-live="polite">未保存の変更：0日分</p><label>確定済み期間の変更理由（該当する場合のみ必須）<textarea id="bulk-reason" maxlength="500" rows="2"></textarea></label><button id="bulk-save" type="button" hidden disabled>変更をまとめて保存</button><button id="bulk-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button></div>
 <iframe id="bulk-frame" name="tlhScheduleBulkFrame" title="月間シフトの署名付き応答" hidden></iframe>
 </main></body></html>
