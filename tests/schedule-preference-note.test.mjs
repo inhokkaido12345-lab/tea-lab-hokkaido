@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
+function saved(h,conflict){const s={...h.snapshot(),inputMode:'SHEET'};s.requests=[{requestId:'req_test',employeeCode:'SCH001',employeeName:'架空社員',revision:2,expectedPlanRevision:0,status:'APPROVED',kind:'SHIFT_PREFERENCE',submittedAt:s.serverNow,payload:{reason:'希望',decisionReason:'承認',sheetPreference:{version:1,conflict},plan:{day:'2026-11-05',periods:[],appointments:[],leave:{type:'PUBLIC_OFF',unit:'DAY',minutes:null,note:''},note:'',summary:{workIntervals:[],plannedGrossMinutes:0,plannedBreakMinutes:0,plannedWorkedMinutes:0}}}}];return s;}
+test('approved private-note notice stays on the request card after reload; other employees cannot receive it',async()=>{
+ for(const conflict of [false,true]){const h=scheduleUiHarness('admin'),s=saved(h,conflict);await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('requests')),conflict?/希望休と競合.*既存のシフト・予定は残しています/s:/非公開備考へ「希望休」を記入/);assert.equal(h.sent.length,1);const employee=scheduleUiHarness();assert.equal(employee.module.validate({...s,admin:false,employees:[],employeeCode:'OTHER'},s.month,false),false);}
+});
+test('invalid signed sheet-note metadata is rejected rather than presenting a false successful write',()=>{
+ const h=scheduleUiHarness('admin'),s=saved(h,false);for(const meta of [{version:2,conflict:false},{version:1,conflict:'false'},{version:1,conflict:false,url:'https://example.invalid'}]){const value=structuredClone(s);value.requests[0].payload.sheetPreference=meta;assert.equal(h.module.validate(value,s.month,true),false);}const pending=structuredClone(s);pending.requests[0].status='PENDING';assert.equal(h.module.validate(pending,s.month,true),false);
+});
