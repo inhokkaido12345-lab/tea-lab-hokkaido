@@ -15,8 +15,8 @@ export function scheduleBulkHarness(){
  const n=k=>{if(!nodes.has(k))nodes.set(k,make());return nodes.get(k);};n('month').value='2026-11';n('frame').contentWindow={};
  const window={top:null,confirm(text){questions.push(text);return confirm;},addEventListener(k,fn){events[k]=fn;}};window.top=window;
  const runtime={window,document:{currentScript:null,getElementById:id=>n(id.replace('bulk-','')),createElement:make,body:make()},crypto:webcrypto,Uint8Array,TextEncoder,Date,Intl,setTimeout(fn){timers.set(++seq,fn);return seq;},clearTimeout(id){timers.delete(id);}};
- for(const file of ['schedule-view.js','schedule-report.js','schedule.js','schedule-bulk-model.js','schedule-bulk.js'])vm.runInNewContext(fs.readFileSync(new URL('../../workforce/'+file,import.meta.url),'utf8'),runtime,{filename:file});
- const api=window.TlhScheduleBulk.init({gasUrl:'https://offline.invalid/exec',liff:{getIDToken:()=> 'fake.jwt.proof'}});
+ for(const file of ['schedule-view.js','schedule-report.js','schedule.js','schedule-bulk-model.js','schedule-sheet.js','schedule-bulk.js'])vm.runInNewContext(fs.readFileSync(new URL('../../workforce/'+file,import.meta.url),'utf8'),runtime,{filename:file});
+ const api=window.TlhScheduleBulk.init({gasUrl:'https://offline.invalid/exec',scope:{organizationId:'org_example',workplaceId:'wp_example'},liff:{getIDToken:()=> 'fake.jwt.proof'}});
  function walk(node){return[node,...node.children.flatMap(walk)];}
  function cell(code,day){const value=walk(n('rows')).find(x=>x.tagName==='textarea'&&x.attrs['aria-label']?.includes('（'+code+'） '+day));if(!value)throw Error('missing cell '+code+' '+day);return value;}
  return{api,n,sent,events,timers,questions,window,model:window.TlhScheduleBulkModel,cell,

@@ -1,3 +1,5 @@
+/* CSVプレビューも同じパレット。セル内改行はそのまま見せ、変更前後の確認を省かない。 */
+.bulk-sheet-import{border-block:1px solid var(--line,#ccd1ce);margin-block:24px;padding-block:20px}.bulk-sheet-import ol{line-height:1.8}.bulk-sheet-import input[type=file]{max-width:100%}#bulk-import-preview table{width:100%;min-width:650px}#bulk-import-preview td{white-space:pre-wrap;vertical-align:top;padding:12px}#bulk-import-preview th{padding:12px;background:#2f5452;color:#fff}#bulk-import-preview button{margin:8px}
 /* 月型表の見た目だけ。個別セルの入力値/保存/権限はJSとGAS。固定列は氏名、固定行は日付。
    魔改造: 幅は--bulk-day-width、文字は共通fontを継承。判定色だけで状態を伝えずラベルも残す。 */
 .bulk-page main{max-width:1500px;width:calc(100% - 32px);margin:24px auto}.bulk-toolbar,.bulk-pager{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:20px 0}.bulk-toolbar label{margin:0}.bulk-grid-wrap{max-height:65vh;overflow:auto;border:1px solid var(--line,#ccd1ce);margin-block:16px;--bulk-day-width:142px}.bulk-grid-wrap:focus{outline:2px solid #2f5452}

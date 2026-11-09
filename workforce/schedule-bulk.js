@@ -17,17 +17,21 @@
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,ACTION,d.command,d.nonce,d.code,d.data].join('\n')));
   }
   function init(options){
-    const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login'].map(id=>[id,document.getElementById('bulk-'+id)]));
+    const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','template','file','import-preview','import-summary','import-rows','import-apply','import-cancel'].map(id=>[id,document.getElementById('bulk-'+id)]));
     let snapshot=null,pending=null,uncertain=null,stopped=false,page=0,selected=null,needReload=false;
     const drafts=new Map(),texts=new Map(),errors=new Map(),cells=new Map();
+    let importPreview=null,importing=false;
+    const scope=()=>options.scope||global.TlhCurrentWorkplace?.config;
     function el(tag,text,parent){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;parent?.appendChild(node);return node;}
     function people(){return snapshot?.halves.FIRST.employees||[];}
     function current(code,day){return drafts.get(model.key(code,day))||model.input(model.oldPlan(snapshot,code,day)?.plan);}
     function unsaved(){try{return !!errors.size||!!currentPayload()?.changes.length;}catch(_e){return drafts.size>0;}}
     function currentPayload(){return snapshot?model.payload(snapshot,drafts,n.reason.value):null;}
     function controls(){
-      const locked=stopped||!!pending||!!uncertain||!snapshot;
-      n.status.setAttribute('aria-busy',String(!!pending));n.month.disabled=stopped||!!pending||!!uncertain;n.load.disabled=stopped||!!pending||!!uncertain;
+      const locked=stopped||!!pending||!!uncertain||!snapshot||importing||!!importPreview;
+      n.status.setAttribute('aria-busy',String(!!pending||importing));n.month.disabled=stopped||!!pending||!!uncertain||importing||!!importPreview;n.load.disabled=n.month.disabled;
+      n.template.disabled=locked||needReload;n.file.disabled=locked||unsaved()||needReload;
+      n['import-apply'].disabled=stopped||!!pending||!!uncertain||!importPreview?.changes.length;n['import-cancel'].disabled=stopped||!!pending||!!uncertain;
       n.prev.disabled=locked||page===0;n.next.disabled=locked||(page+1)*PAGE_SIZE>=people().length;
       n.detail.disabled=locked||!selected;n.reason.disabled=locked;
       for(const cell of cells.values())cell.disabled=locked;
@@ -35,7 +39,8 @@
       n.count.textContent='未保存の変更：'+count+'日分'+(errors.size?' / 入力エラー：'+errors.size+'件':'');
       n.save.disabled=locked||needReload||!!errors.size||count===0||count>500;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
     }
-    function clear(){snapshot=null;drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';controls();}
+    function clearImport(){importPreview=null;n.file.value='';n['import-preview'].hidden=true;n['import-rows'].replaceChildren();n['import-summary'].textContent='';}
+    function clear(){snapshot=null;clearImport();drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';controls();}
     function selectCell(code,day){
       selected={code,day};const person=people().find(p=>p.employeeCode===code),p=current(code,day);
       n.selected.textContent=(person?.employeeName||code)+'（'+code+'） '+day;
@@ -73,6 +78,7 @@
       n.page.textContent=people().length?(page*PAGE_SIZE+1)+'〜'+Math.min((page+1)*PAGE_SIZE,people().length)+'人 / 全'+people().length+'人':'有効な従業員がいません。先に事前登録してください。';controls();
     }
     function render(value){
+      clearImport();
       snapshot=value;page=0;needReload=false;drafts.clear();texts.clear();errors.clear();selected=null;n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';
       const labels={NOT_OPEN:'未設定',DRAFT:'下書き',COLLECTING:'希望受付中',PUBLISHED:'確定済（変更は本人同意待ち）'};
       n.phases.textContent=['FIRST','SECOND'].map((part,i)=>(i?'後半':'前半')+'：'+labels[value.halves[part].phase]+(value.halves[part].deadline?' / 希望締切 '+new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',dateStyle:'short',timeStyle:'short'}).format(new Date(value.halves[part].deadline)):'' )).join('　｜　');renderGrid();
@@ -91,13 +97,13 @@
       document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     async function load(){
-      if(pending||uncertain||stopped)return;
+      if(pending||uncertain||stopped||importing||importPreview)return;
       if(unsaved()&&!global.confirm('未保存の入力を破棄し、最新の状態を読み込みます。続けますか？')){if(snapshot)n.month.value=snapshot.month;return;}
       try{model.days(n.month.value);}catch(error){n.status.textContent=error.message;return;}
       clear();await send({command:'batchRead',input:JSON.stringify({month:n.month.value,audience:'admin'}),operationId:''});
     }
     function save(){
-      if(pending||uncertain||stopped||!snapshot||needReload||errors.size)return;
+      if(pending||uncertain||stopped||!snapshot||needReload||errors.size||importing||importPreview)return;
       try{
         const payload=currentPayload();if(!payload.changes.length)return;
         const published=payload.changes.filter(c=>snapshot.halves[model.half(c.day)].phase==='PUBLISHED').length;
@@ -121,13 +127,38 @@
       }
       n.status.textContent=messages[d.code];
     });
+    /** CSVは台帳ではない。ファイル選択/プレビュー/反映はローカルだけで、saveだけが既存batchPlanへ送信する。 */
+    async function previewFile(file){
+      if(stopped||pending||uncertain||importing||importPreview||!snapshot||needReload||unsaved())return;
+      const source=snapshot;importing=true;controls();
+      try{
+        if(!file||file.size>global.TlhScheduleSheet.MAX_BYTES)throw Error('UTF-8のCSV（2MB以内）を選んでください。');
+        const text=await file.text();if(stopped||snapshot!==source)return;
+        const result=global.TlhScheduleSheet.preview(text,source,scope());
+        importPreview=result;n['import-rows'].replaceChildren();
+        for(const change of result.changes){const tr=el('tr',undefined,n['import-rows']);for(const text of [change.employeeCode+'（'+change.employeeName+'）',change.day,change.before,change.after,change.published?'本人同意待ちの変更案':'下書き'])el('td',text,tr);}
+        n['import-summary'].textContent=result.month+' / 変更 '+result.changes.length+'日分 / 空欄読飛ばし '+result.blanks+' / 同内容 '+result.unchanged+'。まだ保存していません。';
+        n['import-preview'].hidden=false;n.status.textContent='変更前後を確認し「この内容を編集表へ反映」を押してください。保存・確定公開は別の操作です。';
+      }catch(error){if(!stopped)n.status.textContent=error.message;}
+      finally{importing=false;n.file.value='';controls();}
+    }
+    function applyImport(){
+      if(stopped||pending||uncertain||!importPreview)return;
+      for(const change of importPreview.changes){const k=model.key(change.employeeCode,change.day);drafts.set(k,change.plan);texts.set(k,change.after);}
+      clearImport();renderGrid();n.status.textContent='CSVの変更を編集表へ反映しました。内容を確認し「変更をまとめて保存」を押してください。まだ保存していません。';
+    }
+    n.template.addEventListener('click',()=>{
+      if(stopped||pending||uncertain||!snapshot||importing||importPreview||needReload)return;
+      try{const text=global.TlhScheduleSheet.template(snapshot,scope()),url=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'})),a=el('a');a.href=url;a.download='TLH-shift-input-'+snapshot.month+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);n.status.textContent='この月の空の入力ひな形を保存しました。既存のシフトは含めず、空欄は取込み時に読み飛ばします。';}catch(error){n.status.textContent=error.message;}
+    });
+    n.file.addEventListener('change',()=>void previewFile(n.file.files?.[0]));n['import-apply'].addEventListener('click',applyImport);n['import-cancel'].addEventListener('click',()=>{if(!stopped&&!pending&&!uncertain){clearImport();controls();n.status.textContent='CSVの取込みを取り消しました。保存はしていません。';}});
     n.load.addEventListener('click',()=>void load());n.month.addEventListener('change',()=>void load());n.save.addEventListener('click',save);
     n.retry.addEventListener('click',()=>{if(uncertain&&!pending&&!stopped)void send({...uncertain});});
     n.prev.addEventListener('click',()=>{if(!pending&&!uncertain&&page>0){page--;renderGrid();}});n.next.addEventListener('click',()=>{if(!pending&&!uncertain&&(page+1)*PAGE_SIZE<people().length){page++;renderGrid();}});
     for(const id of ['note','public-note'])n[id].addEventListener('input',()=>{if(!selected||pending||uncertain||stopped)return;const p=current(selected.code,selected.day);p.note=n.note.value;if(n['public-note'].value)p.publicNote=n['public-note'].value;else delete p.publicNote;drafts.set(model.key(selected.code,selected.day),p);controls();});
     global.addEventListener('beforeunload',event=>{if(!stopped&&(unsaved()||uncertain||pending?.command==='batchPlan')){event.preventDefault();event.returnValue='';}});
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();});controls();
-    return Object.freeze({load});
+    return Object.freeze({load,previewFile});
   }
   global.TlhScheduleBulk=Object.freeze({init,verify});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
