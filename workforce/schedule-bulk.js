@@ -163,7 +163,7 @@
       importPreview=result;directImport=direct;n['import-rows'].replaceChildren();
       for(const change of result.changes){const tr=el('tr',undefined,n['import-rows']);for(const text of [change.employeeCode+'（'+change.employeeName+'）',change.day,change.before,change.after,change.published?'本人同意待ちの変更案':'下書き'])el('td',text,tr);}
       for(const change of result.eventDetails||[]){const tr=el('tr',undefined,n['import-rows']);for(const text of ['共有イベント',change.day,change.before,change.after,change.published?'取込み時に共有イベントを更新':'下書き'])el('td',text,tr);}
-      n['import-summary'].textContent=result.month+' / 変更 '+result.changes.length+'日分 / 空欄読飛ばし '+result.blanks+' / 同内容 '+result.unchanged+'。まだ保存していません。';
+      n['import-summary'].textContent=result.month+' / 変更 '+result.changes.length+'日分'+(sheetMode()?'':' / 空欄読飛ばし '+result.blanks)+' / 同内容 '+result.unchanged+'。まだ保存していません。';
       n['import-apply'].textContent=direct?'確認した内容を一括保存':'この内容を編集表へ反映';n['import-preview'].hidden=false;
       n.status.textContent=direct?'入力シートを直接読み込みました。変更前後を確認して一括保存してください。':'変更前後を確認し「この内容を編集表へ反映」を押してください。保存・確定公開は別の操作です。';controls();
     }
