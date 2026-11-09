@@ -28,7 +28,7 @@
   <!-- PWA準備：起動名/範囲/静的アイコンだけ。オフライン保存やService Workerは導入しない。PWA.md参照。 -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#2F5452">
-  <title>TLH 勤怠管理</title>
+  <title>TLH Work Time | 勤怠・シフト管理</title>
 
   <!--
     LINE公式のLIFF SDK。
@@ -39,7 +39,7 @@
   <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261105-store1"><link rel="stylesheet" href="schedule.css?v=20261104-periods">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
-<header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>勤怠管理</span></a><span class="account-label">LINEログイン<span>TLH Workforce</span></span></header>
+<header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>Work Time</span></a><span class="account-label">LINEログイン<span>勤怠・シフト管理</span></span></header>
 <aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
 <main><p id="admin-access-status" class="footnote" role="status" aria-live="polite">管理者権限は未確認です。</p><p id="staff-load-status" aria-busy="true" class="session-notice" role="status">LINEログインを準備しています。</p>
 <button id="home-line-login" type="button" class="bridge-button" hidden disabled>LINEログイン</button>
@@ -350,7 +350,7 @@
 <button id="schedule-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="schedule-work-panel"><span aria-hidden="true">▦</span>シフト</button>
 <button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel schedule-admin-entry manager-registration-panel manager-maintenance-panel manager-test-panel manager-support-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
-</nav><footer class="app-footer">TLH Workforce <span>UI2</span></footer>
+</nav><footer class="app-footer">TLH Work Time <span>UI2</span></footer>
 </div>
   <!--
     HTML formのtargetとなるiframe。通信結果の表示には使わない。
@@ -416,7 +416,7 @@
   <script src="labor-policy.js?v=20261105-store1"></script>
   <script>
     /**
-     * TLH Workforce / LINE認証・TLH一般アカウント作成 診断画面 D8。
+     * TLH Work Time / LINE認証・TLH一般アカウント作成 診断画面 D8。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。
