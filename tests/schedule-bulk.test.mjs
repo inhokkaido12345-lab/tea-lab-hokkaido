@@ -1,5 +1,16 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {scheduleBulkHarness,bulkSnapshot} from './helpers/schedule-bulk-harness.mjs';
 const setup=async count=>{const h=scheduleBulkHarness();await h.api.load();await h.reply(h.sent[0],bulkSnapshot(count));return h;};
+test('plan index preserves first-match and half boundaries and a new snapshot drops removed plans',()=>{
+ const h=scheduleBulkHarness(),m=h.model,s=bulkSnapshot(1),first={employeeCode:'EMP001',day:'2026-11-01',revision:2,plan:m.parse('公休')};
+ s.halves.FIRST.drafts=[first,{...first,revision:3},{...first,day:'2026-11-16'}];
+ s.halves.SECOND.drafts=[{...first,day:'2026-11-16',revision:4}];
+ const find=m.planLookup(s);for(const day of m.days(s.month))assert.equal(find('EMP001',day),m.oldPlan(s,'EMP001',day));
+ assert.equal(find('EMP001',first.day),first);assert.equal(find('OTHER',first.day),undefined);
+ const fresh=m.planLookup(bulkSnapshot(1));assert.equal(fresh('EMP001',first.day),undefined);
+ const changes=new Map([[m.key('EMP001',first.day),m.input(first.plan)]]);assert.equal(m.payload(s,changes,'').changes.length,0);
+ changes.set(m.key('EMP001',first.day),m.parse('有給'));assert.equal(m.payload(s,changes,'').changes[0].expectedPlanRevision,2);
+ changes.set(m.key('EMP001','2026-11-16'),m.parse('有給'));assert.deepEqual(Array.from(m.payload(s,changes,'').changes,c=>c.expectedPlanRevision),[2,4]);
+});
 test('five staff by 15 days edit without a request per cell; one save carries exactly 75 changed plans',async()=>{
  const h=await setup(5);assert.equal(h.sent.length,1);for(let person=1;person<=5;person++)for(let day=1;day<=15;day++)h.edit('EMP'+String(person).padStart(3,'0'),'2026-11-'+String(day).padStart(2,'0'),'9:00-18:00/60');
  assert.equal(h.sent.length,1);assert.equal(h.n('save').disabled,false);assert.match(h.n('count').textContent,/75日分/);h.click('save');assert.equal(h.sent.length,2);

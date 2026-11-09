@@ -46,7 +46,8 @@
   const version=rows[0]?.[0],withNotes=version===VERSION;
   if(![VERSION,'TLH_SHIFT_INPUT_V1'].includes(version)||!exact(rows[0],[version,snapshot.month,scope.organizationId,scope.workplaceId]))throw Error('CSVの形式・対象月・会社・店舗が一致しません。この店舗のひな形を使ってください。');
   if(!exact(rows[1],['社員番号','氏名',...days])||!exact(rows[2],['曜日','',...weekdays(days)]))throw Error('日付・曜日の見出しを変更せず、対象月のひな形を使ってください。');
-  const people=new Map(snapshot.halves.FIRST.employees.map(p=>[p.employeeCode,p])),seen=new Set(),changes=[];let blanks=0,unchanged=0;
+  // 旧CSV互換でも日×社員ごとに全予定を検索し直さない。索引はこの変換中だけで破棄する。
+  const people=new Map(snapshot.halves.FIRST.employees.map(p=>[p.employeeCode,p])),findPlan=model.planLookup(snapshot),seen=new Set(),changes=[];let blanks=0,unchanged=0;
   // V2は勤務/公開/非公開の3行を一組で検査。旧V1は1行のまま互換読取し、備考は保持する。
   // ラベル違いを通常勤務へ推測しない。公開と非公開の取り違えは全件停止する。
   for(let r=3;r<rows.length;r+=withNotes?3:1){
@@ -61,7 +62,7 @@
    if(group.some(line=>line.slice(width).some(v=>v.trim())))throw Error((r+1)+'行目：月末より右に入力があります。');
    // 氏名は目視補助のみ。照合は完全な社員コード。行の並べ替え/姓名の空白で別人にしない。
    for(let i=0;i<days.length;i++){
-    const value=row[i+2]||'',day=days[i],base=model.oldPlan(snapshot,code,day)?.plan;
+    const value=row[i+2]||'',day=days[i],base=findPlan(code,day)?.plan;
     const publicText=withNotes?(group[1][i+2]||''):'',privateText=withNotes?(group[2][i+2]||''):'';
     if(!value.trim()&&!publicText.trim()&&!privateText.trim()){blanks++;continue;}
     try{
