@@ -1,6 +1,6 @@
 /**
  * 月型入力の純粋な変換。通信/DOM/認可/保存は行わず、表示文字列⇄既存plan入力を変換する。
- * 削除影響: 月型編集だけ停止。既存の個別編集と原簿は別。業務の最終検査はGAS Model。
+ * 削除影響: 正本取込みの月日検査と旧環境の差分/CSV変換が停止。原簿保存の最終検査はGAS。
  * 魔改造: 入力記号/期間型はhelp・GAS Model・拒否/日跨ぎ/上書き検査を同時変更する。
  * 初歩: 空欄と公休は別。全日休暇を勝手に推定せず、既存の用事/非公開メモは保持する。
  */
@@ -44,17 +44,32 @@
     }catch(_e){return false;}
   }
   function oldPlan(snapshot,code,day){return snapshot.halves[half(day)].drafts.find(p=>p.employeeCode===code&&p.day===day);}
+  /**
+   * 取得済みの両半月を「社員番号×日」の索引へ変換する表示用関数。認可や保存の代用ではない。
+   * 一般化: N件を一度だけ走査し、セルごとの全件検索を避ける。重複時は旧findと同じ先頭行。
+   * 魔改造: 対象キーを変えるならkey/oldPlan/CSV/差分試験も同期する。返信の検査後だけ利用。
+   * 呼出元が返信ごと・変換ごとに作り直す。グローバル/Storageへ保持せず、失権後に再利用しない。
+   */
+  function planLookup(snapshot){
+    const plans=new Map();
+    for(const part of ['FIRST','SECOND'])for(const row of snapshot.halves[part].drafts){
+      if(half(row.day)!==part)continue;
+      const target=key(row.employeeCode,row.day);if(!plans.has(target))plans.set(target,row);
+    }
+    return(code,day)=>plans.get(key(code,day));
+  }
   /** Mapには変更したセルだけ。未入力日を0時間や公休の行として一括作成しない。 */
   function payload(snapshot,drafts,reason){
-    const employees=new Set(snapshot.halves.FIRST.employees.map(p=>p.employeeCode)),calendar=days(snapshot.month),changes=[];
+    // 空の入力や単一セルのために全予定の索引を作らない。複数セルの変換中だけ利用する。
+    const employees=new Set(snapshot.halves.FIRST.employees.map(p=>p.employeeCode)),calendar=new Set(days(snapshot.month)),findPlan=drafts.size>1?planLookup(snapshot):(code,day)=>oldPlan(snapshot,code,day),changes=[];
     for(const [target,p]of drafts){
-      const [employeeCode,day]=target.split('|');if(!employees.has(employeeCode)||!calendar.includes(day))throw Error('対象の従業員・日付を確認してください。');
-      const old=oldPlan(snapshot,employeeCode,day);
+      const [employeeCode,day]=target.split('|');if(!employees.has(employeeCode)||!calendar.has(day))throw Error('対象の従業員・日付を確認してください。');
+      const old=findPlan(employeeCode,day);
       if(JSON.stringify(input(old?.plan))===JSON.stringify(input(p)))continue;
       changes.push({employeeCode,day,expectedPlanRevision:snapshot.halves[half(day)].phase==='PUBLISHED'?snapshot.halves[half(day)].monthRevision:old?.revision||0,plan:input(p)});
     }
     if(changes.length>500)throw Error('一度の保存は変更500日分までです。');
     return{month:snapshot.month,audience:'admin',expectedRevisions:{FIRST:snapshot.halves.FIRST.monthRevision,SECOND:snapshot.halves.SECOND.monthRevision},changes,reason};
   }
-  global.TlhScheduleBulkModel=Object.freeze({key,days,half,input,format,parse,validate,oldPlan,payload});
+  global.TlhScheduleBulkModel=Object.freeze({key,days,half,input,format,parse,validate,oldPlan,planLookup,payload});
 })(window);

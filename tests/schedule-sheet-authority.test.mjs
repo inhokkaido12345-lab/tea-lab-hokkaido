@@ -1,7 +1,18 @@
 import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
+import {measureScheduleImport} from '../scripts/measure-schedule-import.mjs';
 import fs from 'node:fs';import test from 'node:test';import assert from 'node:assert/strict';import {scheduleBulkHarness,bulkSnapshot} from './helpers/schedule-bulk-harness.mjs';
 function fixture(){const h=scheduleBulkHarness(),s=bulkSnapshot(1);for(const p of ['FIRST','SECOND'])s.halves[p].inputMode='SHEET';return{h,s};}
 function response(h,s){const plan={day:'2026-11-01',...h.model.parse('公休')};return{version:1,month:s.month,snapshot:s,csv:'',sheet:{url:'https://docs.google.com/spreadsheets/d/fake-sheet/edit#gid=123',created:false},authority:{sourceDigest:'a'.repeat(64),targetDigest:'b'.repeat(64),preview:{month:s.month,changes:[{employeeCode:'EMP001',employeeName:'架空社員1',day:plan.day,before:'勤務あり',after:'公休',workText:'公休',plan,published:false,expectedPlanRevision:0}],blanks:29,unchanged:29,eventChanges:0,eventDetails:[]}}};}
+
+test('large signed import builds the calendar once and indexed lookup preserves every prior result',async()=>{
+ const result=await measureScheduleImport();assert.equal(result.calendarBuilds.after,1);assert.equal(result.planInspections.after,480);
+});
+
+test('indexed calendar still rejects out-of-month, duplicate or incorrect half event/change entries',async()=>{
+ for(const mutate of [v=>v.authority.preview.changes[0].day='2026-11-31',v=>v.authority.preview.changes.push({...v.authority.preview.changes[0]}),v=>{v.authority.preview.eventChanges=1;v.authority.preview.eventDetails=[{day:'2026-12-01',before:'',after:'催事',published:false}];}]){
+  const{h,s}=fixture();await h.api.load();await h.reply(h.sent[0],s);h.click('sheet-read');const v=response(h,s);mutate(v);await h.reply(h.sent[1],v,'SCHEDULE_SHEET_READY');assert.equal(h.n('import-preview').hidden,true);
+ }
+});
 
 test('source mode hides manual editing and CSV; import sends only authenticated source/target digests and stable retry, never a browser plan',async()=>{
  const{h,s}=fixture();await h.api.load();await h.reply(h.sent[0],s);assert.equal(h.n('manual').hidden,true);assert.equal(h.n('csv-tools').hidden,true);assert.equal(h.n('file').disabled,true);assert.equal(h.n('save').hidden,true);h.click('save');assert.equal(h.sent.length,1);
