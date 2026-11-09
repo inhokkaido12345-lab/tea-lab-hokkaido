@@ -51,7 +51,7 @@
     // 同一タブの本人/管理者をIDと返信iframeごと分離。defaultは既存単独ページと互換。
     const byId=id=>document.getElementById(id.replace(/^schedule-/,options.idPrefix||'schedule-'));
     const n=Object.fromEntries(ids.map(k=>[k,byId('schedule-'+k)]));
-    const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false;const periods=[],appointments=[];
+    const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function canRequest(){
       if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
@@ -75,19 +75,19 @@
       reportUi.setEnabled(!locked&&snapshot?.phase==='PUBLISHED');
       options.onNavigationLock?.(stopped||!!pending||!!uncertain);
     }
-    function clear(){snapshot=null;monthSnapshots=null;const banner=admin?null:byId('schedule-request-deadline');if(banner)banner.textContent='希望休の締切を確認しています。';reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
+    function clear(){dirtyEditor=false;snapshot=null;monthSnapshots=null;const banner=admin?null:byId('schedule-request-deadline');if(banner)banner.textContent='希望休の締切を確認しています。';reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function field(parent,label,type,value=''){const l=el('label',label,parent),i=el('input',undefined,l);i.type=type;i.value=value;return i;}
     function select(parent,label,values,value){const l=el('label',label,parent),s=el('select',undefined,l);for(const [v,title]of values){const o=el('option',title,s);o.value=v;}s.value=value;return s;}
     function period(value){
       if(periods.length>=10)return;const row=el('div',undefined,n.periods);row.className='schedule-period';
       const r={row,start:field(row,'出勤','time',value?.start),end:field(row,'退勤','time',value?.end),next:select(row,'退勤日',[['false','当日'],['true','翌日']],String(value?.endNextDay||false)),rest:field(row,'予定休憩（分）','number',String(value?.breakMinutes||0))};r.rest.min='0';r.rest.max='1440';
-      const remove=el('button','この区間を外す',row);remove.type='button';remove.className='text-button';remove.addEventListener('click',()=>{if(pending||uncertain||stopped)return;periods.splice(periods.indexOf(r),1);row.remove();});periods.push(r);
+      const remove=el('button','この区間を外す',row);remove.type='button';remove.className='text-button';remove.addEventListener('click',()=>{if(pending||uncertain||stopped)return;dirtyEditor=true;periods.splice(periods.indexOf(r),1);row.remove();});periods.push(r);
     }
     function appointment(value){
       if(appointments.length>=20)return;const row=el('div',undefined,n.appointments);row.className='schedule-period';
       const r={row,title:field(row,'用事の名称','text',value?.title),location:field(row,'場所','text',value?.location),start:field(row,'開始（任意）','time',value?.start),end:field(row,'終了（任意）','time',value?.end),next:select(row,'終了日',[['false','当日'],['true','翌日']],String(value?.endNextDay||false)),counts:select(row,'勤務への算入',[['true','勤務に含める'],['false','勤務に含めない']],String(value?.countsAsWork??true)),required:select(row,'会社の指示・拘束',[['unknown','未確認'],['true','あり'],['false','なし']],value?.requiredByEmployer===null||value?.requiredByEmployer===undefined?'unknown':String(value.requiredByEmployer)),classification:field(row,'算入判定の根拠','text',value?.classificationReason)};
-      const remove=el('button','この用事を外す',row);remove.type='button';remove.className='text-button';remove.addEventListener('click',()=>{if(pending||uncertain||stopped)return;appointments.splice(appointments.indexOf(r),1);row.remove();});appointments.push(r);
+      const remove=el('button','この用事を外す',row);remove.type='button';remove.className='text-button';remove.addEventListener('click',()=>{if(pending||uncertain||stopped)return;dirtyEditor=true;appointments.splice(appointments.indexOf(r),1);row.remove();});appointments.push(r);
     }
     function fill(p){periods.length=0;appointments.length=0;n.periods.replaceChildren();n.appointments.replaceChildren();n.leave.value=p?.leave.type||(admin?'NONE':'PUBLIC_OFF');n.note.value=p?.note||'';n['public-note'].value=p?.publicNote||'';(p?.periods||[]).forEach(period);(p?.appointments||[]).forEach(appointment);}
     function selected(){return snapshot?.drafts.find(p=>p.employeeCode===n.employee.value&&p.day===n.day.value);}
@@ -104,7 +104,7 @@
       // 一般化: 一つの保存モデルから複数の画面モデルを作る。管理画面のDOMを印刷へ流用しない。
       // 出力担当へ渡すのは共有plans/eventsだけ。ownPlans/drafts/requestsは渡さない。
       if(monthSnapshots&&s.month===n.month.value&&Object.hasOwn(monthSnapshots,s.period))monthSnapshots[s.period]=s;
-      snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
+      dirtyEditor=false;snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
       reportUi.setShared({phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
       // 全員が見ている公開版の更新日。下書き/希望の保存では更新せず、署名済みサーバー時刻をJST表示。
       n['published-at'].textContent=s.publishedAt?'確定シフト 最終更新：'+new Date(s.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（日本時間）':'この月のシフトはまだ確定公開されていません。';
@@ -203,8 +203,10 @@
     });
     n.refresh.addEventListener('click',()=>void read());n.month.addEventListener('change',()=>{if(!pending&&!uncertain){if(options.onMonthChange)options.onMonthChange();else void read();}});n.retry.addEventListener('click',()=>{if(uncertain&&!pending)void send({...uncertain});});
     n.scope.addEventListener('change',()=>{if(pending||uncertain)return;if(monthSnapshots&&Object.hasOwn(monthSnapshots,n.scope.value)&&monthSnapshots.FIRST.month===n.month.value)render(monthSnapshots[n.scope.value]);else void read();});
+    // 自動再取得で未送信の希望を消さないための表示側だけのdirty状態。Storageや保存判定には使わない。
+    n.editor.addEventListener('input',()=>{dirtyEditor=true;});n.editor.addEventListener('change',()=>{dirtyEditor=true;});
     n.kind.addEventListener('change',controls);n.leave.addEventListener('change',controls);
-    n.day.addEventListener('change',loadEditor);n.employee.addEventListener('change',loadEditor);n['add-period'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain)period();});n['add-appointment'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain)appointment();});
+    n.day.addEventListener('change',loadEditor);n.employee.addEventListener('change',loadEditor);n['add-period'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain){period();dirtyEditor=true;}});n['add-appointment'].addEventListener('click',()=>{if(snapshot&&!pending&&!uncertain){appointment();dirtyEditor=true;}});
     n.save.addEventListener('click',()=>{
       if(!snapshot||pending||uncertain||!admin&&!canRequest())return;const plan=inputPlan(),input={...base(),day:n.day.value,plan,reason:n.reason.value};
       if(!date(input.day)||input.day<n.day.min||input.day>n.day.max){n.status.textContent='選択中の期間に含まれる日付を入力してください。';n.day.focus();return;}
@@ -220,7 +222,7 @@
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();n.reason.value='';n.note.value='';n.periods.replaceChildren();n.appointments.replaceChildren();periods.length=0;appointments.length=0;});
     if(options.lazyCalendar){const overview=byId('schedule-overview');overview?.addEventListener('toggle',()=>{if(overview.open&&snapshot)renderCalendar(snapshot);else n.calendar.replaceChildren();});}
     if(options.monthly&&!n.scope.value)n.scope.value='FIRST';
-    controls();return Object.freeze({read});
+    controls();return Object.freeze({read,hasUnsavedInput(){return dirtyEditor||!!pending||!!uncertain;}});
   }
   global.TlhSchedule=Object.freeze({init,validate,validateMonth,validatePlan:validPlan});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{

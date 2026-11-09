@@ -102,9 +102,9 @@
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <!-- schedule-workspace:start -->
 <div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>
-<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><nav id="schedule-admin-shortcuts" class="schedule-task-nav" aria-label="管理者のシフト作業" hidden><a class="button primary" href="#schedule-import-section">シートを開く・取り込む</a><a class="button secondary" href="#schedule-admin-review">希望を確認する</a><a class="button secondary" href="#schedule-admin-collection">締切を設定する</a><a class="button secondary" href="#schedule-admin-release">確定公開する</a></nav>
+<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><p id="schedule-draft-notice" class="footnote" role="status" hidden></p>
 <button id="schedule-login" type="button" hidden>LINEログイン</button>
-<div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>希望申請・出力の対象期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフト全体を更新</button></div>
+<div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>希望申請・出力の対象期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
 <p class="footnote">カレンダーは1日〜月末の月全体です。半月の選択は希望・変更申請と出力の対象期間です。スマホではカレンダーを横にスクロールできます。</p>
 <p id="schedule-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="schedule-summary"></p><p id="schedule-published-at" class="schedule-updated" aria-live="polite"></p>
 <section class="schedule-export"><h2>確定シフトの共有・印刷</h2><button id="schedule-print" type="button" disabled>印刷・PDF保存</button> <button id="schedule-csv" type="button" disabled>CSV保存</button><p id="schedule-export-status" role="status">確定シフトの取得後に出力できます。</p><p class="footnote">印刷画面で「PDFに保存」を選べます。保存したファイルをLINE・メールへ添付してください。LINE内で保存できない場合は通常のブラウザで開きます。非公開メモや未確定の希望は出力しません。</p></section>
@@ -128,8 +128,25 @@
 <iframe id="schedule-frame" name="tlhScheduleFrame" title="シフトの署名付き応答" hidden></iframe>
 <!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
 <section id="schedule-report" class="schedule-print-only" hidden><h2 id="schedule-report-title"></h2><p id="schedule-report-meta"></p><p>全員向けの確定情報です。空欄・予定未設定は公休や0時間を意味しません。</p><table><thead><tr><th>日付・曜日</th><th>社員番号</th><th>氏名</th><th>勤務予定（日本時間）</th><th>予定休憩（分）</th><th>予定実働（分）</th><th>休暇</th><th>公開特記事項</th><th>共有イベント</th></tr></thead><tbody id="schedule-report-rows"></tbody></table></section>
+</div>
+<!-- schedule-workspace:end -->
+<div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
+<nav class="schedule-task-nav" aria-label="管理の案内"><a class="button secondary" href="admin-guide.html">管理画面の使い方</a><a class="button secondary" href="labor-policy.html">労務設定の要対応事項を確認 →</a></nav><p class="footnote">労務設定の未確定事項は専用ページで至急確認・確定してください。閲覧だけでは解消しません。</p>
 
-<section id="schedule-admin-entry" data-schedule-admin hidden aria-label="管理者用シフト作業"><h2>管理者用のシフト作業</h2><p class="footnote">管理者権限を確認した場合だけ表示します。勤務の編集はスプレッドシートで行います。</p><nav class="schedule-task-nav" aria-label="管理者のシフト作業"><a class="button primary" href="#schedule-import-section">シートを開く・取り込む</a><a class="button secondary" href="#schedule-manage-review">希望確認・締切・公開</a></nav><section id="schedule-import-section"><h2 id="bulk-title">シフトの取込み</h2><p id="bulk-mode-description">対象月を読み込み、利用できる取込み方法を確認します。</p>
+<!-- 管理内の切替は表示専用。保存ボタン/入力/再送状態は各controllerの担当。 -->
+<div id="manager-sections" class="manager-sections" role="group" aria-label="管理する項目">
+<button id="manager-employees-choice" type="button" aria-pressed="false" aria-controls="manager-registration-panel manager-maintenance-panel" disabled>従業員の管理</button>
+<button id="manager-attendance-choice" type="button" aria-pressed="true" aria-controls="manager-attendance-panel" disabled>出退勤の管理 <span data-approval-badge class="approval-badge" hidden></span></button>
+<button id="manager-schedule-choice" type="button" aria-pressed="false" aria-controls="manager-schedule-panel" disabled>シフトの管理</button>
+</div><div id="manager-attendance-panel" hidden>
+<section class="card management-section"><h2><span class="tool-step" aria-hidden="true">01</span>勤務記録・本社提出</h2><p class="tool-intro">社員と月を選び、出退勤の一覧をCSV・PDFで保存します。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
+
+<div class="menu-group management-section"><h2 class="group-label"><span class="tool-step" aria-hidden="true">02</span>訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2>
+<p class="tool-intro">従業員から届いた申請を確認・承認するか、管理者として勤務記録を直接訂正します。</p>
+<!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
+<section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
+<a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><!-- schedule-management:start -->
+<div id="manager-schedule-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><section id="schedule-admin-entry" data-schedule-admin hidden aria-label="管理者用シフト作業"><h2>シフトの管理</h2><p class="footnote">シート取込み・希望確認・承認・締切・公開をここにまとめます。本人の閲覧・希望申請は従業員用のシフトタブへ。</p><nav id="schedule-admin-shortcuts" class="schedule-task-nav" aria-label="管理者のシフト作業" hidden><a class="button primary" href="#schedule-import-section">シートを開く・取り込む</a><a class="button secondary" href="#schedule-admin-review">希望を確認する</a><a class="button secondary" href="#schedule-admin-collection">締切を設定する</a><a class="button secondary" href="#schedule-admin-release">確定公開する</a></nav><label>管理する月<input id="schedule-management-month" type="month" required></label><button id="schedule-management-refresh" type="button" disabled>シフト管理を更新</button><section id="schedule-import-section"><h2 id="bulk-title">シフトの取込み</h2><p id="bulk-mode-description">対象月を読み込み、利用できる取込み方法を確認します。</p>
 <aside class="management-section"><h2>月をまたぐ従業員メモ</h2><p>入力ファイルの「従業員メモ」タブへ「火木不可」などを記入できます。月共通の管理者用参考情報で、勤務の入力・取込みを禁止する条件ではありません。月別の備考や全員向けシフトへ自動転記しません。</p><p class="footnote">「継続メモ（管理者用）」列だけを編集します。社員番号・氏名の参照を更新し、新しい従業員を追加する場合は、対象月を読み込み「入力シートを作成」を実行してください。既存の勤務とメモは保持します。</p></aside>
 <button id="bulk-login" type="button" hidden>LINEログイン</button>
 <div class="bulk-toolbar"><label hidden>対象月<input id="bulk-month" type="month" disabled></label><button id="bulk-load" type="button" hidden disabled>この月を読み込む</button><a class="button secondary" href="#schedule-manage-review">半月の締切・希望確認・確定公開</a></div>
@@ -177,22 +194,8 @@
 <!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
 
 </section></section></div>
-<!-- schedule-workspace:end -->
-<div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
-<nav class="schedule-task-nav" aria-label="管理の案内"><a class="button secondary" href="admin-guide.html">管理画面の使い方</a><a class="button secondary" href="labor-policy.html">労務設定の要対応事項を確認 →</a></nav><p class="footnote">労務設定の未確定事項は専用ページで至急確認・確定してください。閲覧だけでは解消しません。</p>
-
-<!-- 管理内の切替は表示専用。保存ボタン/入力/再送状態は各controllerの担当。 -->
-<div id="manager-sections" class="manager-sections" role="group" aria-label="管理する項目">
-<button id="manager-employees-choice" type="button" aria-pressed="false" aria-controls="manager-registration-panel manager-maintenance-panel" disabled>従業員の管理</button>
-<button id="manager-attendance-choice" type="button" aria-pressed="true" aria-controls="manager-attendance-panel" disabled>出退勤の管理 <span data-approval-badge class="approval-badge" hidden></span></button>
-</div><div id="manager-attendance-panel" hidden>
-<section class="card management-section"><h2><span class="tool-step" aria-hidden="true">01</span>勤務記録・本社提出</h2><p class="tool-intro">社員と月を選び、出退勤の一覧をCSV・PDFで保存します。</p><a class="button primary full" href="admin-timecard-records.html">月次記録・提出用出力を開く →</a></section>
-
-<div class="menu-group management-section"><h2 class="group-label"><span class="tool-step" aria-hidden="true">02</span>訂正と承認 <span data-approval-badge class="approval-badge" hidden></span></h2>
-<p class="tool-intro">従業員から届いた申請を確認・承認するか、管理者として勤務記録を直接訂正します。</p>
-<!-- 管理者専用の読取。名簿はソースへ埋めず、署名を検証してメモリ内だけに表示。 -->
-<section id="admin-overview-section" class="admin-overview" hidden><button id="admin-overview-check" type="button" disabled>従業員一覧・承認待ちを更新</button><p id="admin-overview-status" class="footnote" role="status" aria-live="polite">承認待ちは未確認です。</p><iframe id="admin-overview-frame" name="tlhAdminOverviewFrame" title="従業員一覧と承認待ち件数の応答" hidden></iframe></section>
-<a class="menu-item" href="admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><section id="staff-section" class="staff-section" hidden>
+<!-- schedule-management:end -->
+<section id="staff-section" class="staff-section" hidden>
       <div id="employee-registration-panel" data-workforce-pane="more" role="tabpanel" aria-labelledby="more-tab"><div class="page-heading"><div><p class="eyebrow">アカウントとサポート</p><h1>その他</h1></div></div>
       <!-- 表示専用ヘルプは別画面へ。未確定打刻の元画面を閉じず、登録/打刻を自動実行しない。employee-help.htmlと同期。 -->
       <p class="tool-intro"><a class="button secondary" href="employee-help.html" target="_blank" rel="noopener">従業員向けヘルプ：打刻・訂正申請・初回登録（別画面）</a></p>
@@ -402,7 +405,7 @@
 <button id="employee-tab" type="button" role="tab" aria-selected="true" aria-controls="employee-work-panel"><span aria-hidden="true">◷</span>打刻</button>
 <button id="records-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="records-work-panel"><span aria-hidden="true">▤</span>記録</button>
 <button id="schedule-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="schedule-work-panel"><span aria-hidden="true">▦</span>シフト</button>
-<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-registration-panel manager-maintenance-panel manager-test-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
+<button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-schedule-panel manager-registration-panel manager-maintenance-panel manager-test-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
 </nav><footer class="app-footer">TLH Work Time <span>UI2</span></footer>
 </div>
@@ -464,12 +467,12 @@
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261104-periods"></script>
   <script src="schedule-report.js?v=20261109-authority1"></script>
-  <script src="schedule.js?v=20261109-preference1"></script>
+  <script src="schedule.js?v=20261109-role-split1"></script>
   <script src="schedule-bulk-model.js?v=20261109-authority1"></script>
   <script src="schedule-sheet.js?v=20261109-authority1"></script>
   <script src="schedule-bulk.js?v=20261109-workspace1"></script>
-  <script src="schedule-workspace.js?v=20261109-workspace1"></script>
-  <script src="layout.js?v=20261109-workspace1"></script>
+  <script src="schedule-workspace.js?v=20261109-role-split1"></script>
+  <script src="layout.js?v=20261109-role-split1"></script>
   <script src="admin-access.js?v=20261108-batch1"></script>
   <script>
     /**
@@ -522,15 +525,16 @@
     window.addEventListener('pagehide',()=>{
       homeLoginStopped=true;homeLoginReady=false;homeLoginButton.hidden=true;homeLoginButton.disabled=true;
     });
-    let homeReady=false,homeAdminAllowed=false,homePane='employee',scheduleWorkspace=null;
-    function loadVisiblePane(name){
-      homePane=name;if(!homeReady)return;
+    let homeReady=false,homeAdminAllowed=false,homePane='employee',homeManagerCategory='attendance',scheduleWorkspace=null;
+    function loadVisiblePane(name,category){
+      homePane=name;if(name==='manager'&&category)homeManagerCategory=category;if(!homeReady)return;
       const visible=()=>homeReady&&homePane===name;
       if(name==='employee'){autoReads.together(['punch','today'],visible);}
       if(name==='schedule'){scheduleWorkspace?.activate();}
+      if(name==='manager'&&homeAdminAllowed&&homeManagerCategory==='schedule'){scheduleWorkspace?.activateAdmin();}
       if(name==='records'){autoReads.together(['daily','monthly'],visible);}
       if(name==='more'){autoReads.once('account',visible);} // 初回だけ本人読取。タブの往復で重複送信しない。
-      if(name==='manager'&&homeAdminAllowed){const permitted=()=>visible()&&homeAdminAllowed;autoReads.once('enrollment',permitted);}
+      if(name==='manager'&&homeAdminAllowed&&homeManagerCategory==='employees'){const permitted=()=>visible()&&homeAdminAllowed&&homeManagerCategory==='employees';autoReads.once('enrollment',permitted);}
     }
     const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
@@ -538,7 +542,7 @@
     // 別ページから#managerへ戻るときも、最新権限の確認成功後だけ管理タブを開く。
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
+      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager-schedule')layoutNavigation.open('manager','schedule');else if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
     // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
     // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。
@@ -547,7 +551,7 @@
     document.getElementById('schedule-month').value=homeDay.slice(0,7);
     document.getElementById('schedule-scope').value=Number(homeDay.slice(8))<=15?'FIRST':'SECOND';
     // 同じページのcontrollerを使い、LIFFを二重初期化せず、タブの初回表示で読取だけを開始する。
-    scheduleWorkspace=TlhScheduleWorkspace.init({gasUrl:GAS_URL,liff:window.liff,autoReads,visible:()=>homeReady&&homePane==='schedule',adminAllowed:()=>homeAdminAllowed});
+    scheduleWorkspace=TlhScheduleWorkspace.init({gasUrl:GAS_URL,liff:window.liff,autoReads,visible:()=>homeReady&&homePane==='schedule',adminVisible:()=>homeReady&&homePane==='manager'&&homeManagerCategory==='schedule',adminAllowed:()=>homeAdminAllowed});
     if(window.location.hash==='#schedule')layoutNavigation.open('schedule');
     document.getElementById('journal-month').value = homeDay.slice(0,7);
     const homeJournal=TlhAttendanceJournal.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,cards:document.getElementById('journal-cards'),today:true,audience:'employee'});
