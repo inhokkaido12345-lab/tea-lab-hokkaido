@@ -40,15 +40,10 @@
    [literal(p.employeeCode),PRIVATE,...days.map(()=>'')]
   ])]);
  }
- function preview(text,snapshot,scope,options={}){
-  // 正本切替用の純粋な差分計算。既存画面は指定しないので旧取込み規則を維持する。
-  // 有効化にはGAS側の固定モード・正本の再読取・旧書込経路拒否・既存値の移行が別途必須。
-  if(Object.keys(options).some(k=>k!=='mode')||options.mode!==undefined&&options.mode!=='authoritative')throw Error('取込み方式を確認してください。');
-  const authoritative=options.mode==='authoritative';
+ function preview(text,snapshot,scope){
   const model=global.TlhScheduleBulkModel,rows=read(text),days=model.days(snapshot.month),width=days.length+2;
   const exact=(row,expected)=>row&&expected.every((v,i)=>row[i]===v)&&row.slice(expected.length).every(v=>!v.trim());
   const version=rows[0]?.[0],withNotes=version===VERSION;
-  if(authoritative&&!withNotes)throw Error('正本取込みには勤務・公開備考・非公開備考の3行形式が必要です。');
   if(![VERSION,'TLH_SHIFT_INPUT_V1'].includes(version)||!exact(rows[0],[version,snapshot.month,scope.organizationId,scope.workplaceId]))throw Error('CSVの形式・対象月・会社・店舗が一致しません。この店舗のひな形を使ってください。');
   if(!exact(rows[1],['社員番号','氏名',...days])||!exact(rows[2],['曜日','',...weekdays(days)]))throw Error('日付・曜日の見出しを変更せず、対象月のひな形を使ってください。');
   const people=new Map(snapshot.halves.FIRST.employees.map(p=>[p.employeeCode,p])),seen=new Set(),changes=[];let blanks=0,unchanged=0;
@@ -68,16 +63,15 @@
    for(let i=0;i<days.length;i++){
     const value=row[i+2]||'',day=days[i],base=model.oldPlan(snapshot,code,day)?.plan;
     const publicText=withNotes?(group[1][i+2]||''):'',privateText=withNotes?(group[2][i+2]||''):'';
-    if(!value.trim()&&!publicText.trim()&&!privateText.trim()){blanks++;if(!authoritative)continue;}
+    if(!value.trim()&&!publicText.trim()&&!privateText.trim()){blanks++;continue;}
     try{
-     if(authoritative&&(base?.appointments?.length||base?.leave?.type!=='NONE'&&base?.leave?.unit&&base.leave.unit!=='DAY'||base?.leave?.note))throw Error('用事・時間休・休暇メモを正本シートへ移すまで切り替えられません。');
      const workChanged=value.trim()&&value.trim()!==model.format(base);
      if(workChanged&&base?.leave&&base.leave.type!=='NONE'&&base.leave.unit!=='DAY')throw Error('時間休・半日休がある日の変更は、既存の個別編集画面で確認してください。');
-     const plan=authoritative?(value.trim()?model.parse(value):model.input()):workChanged?model.parse(value,base):model.input(base);
+     const plan=workChanged?model.parse(value,base):model.input(base);
      for(const [field,text]of [['publicNote',publicText],['note',privateText]]){
-      if(!text.trim()&&!authoritative)continue;
+      if(!text.trim())continue;
       if(text.length>1000||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(text))throw Error('備考は1000文字以内で入力してください。');
-      const note=authoritative?(text.trim()?text:''):text===CLEAR?'':text;if(field==='publicNote'&&!note)delete plan.publicNote;else plan[field]=note;
+      const note=text===CLEAR?'':text;if(field==='publicNote'&&!note)delete plan.publicNote;else plan[field]=note;
      }
      if(JSON.stringify(model.input(base))===JSON.stringify(model.input(plan))){unchanged++;continue;}
      const description=p=>(model.format(p)||'未入力')+'\n公開備考：'+(p?.publicNote||'（なし）')+'\n非公開備考：'+(p?.note||'（なし）');
@@ -85,7 +79,6 @@
     }catch(e){throw Error((r+1)+'行目 / '+code+' / '+day+'：'+e.message);}
    }
   }
-  if(authoritative&&seen.size!==people.size)throw Error('正本シートから従業員の行が欠けています。行を削除せず全員分を保持してください。');
   if(changes.length>500)throw Error('変更は1回500日分までです。空欄で読み飛ばす範囲を分けてください。');
   return {month:snapshot.month,changes,blanks,unchanged};
  }

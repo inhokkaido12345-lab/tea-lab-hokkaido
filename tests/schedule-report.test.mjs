@@ -1,6 +1,10 @@
 import test from'node:test';import assert from'node:assert/strict';import fs from'node:fs';import{scheduleUiHarness}from'./helpers/schedule-harness.mjs';
 function shared(h){return{...h.snapshot(),phase:'PUBLISHED',publishedAt:'2026-11-04T18:30:00.000Z',plans:[{employeeCode:'SCH002',employeeName:'=架空社員',day:'2026-11-05',revision:1,periods:[{start:'23:00',end:'01:00',endNextDay:true,breakMinutes:15}],workIntervals:[{startAtUtc:'2026-11-05T14:00:00.000Z',endAtUtc:'2026-11-05T16:00:00.000Z'}],plannedMinutes:105,leaveType:'NONE',publicNote:'帰省,\n共有メモ',note:'PRIVATE_MARKER'}],events:[{day:'2026-11-05',title:'架空イベント',note:'全員へ共有'}]};}
 const text=n=>n.textContent+' '+n.children.map(text).join(' ');
+
+test('Sheet-cleared work remains unassigned in the calendar and printed/CSV hours are blank',async()=>{
+ const h=scheduleUiHarness('admin'),s=shared(h);s.inputMode='SHEET';s.plans[0].periods=[];s.plans[0].workIntervals=[];s.plans[0].plannedMinutes=null;s.plans[0].publicNote='帰省';const r=h.window.TlhScheduleReport.build(s),row=r.rows.find(r=>r[1]==='SCH002');assert.equal(row[3],'予定未設定');assert.equal(row[4],'');assert.equal(row[5],'');assert.doesNotMatch(h.window.TlhScheduleReport.csv(r),/"null"/);await h.api.read();await h.reply(h.sent[0],s);assert.match(text(h.n('calendar')),/予定未設定/);assert.doesNotMatch(text(h.n('calendar')),/予定実働 null/);
+});
 test('second-half report contains only its days and identifies the exact range in CSV',()=>{
  const h=scheduleUiHarness(),s=shared(h);s.period='SECOND';s.plans[0].day='2026-11-20';const report=h.window.TlhScheduleReport.build(s);
  assert.equal(report.rows.length,15);assert.ok(report.rows[0][0].startsWith('2026-11-16'));assert.ok(report.rows.at(-1)[0].startsWith('2026-11-30'));assert.match(h.window.TlhScheduleReport.csv(report),/2026-11-16〜2026-11-30/);
