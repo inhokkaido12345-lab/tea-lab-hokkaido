@@ -49,16 +49,18 @@
       n.prev.disabled=locked||page===0;n.next.disabled=locked||(page+1)*PAGE_SIZE>=people().length;
       n.detail.disabled=locked||!selected||sheetMode();n.reason.disabled=stopped||!!pending||!!uncertain||!snapshot||importing;
       for(const cell of cells.values())cell.disabled=locked||sheetMode();
-      document.getElementById('bulk-manual').hidden=sheetMode();document.getElementById('bulk-csv-tools').hidden=sheetMode();n.save.hidden=sheetMode();
-      document.getElementById('bulk-title').textContent=sheetMode()?'正本シートからシフトを取り込む':'月間シフトをまとめて編集';
-      document.getElementById('bulk-mode-description').textContent=sheetMode()?'勤務・備考・用事・休暇詳細・共有イベントはスプレッドシートだけで編集します。この画面は読取り・確認・取込み専用です。空欄の勤務・備考は削除として反映します。':'全従業員・月全体をまとめて編集し、最後に1回保存します。入力途中の通信はありません。招待待ちの従業員も対象です。';
+      // モード未確認を旧編集モードと推測しない。初期HTML/認証失敗/退場でも編集案内を隠す。
+      const manualAvailable=!!snapshot&&!sheetMode();
+      document.getElementById('bulk-manual').hidden=!manualAvailable;document.getElementById('bulk-csv-tools').hidden=!manualAvailable;n.save.hidden=!manualAvailable;n.count.hidden=!manualAvailable;
+      document.getElementById('bulk-title').textContent=!snapshot?'シフトの取込み':sheetMode()?'正本シートからシフトを取り込む':'月間シフトをまとめて編集';
+      document.getElementById('bulk-mode-description').textContent=!snapshot?'対象月を読み込み、利用できる取込み方法を確認します。':sheetMode()?'勤務・備考・用事・休暇詳細・共有イベントはスプレッドシートだけで編集します。この画面は読取り・確認・取込み専用です。空欄の勤務・備考は削除として反映します。':'全従業員・月全体をまとめて編集し、最後に1回保存します。入力途中の通信はありません。招待待ちの従業員も対象です。';
       let count=0;try{count=currentPayload()?.changes.length||0;}catch(_e){count=drafts.size;}
       n.count.textContent='未保存の変更：'+count+'日分'+(errors.size?' / 入力エラー：'+errors.size+'件':'');
       n.save.disabled=locked||needReload||!!errors.size||count===0||count>500;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.retry.textContent=uncertain?.command==='sheetCreate'?'同じ操作で作成結果を再確認':'同じ操作で保存結果を再確認';
     }
     function clearImport(){importPreview=null;directImport=false;authority=null;n.file.value='';n['import-preview'].hidden=true;n['import-rows'].replaceChildren();n['import-summary'].textContent='';n['import-apply'].textContent='この内容を編集表へ反映';}
-    function clear(){snapshot=null;createReview=false;clearImport();n['sheet-open'].hidden=true;n['sheet-open'].href='';drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';controls();}
+    function clear(){snapshot=null;createReview=false;clearImport();n['sheet-open'].hidden=true;n['sheet-open'].href='';drafts.clear();texts.clear();errors.clear();cells.clear();selected=null;n.head.replaceChildren();n.rows.replaceChildren();n.phases.textContent='';n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='勤務日のメモ';controls();}
     function selectCell(code,day){
       selected={code,day};const person=people().find(p=>p.employeeCode===code),p=current(code,day);
       n.selected.textContent=(person?.employeeName||code)+'（'+code+'） '+day;
@@ -97,7 +99,7 @@
     }
     function render(value){
       clearImport();
-      snapshot=value;page=0;needReload=false;drafts.clear();texts.clear();errors.clear();selected=null;n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='セルを選ぶと、その日のメモを編集できます';
+      snapshot=value;page=0;needReload=false;drafts.clear();texts.clear();errors.clear();selected=null;n.note.value='';n['public-note'].value='';n.reason.value='';n.appointments.textContent='';n.selected.textContent='勤務日のメモ';
       // 管理者認可済みの返信だけから固定入力先を表示。公開ソースにファイルIDを埋め込まない。
       if(value.inputSheetUrl){n['sheet-open'].hidden=false;n['sheet-open'].href=value.inputSheetUrl;}
       const labels={NOT_OPEN:'未設定',DRAFT:'下書き',COLLECTING:'希望受付中',PUBLISHED:'確定済（変更は本人同意待ち）'};
