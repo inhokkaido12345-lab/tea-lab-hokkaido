@@ -1,5 +1,5 @@
 /**
- * 連結画面：fetchで同一originのAPIへ送信し、返ってきた保存結果を再読取して表示。
+ * 連結画面：APIへ送信し、サーバーが保存後に検証した画面DTOを表示。旧APIだけ別READ。
  * 状態はサーバーが正本。DOMの数量を直接加算しない。
  * 概念：DTO/再送ID/通信結果不明。改造：行フォームはaddLine、描画はrender。
  * tokenはメモリだけ。入力やエラーにinnerHTMLを使わない。ローカル専用で本番認証はない。
@@ -7,7 +7,7 @@
  */
 const $=id=>document.getElementById(id);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;};
-let view=null,filter='all',pending=null,busy=false;
+let view=null,filter='all',pending=null,busy=false,activeTab='stock',historyDirty=true;
 // 1回の描画中の品目検索を索引にする。サーバーの在庫の代わりには使わない。
 let itemsById = new Map();
 // Intlの設定解析を毎回繰り返さず、表示専用フォーマッターを再利用する。
@@ -18,13 +18,15 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
 });
 const quantities = grams => quantityFormatter.format(grams / 1000) + ' kg';
 const formatRecordedAt = value => value ? dateFormatter.format(new Date(value)) : '算出前';
+const calendarFormatter = new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo',month:'numeric',day:'numeric'});
+const calendarDate = value => value ? calendarFormatter.format(new Date(value)) : '算出前';
 const message=t=>{$('status').textContent=t;};
 /** 通信中・読込未完了・結果不明を分ける。失敗後の再読取は必ず押せるようにする。 */
-function lock(value){busy=value;for(const b of document.querySelectorAll('button,input,select')){
+function lock(value){busy=value;$('status').setAttribute('aria-busy',String(value));for(const b of document.querySelectorAll('button,input,select')){
  const recovery=['retry','refresh','line-login'].includes(b.id);
  b.disabled=value||(!view&&!recovery&&!b.dataset.tab)||(Boolean(pending)&&!recovery);
 }}
-function tab(name){for(const s of document.querySelectorAll('main section'))s.hidden=s.id!==name;for(const b of document.querySelectorAll('nav button')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}}
+function tab(name){activeTab=name;for(const s of document.querySelectorAll('main section'))s.hidden=s.id!==name;for(const b of document.querySelectorAll('nav button')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}if(name==='history'&&view&&historyDirty)renderHistory();}
 /** 取得できるまで古い残量からの新規更新を禁止する。結果不明の操作IDは保持する。 */
 async function load(){
  view=null;
@@ -46,7 +48,7 @@ function inventoryQuantityLabel(item) {
   if (!forecast) return quantities(item.quantity);
   if (forecast.quantity === null) return '在庫基準未登録';
   if (forecast.rate === null) return '消費速度の計測待ち';
-  return quantities(forecast.quantity);
+  return '約 '+quantities(forecast.quantity);
 }
 
 function needsOrder(item) {
@@ -75,6 +77,11 @@ function renderConsumptionSettings(container, item) {
   };
   container.append(count);
   const lead = appendNumberField(container, '発注から到着まで（日）', forecast.config?.leadDays ?? '');
+  if (item.delivery) {
+    const adopt = el('button', '納期実績の候補 '+item.delivery.suggestedDays+'日を入力');
+    adopt.onclick = () => {lead.value = String(item.delivery.suggestedDays);};
+    container.append(adopt);
+  }
   const safety = appendNumberField(container, '安全余裕（日）', forecast.config?.safetyDays ?? '1');
   const save = el('button', '到着日数を保存');
   save.onclick = () => {
@@ -88,25 +95,34 @@ function renderConsumptionSettings(container, item) {
 function renderConsumption(card, item) {
   const forecast = item.forecast;
   const unit = item.units[0];
-  card.append(el('h4', 'ときどき測る消費速度'),
-    el('p', forecastMessages[forecast.status] || forecast.status,
+  card.append(el('p', forecastMessages[forecast.status] || forecast.status,
       forecast.status === 'ORDER_NOW' ? 'badge low' : 'muted'));
-  card.append(el('p', '毎回の開封記録は不要です。測る袋だけ「開始→使い切り」で計測します。', 'muted'));
+  const dates=el('div','','forecast-dates');
+  for(const [label,date,cls] of [['在庫切れ予測',forecast.stockoutAt,''],['発注レッドライン',forecast.orderBy,'deadline']]){
+    const cell=el('div','',cls);cell.append(el('span',label),el('strong',calendarDate(date)));dates.append(cell);
+  }
+  card.append(dates);
+  if(forecast.redlineQuantity!=null)card.append(el('p','安全側の発注目安 '+quantities(forecast.redlineQuantity)+
+    ' ／納期 '+forecast.config.leadDays+'日＋余裕 '+forecast.config.safetyDays+'日','redline'));
+  if(item.delivery)card.append(el('p','納期実績：直近 '+item.delivery.lastDays+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
+  const explanation=el('details','');explanation.append(el('summary','予測の根拠・消費速度を見る'));
   if (forecast.baselineAt) {
-    card.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
+    explanation.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
       (forecast.baselineSource === 'RECEIPT' ? ' ／初回入荷前の在庫を0として推定' : ' ／棚卸実数から推定'), 'muted'));
   }
   if (forecast.rate) {
-    card.append(el('p', '計測 '+forecast.sampleCount+'回 ／平均 '+
+    explanation.append(el('p', '計測 '+forecast.sampleCount+'回 ／平均 '+
       (unit.baseQuantity/forecast.averageRate).toFixed(1)+'日/袋 ／直近 '+
       (unit.baseQuantity/forecast.recentRate).toFixed(1)+'日/袋'));
-    card.append(el('p', '直近/平均の速度 '+forecast.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定します。'));
-    card.append(el('p', '最終計測 '+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
+    explanation.append(el('p', '直近/平均の速度 '+forecast.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定します。'));
+    explanation.append(el('p', '最終計測 '+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
   }
-  card.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
+  explanation.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
     el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
+  card.append(explanation);
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
   if (!view.permissions.includes('inventory.receive')) return;
+  card.append(el('h4','ときどき測る消費速度'),el('p','測る袋だけ開始→使い切り。普段の袋交換は記録不要です。','muted'));
 
   if (forecast.open) {
     card.append(el('p', '計測中：'+quantities(forecast.open.amount)+' ／開始 '+formatRecordedAt(forecast.open.openedAt)));
@@ -137,9 +153,17 @@ function renderConsumption(card, item) {
 
 function render(){
  itemsById = new Map(view.items.map(item => [item.id, item]));
+ historyDirty=true;
+ const overview=$('overview');
+ if(overview){
+  overview.replaceChildren();
+  for(const [label,count] of [['管理品目',view.items.length],['要発注・確認',view.items.filter(needsOrder).length],['未入荷の注文',view.items.reduce((n,i)=>n+(i.orders||[]).length,0)]]){
+   const metric=el('div','');metric.append(el('strong',String(count)),el('span',label));overview.append(metric);
+  }
+ }
  $('cards').replaceChildren();
  for(const item of view.items.filter(i=>filter==='all'||filter==='low'&&needsOrder(i)||filter==='ordered'&&(i.orders||[i.order]).some(o=>o?.status==='ORDERED'))){
- const c=el('article','','card');c.append(el('h3',item.name),el('span',needsOrder(item)?'要確認・発注':'推定在庫',needsOrder(item)?'badge low':'badge'),el('p',inventoryQuantityLabel(item),'qty'),el('p','危険数量 '+quantities(item.threshold),'muted'));
+ const c=el('article','',needsOrder(item)?'card attention':'card');c.append(el('h3',item.name),el('span',needsOrder(item)?'要確認・発注':'推定在庫',needsOrder(item)?'badge low':'badge'),el('p',inventoryQuantityLabel(item),'qty'),el('p','固定の最低在庫目安 '+quantities(item.threshold),'muted'));
  if(item.forecast)renderConsumption(c,item);
  const orders=item.orders||(item.order?[item.order]:[]);
  for(const order of orders.filter(o=>o.status==='ORDERED')){
@@ -172,6 +196,11 @@ function render(){
  $('complete').replaceChildren(new Option('選択しない',''));
  // 受取完了は注文ごと。一件を完了しても他の未入荷注文を残す。
  for(const i of view.items)for(const o of (i.orders||(i.order?[i.order]:[])).filter(o=>o.status==='ORDERED'))$('complete').append(new Option(i.name+' ／ '+(o.at?formatRecordedAt(o.at):'発注')+' ／ '+(o.plannedLine?o.plannedLine.quantity+' '+(i.units.find(u=>u.id===o.plannedLine.unitId)?.label||o.plannedLine.unitId):'数量未記入')+' ／ 到着 '+(o.expectedOn||'不明')+' ／ '+o.id,o.id));
+ if(activeTab==='history')renderHistory();
+}
+/** 隠れている履歴100件を毎回DOM化しない。タブを初めて開いた時に最新DTOを描く。 */
+function renderHistory(){
+ historyDirty=false;
  $('logs').replaceChildren();
  for(const log of view.history){const names={START_SAMPLE:'消費速度の計測開始',FINISH_SAMPLE:'消費速度の計測完了',CANCEL_SAMPLE:'計測取消',COUNT_STOCK:'在庫基準の補正',SET_FORECAST:'発注期限の設定',RECEIVE:'入荷',MARK_ORDERED:'発注済み記録',CANCEL_ORDERED:'発注済みの取消し',COMPLETE_CASE:'受取完了'};const row=el('article','','line');row.append(el('p',names[log.type]||'記録'),el('p',formatRecordedAt(log.at),'muted'));for(const l of log.lines){const i=itemsById.get(l.itemId);row.append(el('p',(i?.name||'品目')+' '+quantities(l.amount)));}$('logs').append(row);}
  if(!view.history.length)$('logs').append(el('p','まだ記録はありません。','muted'));
@@ -190,7 +219,7 @@ function addLine(itemId,container=$('lines'),ordering=false){
  row.append(item,count,unit,hint);if(!ordering)row.append(remove);row.requestLine=()=>{if(ordering&&count.value.trim()==='')return null;const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);return {itemId:i.id,quantity:Number(count.value),unitId:u.id,conversionVersion:u.version};};container.append(row);return row;
 }
 const errors={ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
-/** 通信失敗なら操作IDを保持し、同じ要求だけ再送する。成功後は必ずサーバーを再読取。 */
+/** 通信失敗なら操作IDを保持。成功後は原簿読戻し済みDTOを使用し、旧APIだけ別READする。 */
 async function send(command){
  if(busy||(!view&&!pending))return;
  if(pending&&command)return;
@@ -200,14 +229,17 @@ async function send(command){
  let saved=false;
  try {
  const result = await TlhInventory.request('COMMAND', pending);
- const data = result.ok ? {result: result.value} : {code: result.code};
+ const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code};
  const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
   pending=null;await load();message(errors[data.code]||'保存できませんでした：'+data.code);return;
  }
- saved=true;pending=null;await load();$('lines').replaceChildren();addLine();tab('stock');message('保存しました。DBの最新記録を読み直しました。');
+ saved=true;pending=null;
+ // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
+ if(data.view){view=data.view;render();}else await load();
+ $('lines').replaceChildren();addLine();tab('stock');message('保存しました。最新記録を確認しました。');
  }catch{
   if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。');}
   else{message('保存結果が不明です。同じ操作を再確認してください。');$('recovery').hidden=false;}
