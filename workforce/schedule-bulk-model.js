@@ -40,7 +40,7 @@
       if(Object.hasOwn(value,'inputSheetUrl')&&(typeof value.inputSheetUrl!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit$/.test(value.inputSheetUrl)))return false;
       for(const part of ['FIRST','SECOND'])if(!global.TlhSchedule.validate(value.halves[part],month,true,part))return false;
       const a=value.halves.FIRST.employees,b=value.halves.SECOND.employees;
-      return JSON.stringify(a)===JSON.stringify(b)&&new Set(a.map(p=>p.employeeCode)).size===a.length;
+      return JSON.stringify(a)===JSON.stringify(b)&&new Set(a.map(p=>p.employeeCode)).size===a.length&&value.halves.FIRST.inputMode===value.halves.SECOND.inputMode;
     }catch(_e){return false;}
   }
   function oldPlan(snapshot,code,day){return snapshot.halves[half(day)].drafts.find(p=>p.employeeCode===code&&p.day===day);}
