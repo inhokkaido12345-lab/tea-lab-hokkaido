@@ -22,9 +22,9 @@
     const names = ['employee', 'records', 'schedule', 'manager', 'more'];
     let adminAllowed=false,active='employee';
     // 管理は縦に全件並べず業務別に表示。保持するのは選択名だけで、入力や保存結果は触らない。
-    const categories=['employees','attendance'];let category='attendance';
+    const categories=['employees','attendance','schedule'];let category='attendance';
     const choices=categories.map(name=>document.getElementById('manager-'+name+'-choice'));
-    const groups={employees:['manager-registration-panel','manager-maintenance-panel'],attendance:['manager-attendance-panel']};
+    const groups={employees:['manager-registration-panel','manager-maintenance-panel'],attendance:['manager-attendance-panel'],schedule:['manager-schedule-panel']};
     // wrapperは起動時に取得する。切替のたびに同じIDを引き直さず、入力要素には触れない。
     const groupPanels=Object.fromEntries(Object.entries(groups).map(([name,ids])=>[
       name,ids.map(id=>document.getElementById(id)),
@@ -44,8 +44,8 @@
           panel.hidden=active!=='manager'||!adminAllowed||name!==category;
         }
       }
-      // シフトの管理操作は同じシフトtab内へ。本人表示とは別wrapperで、未確認/失権は隠す。
-      scheduleManagement.hidden=active!=='schedule'||!adminAllowed;scheduleShortcuts.hidden=scheduleManagement.hidden;
+      // 従業員シフトと管理シフトを分離。管理者本人でも従業員側には管理操作を出さない。
+      scheduleManagement.hidden=active!=='manager'||category!=='schedule'||!adminAllowed;scheduleShortcuts.hidden=scheduleManagement.hidden;
       choices.forEach((button,i)=>button.setAttribute('aria-pressed',String(categories[i]===category)));
       // 招待受取と発行の共通結果欄は保持し、管理中は従業員カテゴリでだけ見せる。
       statusHost.hidden=active==='manager'&&category!=='employees';
@@ -58,7 +58,7 @@
         tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1;
       });
       show();
-      options.onActivate?.(name); // 読取開始は呼出元へ通知するだけ。保存/再送はlayoutの責務外。
+      options.onActivate?.(name, name==='manager'?category:null); // 読取開始は呼出元へ通知するだけ。保存/再送はlayoutの責務外。
     }
     tabs.forEach((tab, index) => {
       tab.addEventListener('click', () => activate(names[index]));
@@ -73,7 +73,8 @@
     });
     choices.forEach((button,i)=>button.addEventListener('click',()=>{
       if(!adminAllowed||active!=='manager')return;
-      category=categories[i];show(); // 切替だけ。追加通信/保存/入力消去/承認の実行はしない。
+      category=categories[i];show();
+      options.onActivate?.('manager',category); // 選択した業務のREADだけを通知。保存・再送・入力は触らない。
     }));
     activate('employee');
     /** UIの初期値は拒否。権限確認の失敗/退場は管理paneを閉じるが入力の保存や再送はしない。 */
@@ -86,7 +87,7 @@
       else show();
     }
     setAdminAllowed(false);
-    return Object.freeze({setAdminAllowed,open(name){if(names.includes(name))activate(name);}});
+    return Object.freeze({setAdminAllowed,open(name,selectedCategory){if(name==='manager'&&adminAllowed&&categories.includes(selectedCategory))category=selectedCategory;if(names.includes(name))activate(name);}});
   }
   global.TlhWorkforceLayout = Object.freeze({ init });
 })(window);

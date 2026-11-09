@@ -204,17 +204,21 @@ test('employee cannot click or keyboard into management and a thousand tab attem
   assert.equal(h.focused(),'schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,3);
 });
 
-test('shift workspace unifies calendar, personal requests and role-gated sheet/admin controls without page navigation',async()=>{
+test('employee shift and management shift remain separate even for an authorized manager',async()=>{
  const h=await harness();h.click('schedule-tab');assert.equal(h.node('schedule-work-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
- await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,false);
- h.key('schedule-tab','ArrowRight');assert.equal(h.focused(),'manager-tab');assert.equal(h.node('manager-attendance-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
- const shift=html.slice(html.indexOf('<div id="schedule-work-panel"'),html.indexOf('<div id="manager-tools-panel"'));
- for(const id of ['schedule-calendar','schedule-editor','schedule-request-deadline','bulk-sheet-read','schedule-admin-requests','schedule-admin-month-save','schedule-admin-publish'])assert.match(shift,new RegExp('id="'+id+'"'));
- assert.doesNotMatch(shift,/href="(?:admin-)?schedule(?:-bulk)?\.html"/);assert.doesNotMatch(html,/id="manager-schedule-choice"/);
+ await h.replyAccess();assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-schedule-panel').hidden,true);
+ h.click('manager-tab');assert.equal(h.node('manager-attendance-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
+ h.click('manager-schedule-choice');assert.equal(h.node('manager-schedule-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,false);assert.equal(h.node('schedule-work-panel').hidden,true);
+ h.click('schedule-tab');assert.equal(h.node('schedule-work-panel').hidden,false);assert.equal(h.node('schedule-admin-entry').hidden,true);
+ const employee=html.slice(html.indexOf('<!-- schedule-workspace:start -->'),html.indexOf('<!-- schedule-workspace:end -->'));
+ const manager=html.slice(html.indexOf('<!-- schedule-management:start -->'),html.indexOf('<!-- schedule-management:end -->'));
+ for(const id of ['schedule-calendar','schedule-editor','schedule-request-deadline'])assert.match(employee,new RegExp('id="'+id+'"'));
+ for(const id of ['bulk-sheet-read','schedule-admin-requests','schedule-admin-month-save','schedule-admin-publish']){assert.doesNotMatch(employee,new RegExp('id="'+id+'"'));assert.match(manager,new RegExp('id="'+id+'"'));}
+ assert.doesNotMatch(manager,/id="schedule-editor"|id="schedule-request-deadline"/);
 });
 
 test('leaving closes the shift administration entry; late authorization cannot reopen it',async()=>{
- const h=await harness();await h.replyAccess();h.click('schedule-tab');assert.equal(h.node('schedule-admin-entry').hidden,false);
+ const h=await harness();await h.replyAccess();h.click('manager-tab');h.click('manager-schedule-choice');assert.equal(h.node('schedule-admin-entry').hidden,false);
  h.depart();assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-tab').disabled,true);const before=h.sent.length;
  await h.replyAccess();h.click('manager-tab');assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.sent.length,before);
 });
@@ -229,7 +233,7 @@ test('management categories retain inputs and pending state, hide unrelated form
  h.click('more-tab');h.click('manager-tab');assert.equal(h.node('manager-registration-panel').hidden,false);assert.equal(h.node('manager-employees-choice').attributes['aria-pressed'],'true');
 });
 test('management choices stay closed for employees; labor review has a separate page',async()=>{
- const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
+ const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance','schedule']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
  assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,3);
  assert.doesNotMatch(html,/id="labor-policy-section"|laborPolicyUi|src="labor-policy.js/);assert.match(html,/href="labor-policy.html"/);
 });
