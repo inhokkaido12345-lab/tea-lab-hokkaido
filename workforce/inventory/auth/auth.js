@@ -1,5 +1,5 @@
 /**
- * 共通LIFF Endpoint内の認証窓口。/Software/inventory/のemployee-login.jsが明示操作で開く。
+ * 共通LIFF Endpoint内の認証窓口。/software/inventory/のemployee-login.jsが明示操作で開く。
  * SDK初期化→本人ログイン→openerへREADY→nonce付き要求→結果1回返信。
  * 削除で独立PWAの本人確認不可。WorkTimeの打刻/社員データは扱わない。
  * 概念: authentication broker / auxiliary browsing context / challenge correlation。
