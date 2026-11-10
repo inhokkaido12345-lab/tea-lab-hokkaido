@@ -20,7 +20,7 @@ test('在庫PWAに独自の端末保存・オフライン送信・未認証の�
   const app=read('app.js'),transport=read('employee-transport.js');
   assert.doesNotMatch(app+transport,/localStorage\.|sessionStorage\.|indexedDB\.|caches\.|serviceWorker\./);
   assert.equal(app.includes("fetch('/api/"),false);
-  assert.match(app,/在庫基準未登録/);assert.match(app,/TLHアカウントと有効な従業員登録/);
+  assert.match(app,/在庫基準未登録/);assert.match(app,/TLHアカウントと店舗への参加権限/);
   assert.match(transport,/crypto\.subtle\.verify/);
   assert.match(transport,/responseKey/);assert.match(transport,/pagehide/);
   assert.match(transport,/workforce\/inventory\//);
@@ -49,4 +49,12 @@ test('WorkTimeの範囲と重ならず、旧入口は転送のみ',()=>{
  assert.match(read('index.html'),/employee-login.js/);assert.doesNotMatch(read('index.html'),/liff\/edge/);
  assert.doesNotMatch(read('employee-login.js'),/localStorage\.|sessionStorage\./);
  assert.doesNotMatch(read('app.js'),/発注から到着まで（日）/);
+});
+
+
+test('在庫サービスは店舗作成・参加・店舗選択と仕入品情報を備える',()=>{
+ assert.match(read('index.html'),/data-tab="catalog"/);assert.match(read('index.html'),/inventory-stores/);
+ assert.doesNotMatch(read('index.html'),/The TEA ココノススキノ店/);
+ assert.match(read('app.js'),/SAVE_ITEM/);assert.match(read('app.js'),/childUnitId/);assert.match(read('app.js'),/CATALOG_CHANGED/);
+ assert.match(read('employee-transport.js'),/readView/);assert.match(read('employee-transport.js'),/新しい店舗を作成/);assert.match(read('employee-transport.js'),/招待された店舗に参加/);
 });
