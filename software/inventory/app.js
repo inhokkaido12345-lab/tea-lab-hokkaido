@@ -73,9 +73,9 @@ function appendNumberField(container, label, value) {
 /** 棚卸は総量の実測だけ。消費速度や納期の設定と混ぜない。 */
 function renderStockCount(container, item) {
   if(item.forecast?.countedAt)container.append(el('p','前回の棚卸 '+formatRecordedAt(item.forecast.countedAt),'muted'));
-  const quantity = appendNumberField(container, '今ある総在庫（g、開封中の残量も含む）', '');
+  const quantity = appendNumberField(container, '今ある量（g、使いかけも含む）', '');
   quantity.step='1';
-  const count = el('button', '実数を在庫の新しい基準にする');
+  const count = el('button', '数えた量を保存', 'primary');
   count.onclick = () => {
     if (quantity.value === '') {message('総在庫を入力してください');return;}
     send({type: 'COUNT_STOCK', itemId: item.id, quantity: Number(quantity.value)});
@@ -84,7 +84,7 @@ function renderStockCount(container, item) {
 }
 
 /** 納期は読取専用の実績。調整できるのは安全余裕だけ。 */
-function renderLeadSettings(container, item) {
+function renderOrderBuffer(container, item) {
   const forecast=item.forecast;
   if (item.delivery) {
     container.append(el('p','発注→受取完了：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）'));
@@ -115,7 +115,6 @@ function renderConsumption(card, item) {
   card.append(dates);
   if(forecast.redlineQuantity!=null)card.append(el('p','安全側の発注目安 '+quantities(forecast.redlineQuantity)+
     ' ／実績納期 '+forecast.config.leadDays.toFixed(1)+'日＋余裕 '+forecast.config.safetyDays+'日','redline'));
-  if(item.delivery)card.append(el('p','納期実績：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
   const explanation=el('details','');explanation.append(el('summary','予測の根拠・消費速度を見る'));
   if (forecast.baselineAt) {
     explanation.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
@@ -130,7 +129,14 @@ function renderConsumption(card, item) {
   }
   explanation.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
     el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
+  if(item.delivery)explanation.append(el('p','発注から受取まで：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
   card.append(explanation);
+  if(view.permissions.includes('inventory.receive')){
+    const adjustment=el('details','');adjustment.append(el('summary','発注の余裕を調整'));
+    let mounted=false;
+    adjustment.ontoggle=()=>{if(!adjustment.open||mounted)return;mounted=true;renderOrderBuffer(adjustment,item);lock(busy);};
+    card.append(adjustment);
+  }
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
 }
 
@@ -160,7 +166,7 @@ function renderSampleActions(card,item){
 
 /** 作業ごと・品目ごとに入力DOMを保ち、切替で未保存入力を消さない。最新読取時は破棄する。 */
 function showStockAction(name){
-  if(!['overview','sampling','counting','lead'].includes(name))return;
+  if(!['overview','sampling','counting'].includes(name))return;
   stockAction=name;
   for(const button of document.querySelectorAll('[data-stock-action]'))button.setAttribute('aria-pressed',String(button.dataset.stockAction===name));
   const overview=$('stock-overview'),host=$('stock-workspaces');
@@ -168,8 +174,8 @@ function showStockAction(name){
   overview.hidden=name!=='overview';host.hidden=name==='overview';
   for(const [key,node] of stockWorkspaces)node.hidden=key!==name;
   if(name==='overview'||!view||stockWorkspaces.has(name))return;
-  const titles={sampling:'消費速度を計測する',counting:'棚卸：今ある数量を実測する',lead:'納期の実績・安全余裕'};
-  const help={sampling:'測る1袋だけ、開始→使い切りで終了。普段の袋交換は記録不要です。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。',lead:'納期は発注と受取完了から自動学習します。調整するのは安全余裕だけです。'};
+  const titles={sampling:'消費速度を計測する',counting:'在庫を数える'};
+  const help={sampling:'測る1袋だけ、開始→使い切りで終了。普段の袋交換は記録不要です。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。'};
   const workspace=el('div','','stock-workspace');workspace.append(el('h3',titles[name]),el('p',help[name],'muted'));
   stockWorkspaces.set(name,workspace);host.append(workspace);
   if(!view.permissions.includes('inventory.receive')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
@@ -184,7 +190,6 @@ function showStockAction(name){
       const card=el('article','','card action-card');card.append(el('h4',item.name));
       if(name==='sampling')renderSampleActions(card,item);
       if(name==='counting')renderStockCount(card,item);
-      if(name==='lead')renderLeadSettings(card,item);
       cards.set(item.id,card);workspace.append(card);
     }
     lock(busy);

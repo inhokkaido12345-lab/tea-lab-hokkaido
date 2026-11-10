@@ -90,7 +90,7 @@ input,select { width: 100%; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) { #status[aria-busy="true"]::before { animation: none; } }
 /* 05. 固定ナビと本文末尾の余白を一緒に変更する。 */
 /* 作業別の入口。選んだ作業だけ生成・表示する。認可や保存はapp.js/サーバーが担当。 */
-.stock-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 22px 0; }
+.stock-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin: 22px 0; }
 .stock-actions button { font-size: 13px; }
 .stock-workspace { max-width: 660px; border-top: 1px solid var(--line); padding-top: 22px; }
 .stock-workspace > h3 { margin-bottom: 8px; }
@@ -102,7 +102,8 @@ nav [aria-current="page"] { background: var(--teal); color: #fff; }
 footer { border-top: 1px solid var(--line); margin-top: 36px; padding-top: 18px; font-size: 11px; color: var(--muted); }
 footer span { float: right; }
 @media(max-width: 700px) {
-  .stock-actions { grid-template-columns: 1fr 1fr; }
+  .stock-actions { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .stock-actions button { font-size: 12px; padding-inline: 6px; }
   #cards { grid-template-columns: 1fr; }
   header { padding: 24px 20px 20px; }
   main { padding: 16px 16px 110px; }
