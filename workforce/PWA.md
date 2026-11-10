@@ -28,6 +28,10 @@ LINEの既存IDを使い、本番Endpointは新URLへ設定済みです。未ロ
 
 [説明整理前の記録](history/20261110-before-guidance-audit-PWA.md)。
 
-## 名前が旧名のままの場合（調査中・2026-11-10）
+## ホーム画面アイコン下が旧名の場合（2026-11-10確認）
 
-LINE本番用LIFF名とmanifestのname/short_nameはTLH Work Time。審査用LINE名だけ旧名が残ります。本人端末の旧名がLINE上部・ホーム画面アイコン・本文のどこかは確認中で、原因を端末キャッシュと断定しません。入口HTMLのapplication-name/apple-mobile-web-app-titleとtitleを同名へ揃える候補は未公開。保存済みアイコンの名前を強制変更する機能ではありません。
+LINE本番名とmanifestのname/short_nameはTLH Work Time。本人の旧名はAndroidのホーム画面アイコン下です。Chromeが名前更新の承認を求める場合があります。案内の変更先がTLH Work TimeならOKで承認します。[Google公式の更新手順](https://support.google.com/chrome/answer/9658361?co=GENIE.Platform%3DAndroid&hl=ja)。
+
+案内がなく旧名のままなら、未送信入力や保存結果不明がないことを先に確認します。Android設定→アプリから古いWebアプリをアンインストールし、Chromeで https://tealabhokkaido.com/software/worktime/ を開いてメニューのインストール/ホーム画面に追加から追加し直します。通常のショートカットだけなら古いアイコンを削除して再追加します。サーバー保存済みの打刻記録は端末の削除では消えません。新アイコンの名前/起動/必要時LINEログインを本人端末で確認します。
+
+application-name/apple-mobile-web-app-title/titleも同名に統一。OSに保存済みの名前をWebコードから強制変更する設定ではありません。manifest URL/idを変えて別アプリを作る方法は使いません。

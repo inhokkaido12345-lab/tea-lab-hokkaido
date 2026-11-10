@@ -1,6 +1,11 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
 function month(h){const halves={};for(const part of ['FIRST','SECOND'])halves[part]={...h.snapshot(),period:part,rangeStart:'2026-11-'+(part==='FIRST'?'01':'16'),rangeEnd:'2026-11-'+(part==='FIRST'?'15':'30')};return{version:1,month:'2026-11',halves};}
 const text=n=>n.textContent+' '+n.children.map(text).join(' ');
+test('date windows govern only matching days, latest overlaps win, and forged or mismatched rules never enable requests',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true}),v=month(h),rule={revision:1,startDay:'2026-11-05',endDay:'2026-11-06',deadline:'2026-11-03T00:00:00.000Z'};for(const half of Object.values(v.halves)){half.deadlineRevision=1;half.requestDeadlines=[rule];}await h.api.read();await h.reply(h.sent[0],v);assert.equal(h.n('save').disabled,true);assert.match(h.n('request-deadline').textContent,/締切済み/);h.n('day').value='2026-11-07';h.n('day').events.change();assert.equal(h.n('save').disabled,false);
+ await h.api.read();for(const half of Object.values(v.halves)){half.deadlineRevision=2;half.requestDeadlines=[rule,{...rule,revision:2,deadline:'2026-11-20T00:00:00.000Z'}];}await h.reply(h.sent[1],v);h.n('day').value='2026-11-05';h.n('day').events.change();assert.equal(h.n('save').disabled,false);h.n('reason').value='希望';h.click('save');assert.equal(JSON.parse(h.sent[2].input).expectedDeadlineRevision,2);
+ for(const tamper of [v=>v.halves.SECOND.deadlineRevision=3,v=>v.halves.FIRST.requestDeadlines[0].endDay='2026-02-30']){const g=scheduleUiHarness('employee',{monthly:true});await g.api.read();const bad=JSON.parse(JSON.stringify(v));tamper(bad);await g.reply(g.sent[0],bad);assert.equal(g.n('save').disabled,true);assert.equal(g.n('calendar').children.length,0);}
+});
 const plan=day=>({day,periods:[],appointments:[],leave:{type:'PUBLIC_OFF',unit:'DAY',minutes:null,note:''},note:''});
 const request=day=>({requestId:'request_'+day.slice(-2),employeeCode:'SCH001',employeeName:'架空社員',revision:2,status:'PENDING',kind:'SHIFT_PREFERENCE',payload:{plan:plan(day),reason:'希望'},submittedAt:'2026-11-01T00:00:00.000Z'});
 test('monthly requests save and cancel in the day-owned half and revision; opposite-half requests remain visible after saving',async()=>{

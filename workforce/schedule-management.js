@@ -29,7 +29,7 @@
   }
   /** DOMと既存LIFFを接続しloadを返す。初期化では保存しない。欠落したIDはビルド/検査で直す。 */
   function init(options){
-    const ids=['month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-second','deadline-save-second','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
+    const ids=['month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
@@ -43,9 +43,9 @@
       n['edit-tab'].disabled=busy;n['requests-tab'].disabled=busy;
       n['edit-tab'].setAttribute('aria-selected',String(category==='edit'));n['requests-tab'].setAttribute('aria-selected',String(category==='requests'));n['edit-tab'].tabIndex=category==='edit'?0:-1;n['requests-tab'].tabIndex=category==='requests'?0:-1;
       n['edit-panel'].hidden=category!=='edit';n['requests-panel'].hidden=category!=='requests';
-      n['sheet-create'].disabled=!ready;for(const [part,key] of [['FIRST','deadline'],['SECOND','deadline-second']]){const allowed=!busy&&!login.locked()&&snapshot?.halves[part]?.inputMode==='SHEET';n[key].disabled=!allowed;n[key==='deadline'?'deadline-save':'deadline-save-second'].disabled=!allowed;}
-      n.publish.disabled=!ready||!['COLLECTING','PUBLISHED'].includes(selected()?.phase);
-      n.publish.textContent=selected()?.phase==='PUBLISHED'?'シートの変更を反映する':'下書きを公開する';
+      n['sheet-create'].disabled=!ready;for(const key of ['deadline','deadline-start','deadline-end','deadline-save'])n[key].disabled=!ready;
+      n.publish.disabled=!ready;
+      n.publish.textContent=snapshot&&['FIRST','SECOND'].some(k=>snapshot.halves[k].phase==='PUBLISHED')?'シートの変更を反映する':'下書きを公開する';
       n.refresh.disabled=busy||login.locked();n.refresh.hidden=!failed;
       n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.confirm.hidden=!confirmation;n.approve.disabled=stopped||!!pending;n.cancel.disabled=stopped||!!pending;
@@ -60,8 +60,12 @@
     function render(){
       const s=selected();n.requests.replaceChildren();
       if(!s){n.phase.textContent='';controls();return;}
-      n.phase.textContent=(n.period.value==='FIRST'?'前半':'後半')+'：'+({NOT_OPEN:'締切未設定（申請可）',DRAFT:'下書き・締切未設定（申請可）',COLLECTING:'希望受付中',PUBLISHED:'公開済み'}[s.phase])+(s.deadline?' / 締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
-      for(const [part,key]of [['FIRST','deadline'],['SECOND','deadline-second']]){const deadline=snapshot.halves[part].deadline;n[key].value=deadline?new Date(Date.parse(deadline)+9*3600000).toISOString().slice(0,16):'';}
+      const published=['FIRST','SECOND'].filter(k=>snapshot.halves[k].phase==='PUBLISHED').length;
+      n.phase.textContent=published===2?'月全体を公開済みです。':published===1?'以前の半月公開を含みます。次の公開で月全体を確認します。':'この月は未公開です。希望休の締切前でも公開できます。';
+      const rules=s.requestDeadlines||[],last=rules.at(-1);n['deadline-start'].value=last?.startDay||snapshot.month+'-01';n['deadline-end'].value=last?.endDay||contract.days(snapshot.month).at(-1);n.deadline.value=last?new Date(Date.parse(last.deadline)+9*3600000).toISOString().slice(0,16):'';
+      n['deadline-rules'].replaceChildren();for(const rule of [...rules].reverse())el('p',rule.startDay+'〜'+rule.endDay+'の希望：'+new Date(rule.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'締切（日本時間）',n['deadline-rules']);
+      if(!rules.length)el('p','この月にかかる期間指定の締切は未設定です。',n['deadline-rules']);
+      for(const part of ['FIRST','SECOND']){const old=snapshot.halves[part];if(old.deadline)el('p','以前の設定：'+(old.rangeStart||snapshot.month+(part==='FIRST'?'-01':'-16'))+'〜'+(old.rangeEnd||contract.days(snapshot.month).at(part==='FIRST'?14:-1))+'の希望は '+new Date(old.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'締切。新しい期間指定と重なる日は新しい締切を優先します。',n['deadline-rules']);}
       // 閲覧は月全体、承認先は各申請が属する保存区分と版から固定する。公開用の選択を流用しない。
       const requests=['FIRST','SECOND'].flatMap(part=>snapshot.halves[part].requests.filter(r=>['PENDING','AWAITING_CONSENT'].includes(r.status)).map(r=>({s:snapshot.halves[part],part,r}))).sort((a,b)=>a.r.payload.plan.day.localeCompare(b.r.payload.plan.day)||a.r.employeeCode.localeCompare(b.r.employeeCode));
       for(const {s,part,r} of requests){
@@ -88,7 +92,7 @@
       if(!requests.length)el('p','この月の承認待ちはありません。',n.requests);controls();
     }
     function canAct(part=n.period.value){return !stopped&&!pending&&!uncertain&&!confirmation&&!flow&&!login.locked()&&snapshot?.halves[part]?.inputMode==='SHEET';}
-    function clear(){snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-second'].value='';}
+    function clear(){snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function review(job,question,reason=false){confirmation={...job,reason};n.question.textContent=question;n.reason.value='';controls();}
@@ -110,9 +114,8 @@
     // 明示確認済みflowだけ継続する。取込みの結果不明中はここへ進まず、同一IDの照合を待つ。
     function publishImported(){
       if(!flow?.confirmed)return;
-      if(selected().phase==='PUBLISHED'){const changed=flow.authority.preview.changes.length||flow.authority.preview.eventChanges;flow=null;n.status.textContent=changed?'シート変更の反映結果を確認しました。確定勤務の変更は本人同意・承認後に反映されます。':'シートに変更はありません。公開済みの予定を維持しています。';controls();return;}
-      // 月の版はサーバー応答、内容のdigestは本人が確認したREADから固定して引き継ぐ。
-      void send('publish',{...base(),period:flow.period,expectedMonthRevision:snapshot.halves[flow.period].monthRevision,sourceDigest:flow.digest});
+      // 保存区分は互換の両半月、公開操作は月全体。両方の期待版を固定し一体commitする。
+      void send('monthPublish',{month:snapshot.month,audience:'admin',expectedRevisions:{FIRST:snapshot.halves.FIRST.monthRevision,SECOND:snapshot.halves.SECOND.monthRevision},sourceDigest:flow.digest});
     }
     global.addEventListener('message',async event=>{
       const request=pending;if(!request||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(event.origin)))return;
@@ -121,7 +124,7 @@
       if(reply.code==='LINE_VERIFY_REJECTED'&&READS.has(request.command)&&reply.data===''){finish();clear();flow=null;failed=true;login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;controls();return;}
       if(reply.data){try{value=JSON.parse(reply.data);}catch(_e){return;}
         if(['sheetRead','sheetCreate'].includes(request.command)){if(!contract.sheet(value,expected.month,request.command))return;}
-        else if(['batchRead','sheetImport'].includes(request.command)){if(!contract.validate(value,expected.month))return;}
+        else if(['batchRead','sheetImport','monthPublish','deadlineRange'].includes(request.command)){if(!contract.validate(value,expected.month))return;}
         else if(!global.TlhSchedule.validate(value,expected.month,true,expected.period))return;
       }
       if(SUCCESS.has(reply.code)&&!value)return;
@@ -138,11 +141,12 @@
         const a=value.authority;if(!a){flow=null;n.status.textContent=messages.SCHEDULE_SHEET_SOURCE_REQUIRED;controls();return;}
         flow.digest=a.sourceDigest;flow.authority=a;
         const count=a.preview.changes.length,events=a.preview.eventDetails.length;
-        review({command:'publish-flow'},value.month+'の勤務・備考等 '+count+'件、共有イベント '+events+'件を反映します。対象は月全体です。'+(selected().phase==='PUBLISHED'?'公開済み勤務の変更は本人の同意・承認待ちになります。':(flow.period==='FIRST'?'前半':'後半')+'だけを全員に公開します。')+'空欄は削除として反映します。シートを確認済みですか？',a.preview.changes.some(c=>c.published));return;
+        review({command:'publish-flow'},value.month+'の勤務・備考等 '+count+'件、共有イベント '+events+'件を反映し、月全体を公開します。希望休の締切とは独立です。公開済み勤務の変更は本人同意・承認待ちになります。空欄は削除として反映し、未設定の日を公休にしません。シートを確認済みですか？',a.preview.changes.some(c=>c.published));return;
       }
-      if(['batchRead','sheetImport'].includes(request.command))updateBatch(value);else{snapshot.halves[expected.period]=value;render();}
+      if(['batchRead','sheetImport','monthPublish','deadlineRange'].includes(request.command))updateBatch(value);else{snapshot.halves[expected.period]=value;render();}
       if(request.command==='sheetImport'&&flow){options.onSaved?.();publishImported();return;}
-      if(request.command==='publish'){flow=null;n.status.textContent='シートの反映を確認し、選択期間を公開しました。';}
+      if(request.command==='monthPublish'){flow=null;n.status.textContent='月全体の公開・変更反映を確認しました。公開済み勤務の変更は本人同意・承認後に反映します。';}
+      else if(request.command==='deadlineRange')n.status.textContent=expected.startDay+'〜'+expected.endDay+'の希望締切を '+new Date(expected.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）に設定しました。';
       else if(request.command==='review'){
         const approved=value.requests.find(r=>r.requestId===expected.requestId&&r.status==='APPROVED'&&r.payload.sheetPreference);
         n.status.textContent=approved?(approved.payload.sheetPreference.conflict?'承認し、非公開備考へ希望休と【希望休と競合】を追記しました。既存シフトは残っています。スプレッドシートで調整してください。':'承認し、非公開備考へ希望休を追記しました。'):messages[reply.code];
@@ -153,8 +157,12 @@
     for(const key of ['edit','requests'])n[key+'-tab'].addEventListener('click',()=>{if(pending||uncertain||confirmation||flow)return;category=key;controls();});
     for(const key of ['edit','requests'])n[key+'-tab'].addEventListener('keydown',event=>{if(pending||uncertain||confirmation||flow)return;if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();category=event.key==='Home'?'edit':event.key==='End'?'requests':category==='edit'?'requests':'edit';controls();n[category+'-tab'].focus();});
     n['sheet-create'].addEventListener('click',()=>{if(canAct())review({command:'sheetCreate',input:{month:n.month.value,audience:'admin'}},n.month.value+'の入力シートを作成します。既存の入力は保持します。新しい月の従業員メモだけ、直近の過去月から初回継承します。');});
-    for(const [part,key,button,title] of [['FIRST','deadline','deadline-save','1〜15日'],['SECOND','deadline-second','deadline-save-second','16日〜月末']])n[button].addEventListener('click',()=>{if(!canAct(part))return;let deadline;try{deadline=new Date(n[key].value+':00+09:00').toISOString();}catch(_e){n.status.textContent='希望締切を入力してください。';return;}review({command:'month',input:{...base(part),deadline}},snapshot.month+'の'+title+'の希望締切を設定しますか？');});
-    n.publish.addEventListener('click',()=>{if(!canAct()||n.publish.disabled)return;flow={period:n.period.value,confirmed:false};void send('sheetRead',{month:n.month.value,audience:'admin'});});
+    n['deadline-save'].addEventListener('click',()=>{
+      if(!canAct())return;const startDay=n['deadline-start'].value,endDay=n['deadline-end'].value;let deadline;
+      try{const valid=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;if(!valid(startDay)||!valid(endDay)||startDay>endDay||!n.deadline.value)throw Error();deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='希望の開始日・終了日・締切日時を確認してください。';return;}
+      review({command:'deadlineRange',input:{month:snapshot.month,audience:'admin',startDay,endDay,deadline,expectedDeadlineRevision:snapshot.halves.FIRST.deadlineRevision||0}},startDay+'〜'+endDay+'の希望を、'+new Date(deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）に締め切ります。重なる日は今回の締切を優先し、既に届いた申請は残します。設定しますか？');
+    });
+    n.publish.addEventListener('click',()=>{if(!canAct()||n.publish.disabled)return;flow={confirmed:false};void send('sheetRead',{month:n.month.value,audience:'admin'});});
     n.approve.addEventListener('click',()=>{
       if(!confirmation||pending||uncertain||stopped)return;const job=confirmation;
       if(job.reason&&(!n.reason.value.trim()||n.reason.value.length>500)){n.status.textContent='確定済み勤務の変更理由を入力してください。';n.reason.focus();return;}
