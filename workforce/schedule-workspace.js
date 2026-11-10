@@ -5,24 +5,60 @@
  * 一般化: role-based workspace。管理者本人も従業員としての操作は従業員側で行う。
  * 魔改造: 月・待機状態は本人/管理で独立。管理内は一つの月選択と、編集・公開/希望休の二分類。
  * 境界: 初回/更新は固定READだけ。保存成功は他画面の読取キャッシュを無効化し、書込みを再送しない。
+ * 初期化は表示時に1回だけ。月・未送信入力・結果不明をタブ往復で作り直さない。
  * 検証: workspace/layout/全UI/実Service連結。権限はGASが毎回判定し、表示を認可にしない。
  */
 (function(global){'use strict';
   function init(options){
     const month=document.getElementById('schedule-month'),refresh=document.getElementById('schedule-workspace-refresh'),notice=document.getElementById('schedule-draft-notice');
-    const locks=new Map();let employeeUi=null;
+    const locks=new Map();let employeeUi=null,managementUi=null;
     const employeePermitted=()=>options.visible(),employeeReadPermitted=()=>employeePermitted()&&!employeeUi?.hasUnsavedInput(),adminPermitted=()=>options.adminVisible()&&options.adminAllowed();
     const loginBlocked=()=>Array.from(locks.values()).some(Boolean);
     function controls(){const locked=!!locks.get('employee');month.disabled=locked;refresh.disabled=locked||!employeePermitted();}
     function lock(key,value){locks.set(key,value);controls();}
     function invalidate(keys){options.autoReads.invalidate(keys);if(keys.includes('schedule')&&employeeUi?.hasUnsavedInput()){notice.textContent='管理側で更新がありました。入力中の希望は保持しています。「シフトを更新」で最新情報を取得できます。';notice.hidden=false;}}
     function employeeMonthChanged(){if(!locks.get('employee')){notice.hidden=true;options.autoReads.again('schedule',employeeReadPermitted);}}
-    refresh.addEventListener('click',()=>{if(locks.get('employee'))return;if(employeeUi?.hasUnsavedInput()&&!global.confirm('未送信の希望入力を破棄して最新のシフトを取得しますか？'))return;notice.hidden=true;options.autoReads.again('schedule',employeePermitted);});
+    refresh.addEventListener('click',()=>{if(locks.get('employee')||!employeePermitted())return;ensureEmployee();if(employeeUi?.hasUnsavedInput()&&!global.confirm('未送信の希望入力を破棄して最新のシフトを取得しますか？'))return;notice.hidden=true;options.autoReads.again('schedule',employeePermitted);});
     // 既定月だけ共通。以後は本人の未送信希望と、管理側の月/公開待ちを独立させる。
     document.getElementById('schedule-management-month').value=month.value;
-    employeeUi=global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'employee',monthly:true,onMonthChange:employeeMonthChanged,onNavigationLock:value=>lock('employee',value),onSaved:()=>{notice.hidden=true;invalidate(['scheduleManagement']);}});
-    global.TlhScheduleManagement.init({embedded:true,gasUrl:options.gasUrl,liff:options.liff,loginBlocked,onNavigationLock:value=>lock('management',value),onSaved:()=>invalidate(['schedule'])});
-    return Object.freeze({activate(){controls();options.autoReads.once('schedule',employeeReadPermitted);},activateAdmin(){controls();if(adminPermitted())options.autoReads.once('scheduleManagement',adminPermitted);}});
+    // Lazy initialization: 未表示のフォーム/購読を起動時に作らず、各役割を初めて開いた時だけ接続する。
+    // 削除影響: eagerへ戻すと起動時に両controllerを作る。認可・API・データ保持の規則は変えない。
+    // 改造: 戻るたびにinitするとmessage購読や保存listenerが重複するため、必ず1個を保持する。
+    /** 本人側のフォームと購読を一度だけ接続する。未送信入力の維持用で、本人認可のcacheではない。 */
+    function ensureEmployee(){
+      if(employeeUi)return;
+      employeeUi=global.TlhSchedule.init({
+        gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'employee',monthly:true,
+        onMonthChange:employeeMonthChanged,
+        onNavigationLock:value=>lock('employee',value),
+        onSaved:()=>{notice.hidden=true;invalidate(['scheduleManagement']);}
+      });
+    }
+    /** 表示時の最新gateを通った管理側だけ接続。保存の最新認可は既存GASが毎回行う。 */
+    function ensureManagement(){
+      if(managementUi)return;
+      managementUi=global.TlhScheduleManagement.init({
+        embedded:true,gasUrl:options.gasUrl,liff:options.liff,loginBlocked,
+        onNavigationLock:value=>lock('management',value),
+        onSaved:()=>invalidate(['schedule'])
+      });
+    }
+    return Object.freeze({
+      activate(){
+        controls();
+        if(employeePermitted()){
+          ensureEmployee();
+          options.autoReads.once('schedule',employeeReadPermitted);
+        }
+      },
+      activateAdmin(){
+        controls();
+        if(adminPermitted()){
+          ensureManagement();
+          options.autoReads.once('scheduleManagement',adminPermitted);
+        }
+      }
+    });
   }
   global.TlhScheduleWorkspace=Object.freeze({init});
 })(window);

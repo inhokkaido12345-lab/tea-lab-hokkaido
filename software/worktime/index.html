@@ -1,22 +1,15 @@
 <!--
-  【このHTMLの取扱説明書：workforce/index.html / 2026-10】
-  このファイルが司ること: 【現役・公開中】LINE MINI Appの打刻・登録の実画面（日別/訂正は専用ページ）。HTML/CSS・LIFF初期化を持ち、登録controllerは別JSから読み込む。
-  コードの構成部位: bodyで勤務状態等のDOM→末尾でLIFF SDKとcontroller取得→start()で初期化。外部未ログインは本人がLINEログインを押す。
-  削除するとどうなるか: LINE MINI AppのEndpointが画面を表示できず、認証・PING・登録状態照会・D7新規登録・D8権限診断の入口が失われる。GAS内の既存データは消えない。
-  一般化: Frontend / Event-driven UI / API client。GitHub Pagesは静的ホストで、認証を最終判断するのはGAS。
-  魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はapp.css、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
-  セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
-  依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
-  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary/monthly-work-summary.test.mjs→Actions→LINE実機。打刻受付はサーバー設定で管理し、説明整理では変更しない。
-  改造の連動: D9以降の文言/検査は各controllerのmessages/verifyResponse。durationは日次/月次で共有。
-  削除前: script読込/init/section/iframeを検索。GASの共有helperがあるD番号別ファイルは独立削除不可。
-  再現: workforce/README.mdとprivate repo docs/現行再構築手順.md。GAS一時関数追加の旧案は使わない。
-  デザインの設計思想: 利用者の目的を打刻/記録/管理/その他へ分け、打刻の次の一手を先に見せる。
-  一般化: information architecture（情報の置き場所）/ progressive disclosure（必要な時だけ詳細を開く）。
-  デザイン改造MAP: workforce/DESIGN.md。classは表示、id/iframeは既存処理との契約として区別する。
-  変更時の影響: app.cssはこの画面と日別/訂正の3ページへ波及。recovery/sandboxには別CSSがある。
-  画面構成: layout.jsがpane wrapperだけを切り替える。既存controllerのhidden/disabled/draftは触らない。
-  初期表示: 打刻準備の状態とボタンを主役にし、D13単独照会は診断へ。一般登録/招待/受付の認可は従来のGASが担当。
+  TLH Work Timeのホーム：打刻/記録/シフト/管理/その他。2026-11の現行構成。
+  呼出元はLINE/PWA/通常ブラウザ。本文DOM→依存順JS→既存LINE初期化→固定READ。
+  削除影響：ホームの操作と本人確認が停止する。GAS原簿・専用ページのデータは削除しない。
+  一般化：役割別の画面構成とevent-driven API client。HTMLは認可の根拠ではない。
+  魔改造：色/余白はapp.css、画面分類はlayout.js、シフトは単独HTMLから生成。
+  schedule-workspace.jsは表示する役割を初回だけ初期化し、未送信入力/通信状態を保持する。
+  境界：公式本人/最新role/店舗はGASが検査。token/query/鍵/個人情報をURLやログへ出さない。
+  検証：startup/layout/auto-read/workspace/打刻/提出/固定UI連結。保存を点検目的で自動実行しない。
+  残す旧要素：閉じた診断・旧シフトDOM・D番号は既存listener/互換検査と対応する識別子。
+  見えないという理由だけで削除せず、script/init/DOM id/iframe/試験の参照を調べる。
+  再構築はworkforce/README.md。生成ブロックやGAS編集画面を直接書き換えない。
 -->
 <!doctype html>
 <html lang="ja">
@@ -159,13 +152,16 @@
 <p id="schedule-management-status" role="status" aria-live="polite" aria-busy="false">管理者の本人確認を待っています。</p><button id="schedule-management-login" type="button" hidden>LINEログイン</button><button id="schedule-management-refresh" type="button" hidden>再読み込み</button>
 <section id="schedule-management-edit-panel" role="tabpanel" aria-labelledby="schedule-management-edit-tab">
 <div class="schedule-sheet-actions"><button id="schedule-management-sheet-create" type="button" disabled>該当月の入力シートを作成</button><a id="schedule-management-sheet-open" class="button secondary" href="#" target="_blank" rel="noopener" hidden>入力シートを開く</a></div>
+<!-- 作成確認は作成ボタン直下へ。公開・希望休の確認とは表示位置だけを分け、同じ保存確認を共用する。 -->
+<div id="schedule-management-sheet-confirm-slot"></div>
 <section class="management-section"><h3>シフトの公開・変更反映</h3><input id="schedule-management-period" type="hidden" value="FIRST"><p id="schedule-management-phase" class="footnote"></p><p class="footnote">シートに記入した月全体を確認して公開します。希望休の受付期間や締切とは独立しています。空欄は未設定で、公休にはなりません。公開済み勤務の変更は本人同意・承認を経て反映します。</p><button id="schedule-management-publish" type="button" disabled>下書きを公開する</button></section>
 </section>
 <section id="schedule-management-requests-panel" role="tabpanel" aria-labelledby="schedule-management-requests-tab" hidden>
 <section class="management-section"><h3>希望休の締切を設定</h3><p class="footnote">ここからここまでの希望を、指定日時に締め切ります。締切未設定の日は申請できます。重なる日には後から設定した締切を適用し、既に届いた申請は残します。シフトの作成・公開範囲は制限しません。</p><div class="filters"><label>希望の開始日<input id="schedule-management-deadline-start" type="date" disabled></label><label>希望の終了日<input id="schedule-management-deadline-end" type="date" disabled></label><label>この期間の希望を締め切る日時（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label></div><button id="schedule-management-deadline-save" type="button" disabled>この期間の締切を設定</button><div id="schedule-management-deadline-rules"></div></section>
 <section class="management-section"><h3>希望休承認</h3><div id="schedule-management-requests"></div></section>
 </section>
-<section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
+<div id="schedule-management-default-confirm-slot"><section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
+</div>
 <button id="schedule-management-retry" type="button" hidden disabled>同じ操作で結果を再確認</button>
 <iframe id="schedule-management-frame" name="tlhScheduleManagementFrame" title="管理シフトの署名付き応答" hidden></iframe>
 </div>
@@ -445,13 +441,13 @@
   <script src="/workforce/schedule-report.js?v=20261110-range-month1"></script>
   <script src="/workforce/schedule.js?v=20261110-input-binding1"></script>
   <script src="/workforce/schedule-management-contract.js?v=20261110-range-month1"></script>
-  <script src="/workforce/schedule-management.js?v=20261110-input-binding1"></script>
-  <script src="/workforce/schedule-workspace.js?v=20261110-management1"></script>
+  <script src="/workforce/schedule-management.js?v=20261110-confirm-position1"></script>
+  <script src="/workforce/schedule-workspace.js?v=20261110-lazy-init1"></script>
   <script src="/workforce/layout.js?v=20261110-management1"></script>
   <script src="/workforce/admin-access.js?v=20261108-batch1"></script>
   <script>
     /**
-     * TLH Work Time / LINE認証・TLH一般アカウント作成 診断画面 D8。
+     * TLH Work Time / ホーム起動と閉じた接続診断の組立。
      *
      * 目的:
      *  - 古いHTMLのキャッシュと現行コードを画面上の版番号で区別する。

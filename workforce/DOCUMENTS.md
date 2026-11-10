@@ -31,6 +31,10 @@
 - [SCHEDULE-LOGIN-RECOVERY.md](SCHEDULE-LOGIN-RECOVERY.md)
 - [STAFF-CODE-CHANGE.md](STAFF-CODE-CHANGE.md)
 
+## 旧項目の扱いと点検
+
+`node scripts/audit-worktime-assets.mjs` は実際のHTMLが読むローカル資産を照合し、旧CSV関連が現行入口に戻っていないか確認します。旧コードを削除した数ではなく、参照/互換性と不要な初期化を検査します。今回の整理前原文は[整理前の記録一覧](history/20261110-maintenance-index.md)へ保存し、現行資料の重複公開ログだけを除きました。
+
 ## 過去の改修・公開記録
 
 ここにある旧CSV/全月共通メモ/受付OFF/未公開/旧URLは当時の記録で、現行手順ではありません。

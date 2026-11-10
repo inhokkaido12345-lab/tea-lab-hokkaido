@@ -21,3 +21,11 @@
 `node --test tests/*.mjs`のstartup-loading/layout/home-read/auto-read等と、backend連結検査を使います。表示開始の待ちを減らす変更と、GAS/LINE/Sheetsの往復秒数は別です。[性能記録](PERFORMANCE.md)を参照し、昔の計測値を現行の実打刻時間として再利用しません。
 
 [説明整理前の記録](history/20261110-before-guidance-audit-STARTUP.md)。
+
+## 表示時の初期化（今回の未公開候補）
+
+schedule-workspace.jsは本人/管理のcontrollerを最初の表示時だけ作る構成です。起動時は0個、本人だけ開けば1個、認可された管理画面も開けば各1個。未表示のフォーム準備とmessage/保存イベントの購読を起動時に走らせません。タブ往復では再生成せず、未送信入力/通信/結果不明を保持。保存成功の相互無効化と、入力破棄の明示確認は継続します。
+
+これは初期化回数の削減で、GAS通信秒数の改善を示す実測ではありません。`node --test tests/schedule-workspace.test.mjs` で起動0回、1000回の往復でも各1回、未認可・管理先行・入力保持を確認します。
+
+実DOMのオフライン確認は開発用Playwrightで `node qa/verify-schedule-lazy-init.mjs`。既存モジュール/Chromeの指定はTLH_PLAYWRIGHT_MODULE / TLH_CHROME_EXECUTABLE。実際のHTMLとcontrollerを使い、外部通信は遮断して管理先行/失権/1000回の再表示と入力が未認可で有効化されないことを検査します。

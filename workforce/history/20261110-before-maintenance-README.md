@@ -1,0 +1,105 @@
+# 最新：本社提出PDFの全打刻明細（2026-11-10）
+
+2026-11-10、本人承認により画面PR #77/main `bb4dff8df2e05f80d3787ac2a94ac045780b220b` とbackend PR #61/main `ddad631d18bd593bb01447de00327e8881224f40` を反映。GitHub検査/Pages成功、変更した画面・専用CSS・説明7ファイルの配信一致を確認。画面329件・今回の固定UIとの連結71件成功。全14参照/workflowは `fcec661c3e7372c829254f38c7bfdf95fb14891d`。GASソースは差分なし、GAS v80を再配布していない。
+
+実ブラウザでは新版の専用CSS読込み→最新管理者認可→本人の月次READを確認。30日分の明細行と合計が生成され、表のdisplay=block、印刷/PDFボタン有効を確認。原簿/打刻/訂正/権限/受付は変更していない。実データのPDFを点検のために保存・送信していない。
+
+実HTML/CSS/controllerと架空データで旧CSSによる明細欠落を再現。修正版は390px/1280px/印刷で表を表示、hidden時は非表示。30日・31勤務行、複数勤務/複数休憩/日またぎの全時刻、既存の実働合計18:15・休憩合計0:45・未退勤数を、生成PDF本文と2ページの描画で確認。架空見本を実記録と混同しない。次は利用者が同じ社員/月を読み直してPDFを再出力し、本社への提出内容を確認する。
+
+# 最新公開：読取削減と入力ファイル識別（2026-11-10）
+
+2026-11-10、本人承認によりbackend PR #59/main `7b93a00aca3b3cc30a27e4739787f5b36f97bf9e` → GAS v80 → UI PR #74/main `3fea990b2bd099bb8cfd91240890fb237377b0f8` の順で公開済み。GASのHEAD/公開版全66ファイル・manifest・既存公開範囲をGETで一致確認。画面変更11ファイルの配信一致、Actions/Pages成功。backend834件・UI327件・今回の固定UIとの連結71件、計1,232件成功。全14参照/workflowは `daaf2af8a188a721f2126fcdadb7b89c19bc9f7b` に統一。
+
+入力ファイルの識別情報1件をSpreadsheet階層へ設定し、返却metadataで固定ファイル/会社/店舗/版を照合。「使い方」B11/B13/B14だけを月全体公開の説明へ更新、書式・隣接値を保持して読戻し/実画面を確認。月タブは追加していない。
+
+実ブラウザで期限切れから既存LINEによる明示ログイン復帰、新版script参照、最新管理者認可、従業員の月暦/希望受付、管理の月READ、打刻READで勤務外・出勤ボタン有効を確認。入力確認はREAD段階だけで停止し、旧形式エラーからSCHEDULE_SHEET_NOT_FOUND（対象月を作成する案内）へ変わったことを確認。これにより実GASでファイル識別検査を通過したことを確認した。作成/取込み/公開/申請/実打刻は実行していない。
+
+初回作成・再操作時の入力保持・失権・異店舗/重複印/不正見出しは模擬試験済み。本人が希望する対象月を作成する実操作と、スマホでの同条件の実秒数比較は次の確認事項。PCの読取成功やAPI回数削減を、実機で何秒改善したという証拠にしない。在庫管理の手元変更8ファイルと既存改行状態を保持し、公開対象へ含めていない。
+
+# TLH Work Time：利用・開発・保守
+
+公開アプリは **https://tealabhokkaido.com/software/worktime/**。制作元は **TEA LABORATORY HOKKAIDO/SOFTWARE/xxx**（xxxは未定の部門ブランド名）です。[現在地](CURRENT-STATUS.md)、[従業員ヘルプ](employee-help.html)、[管理者ガイド](admin-guide.html)、[説明書索引](DOCUMENTS.md)から目的の資料へ進めます。
+
+## 使える機能と担当する画面
+
+| 利用者 | 入口 | 操作 |
+|---|---|---|
+| 従業員 | 打刻 | 出勤・休憩開始/終了・退勤。同日再出勤、日またぎ |
+| 従業員 | 記録 | 今日・今月の集計、日別記録、本人の訂正申請 |
+| 従業員 | シフト | 全員の確定月暦、本人の希望休・変更申請・同意、PDF/CSV出力 |
+| 従業員 | その他 | 本人のアカウント情報を自動表示、初回招待受取り、ヘルプ |
+| 管理者 | 管理→従業員の管理 | 事前登録・招待・氏名/入社日訂正・利用停止・社員番号変更 |
+| 管理者 | 管理→出退勤の管理 | 月次提出、直接訂正、氏名付きの訂正承認待ち |
+| 管理者 | 管理→シフトの管理 | 「シフト編集・公開」「希望休」の二分類 |
+
+管理者本人の訂正申請も従業員側から行います。管理の入口は最新の権限確認まで無効。表示だけで認可せず、GASが操作ごとに本人・会社・店舗・権限を検査します。
+
+LINEログインが現在の認証方法です。独自パスワード・メール/SMS認証、オフライン打刻、給与/法定割増の完全計算は未対応です。シフトが未設定でも、従業員登録と受付が有効なら打刻できます。運営Webは配布済みですが専用台帳/初期運営権は未設定、遠隔LINE復旧受付は閉鎖中です。新環境の初期勤怠管理者・完全復元は未実証です。
+
+## シフト：編集はシート、アプリは確認・反映・公開
+
+管理→シフトの管理→「シフト編集・公開」で月を選び、正本シートを編集します。「下書きを公開する」で月全体の差分を確認し、一度に公開。半分の日だけ記入しても残りは未設定です。希望休の締切とは独立し、既存勤務の変更は本人同意・管理者承認を維持します。希望休の開始日/終了日/締切日時は「希望休」内で設定します。
+
+CSV入力・画面内セル編集・専用取込みボタン・下書き一覧はありません。**勤務・備考の空欄は削除の指定**です。公休は明記し、予定未設定を休日・0時間に読み替えません。確定後の勤務変更は理由・本人同意・管理者承認を維持します。[管理手順](SCHEDULE-MANAGEMENT.md)、[入力形式](SHEET-INPUT.md)。
+
+「希望休」で受付締切と承認を扱います。全日の希望休承認直後、入力シートの非公開備考へ「希望休」を追記。競合する予定を残して「【希望休と競合】」を併記するので、管理者がシートで調整します。承認だけで勤務を消したり確定公開したりしません。他の申請は正本一致・本人同意等の条件を維持します。
+
+`YYYY-MM従業員メモ`の「当月メモ（管理者用）」へ「火木不可」などを記入します。新規月作成時だけ直近の過去月から社員IDで継承し、なければ空欄。その後は各月独立です。参考情報であり勤務制約・全員公開・給与へ自動変換しません。旧共通メモは現行の入力先ではありません。
+
+## 新しいPCで開発する
+
+Git、Node.js 22、Python 3を用意します。画面試験・HTML再生成にnpm installや追加Pythonパッケージ、Google認証は不要です。
+
+```powershell
+git clone https://github.com/inhokkaido12345-lab/tea-lab-hokkaido.git tea-lab-hokkaido-work
+Set-Location tea-lab-hokkaido-work
+git status --short
+python scripts/sync-schedule-workspace.py
+python scripts/build-workforce-design-preview.py
+python scripts/sync-worktime-url.py
+python scripts/sync-worktime-url.py --check
+node --test tests/*.mjs
+```
+
+既存フォルダや未コミット変更を上書きしません。試験は架空DOM/LINE/通信と実Web Cryptoで行い、HTMLをファイルとして開いて実打刻を試しません。GASの変更・連結試験は、隣にprivate `tlh-platform-work`を取得し、そちらのREADMEに従います。全14個の固定UI参照とworkflowを同じ検証版へ揃え、hash不一致を黙らせるためだけの更新はしません。
+
+## ファイルの責務と魔改造MAP
+
+| 変更対象 | 編集元 | 削除・改造の影響 |
+|---|---|---|
+| 色・余白・字体 | app.css / schedule.css | 共通画面と印刷へ波及。hidden/disabledを見た目で解除しない |
+| 5タブ・管理内の分類 | index.html / layout.js | 表示だけを担当。保存中の入力や権限状態を変えない |
+| 打刻・本日の記録 | punch.js / home-read.js | 最新認可・固定ID・保存確認を維持。shell.jsの時計は表示だけ |
+| 日別・月次提出 | attendance-journal.js / monthly-report.js | 本人と管理者を分離。給与の確定値として扱わない |
+| 訂正申請・直接訂正・承認 | day-change.jsと役割別HTML | SELF/DIRECT/REVIEWと原打刻を残す方式を維持 |
+| 本人のシフト閲覧・希望 | schedule.js / schedule-view.js / schedule-report.js | 月全体の月暦・申請一覧・共有出力。保存区分と期待版は希望日から選択。管理操作を混ぜない |
+| 管理シフト | schedule-management.js / schedule-management-contract.js | シート確認→明示反映→半月公開。digest/期待版/固定ID/同意を維持 |
+| 統合シフト・公開HTML | scripts/sync-schedule-workspace.py / scripts/sync-worktime-url.py | 元ページから再生成。生成済みブロックやsoftware/worktimeを手編集しない |
+| 旧CSV・旧一括編集 | schedule-sheet.js / schedule-bulk*.js | 互換検査用。現役管理ページでは読み込まない。削除前に参照を検索 |
+| 本人情報・権限・通知 | account-info.js / admin-access.js / admin-overview.js | 本人情報自動表示、管理入口、名簿/件数。画面表示を保存認可に使わない |
+
+削除前にscript読込/init/DOM id/iframe/試験を検索します。責務・呼出元/先・削除影響・一般概念・改造箇所・秘密の境界・検査のコメントを挙動と同期します。[シフト保守](SHIFT-MAINTENANCE.md)、[起動](STARTUP.md)、[読取](AUTO-READ.md)。
+
+## 公開・障害時
+
+コード正本はGitHub main、GASは既存Actions/claspの配布コピーです。シフト入力データの正本がシートであることとは別です。GASソースや生成物の手編集、新サービス追加はしません。
+
+差分と既存変更を確認→試験/連結検査→確認用ブランチ/PRの検査→必要な公開確認→main/既存配布→公開一致/読取確認、の順です。GAS契約変更時はGAS→画面。設定・権限・受付・実データ変更は別に確認します。UI/説明のみの更新でGASを再公開しません。
+
+不明な保存結果は同じ操作で再確認し、新規送信を重ねません。原打刻・履歴・内部IDを消して復旧しません。token/鍵/個人情報/招待秘密をURL・console・端末Storageへ保存しません。移行後のLINE/PWA・切戻しは[URL移行](URL-MIGRATION.md)、性能の実測と限界は[PERFORMANCE](PERFORMANCE.md)。
+
+[説明整理前の記録](history/20261110-before-guidance-audit-README.md)。
+
+## 公開済み：タブ読込みの待機順（2026-11-10）
+
+`auto-read.js`の`once(key, permitted, true)`は背景READ指定。起動後の管理概要/通知取得を省かず、未開始の概要より今開いたタブのREADを先に進めます。実行中の通信を中断せず、連打による重複取得も防ぎます。保存ボタンを自動取得の許可リストへ追加しないでください。
+
+再現検査は`node --test tests/auto-read.test.mjs`。HTML変更後は従来どおり`python scripts/sync-schedule-workspace.py`、`python scripts/build-workforce-design-preview.py`、`python scripts/sync-worktime-url.py`、`python scripts/sync-worktime-url.py --check`。シフトGAS側の要求内再利用もGAS v80へ公開済み。公開後の本人端末の秒数比較は未実施です。
+
+## 公開済み：入力シートの識別エラーを分離
+
+月別入力がない場合の識別設定不足と、他店舗などの識別不一致を別の案内にしました。利用者の勤務入力ミスとは区別し、設定担当者に連絡する表示です。GAS v80と画面を公開し、固定入力ファイルの識別設定と実READを確認済みです。月の作成・既存入力・シフト公開は別操作です。
+
+## 公開済み：本社提出PDFの明細欠落を修正
+
+印刷へ継承される共通の表非表示ルールを、提出表専用CSSで上書き。日別の全勤務/休憩打刻と、既存の実働・休憩合計等を保持します。GASやCSVの変更は不要。[原因・PDF確認・再構築手順](MONTHLY-REPORT.md)。
