@@ -1,0 +1,35 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'"><title>記録の表示見本 | TLH Work Time</title><link rel="stylesheet" href="../../fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule-bulk.css?v=20261109-sheet1"></head><body class="home-page"><div class="app"><main><p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。 <a href="punch.html">打刻</a> / <a href="records.html">記録</a> / <a href="schedule.html">従業員シフト</a> / <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p><div id="records-work-panel" data-workforce-pane="records" role="tabpanel" aria-labelledby="records-tab"><div class="page-heading"><div><p class="eyebrow">勤務の振り返り</p><h1>勤務記録</h1></div></div><section id="daily-summary-section" class="staff-section">
+      <h2>今日の勤務（完了分）</h2>
+      <div id="daily-summary-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="daily-summary-check" class="bridge-button" type="button" disabled>今日の勤務時間を更新</button>
+      <div id="daily-summary-result" hidden>
+        <dl class="daily-summary-values">
+          <dt>出勤日<br>（日本時間）</dt><dd id="daily-summary-date"></dd>
+          <dt>完了した勤務</dt><dd id="daily-summary-count"></dd>
+          <dt>出勤から退勤</dt><dd id="daily-summary-gross"></dd>
+          <dt>休憩時間</dt><dd id="daily-summary-break"></dd>
+          <dt>休憩を除く時間</dt><dd id="daily-summary-worked"></dd>
+        </dl>
+        <p id="daily-summary-open" class="detail"></p>
+      </div>
+    </section><section id="monthly-work-section" class="staff-section">
+      <h2>今月の勤務（完了分）</h2>
+      <div id="monthly-work-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="monthly-work-check" class="bridge-button" type="button" disabled>今月の勤務時間を更新</button>
+      <div id="monthly-work-result" hidden>
+        <dl class="daily-summary-values">
+          <dt>出勤月<br>（日本時間）</dt><dd id="monthly-work-month"></dd>
+          <dt>完了勤務日数</dt><dd id="monthly-work-days"></dd>
+          <dt>完了した勤務</dt><dd id="monthly-work-count"></dd>
+          <dt>出勤から退勤</dt><dd id="monthly-work-gross"></dd>
+          <dt>休憩時間</dt><dd id="monthly-work-break"></dd>
+          <dt>休憩を除く時間</dt><dd id="monthly-work-worked"></dd>
+        </dl>
+        <p id="monthly-work-open" class="detail"></p>
+      </div>
+    </section>
+<!-- 月の完了分を見た後に、日ごとの出退勤・休憩の詳細へ進む。リンク先と本人申請の権限は変えない。 -->
+<section class="card"><h2>日別の勤務記録</h2><p class="subtle">実際の出退勤・休憩を確認します。勤務予定は「シフト」タブへ。日別の予定比較は従来の設定によります。</p><a class="button primary full" href="#preview-notice">日別の退勤記録を見る →</a><a class="button secondary full" href="#preview-notice">自分の打刻の訂正を申請する</a><p class="footnote">従業員本人が申請し、管理者の承認後に反映します。</p></section></div>
+<!-- 管理の画面: 一般利用の打刻から、登録/訂正/停止を離して誤操作を減らす。
+     タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
+</main></div></body></html>
