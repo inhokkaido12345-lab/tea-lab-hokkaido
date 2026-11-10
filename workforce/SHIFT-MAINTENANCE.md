@@ -13,7 +13,7 @@
 | schedule-workspace.js | 本人/管理の別フォーム・月・状態を既存LIFFへ接続 | 統合画面の接続が停止 |
 | scripts/sync-schedule-workspace.py | 単独の本人/管理ページからホームの2範囲を生成 | ホームへ修正が伝わらなくなる |
 | scripts/sync-worktime-url.py | 編集元から新URL用HTMLを生成 | 新URLへ修正が伝わらなくなる |
-| GAS ScheduleInputSheet / ScheduleSheetAuthority | 入力正本・月別メモ・補助タブ・差分/digest | シート確認/取込みが停止 |
+| GAS ScheduleInputSheet / ScheduleSheetAuthority | 統合入力正本・月別メモ・下部明細・V2互換・差分/digest | シート確認/取込みが停止 |
 | GAS ScheduleService / Store / BridgeSchedule | 最新認可・期限/版/同意・保存/読戻し・署名 | シフトの読取/保存が停止 |
 
 schedule-bulk*.jsとschedule-sheet.jsは旧client/互換検査用です。通常の管理入口からは読みません。旧編集表を新UIへ戻したり、互換参照の確認なしに削除したりしません。

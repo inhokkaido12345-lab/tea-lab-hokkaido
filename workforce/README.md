@@ -63,7 +63,7 @@ node --test tests/*.mjs
 
 ## 公開と障害対応
 
-差分確認→対象/全体/固定UI連結検査→必要な公開承認→main/既存配布→配信一致/実READ確認。UIだけなら不要なGAS再配布やSecret再認証はしません。今回の整理候補と既存公開版は[現在地](CURRENT-STATUS.md)で分けています。
+差分確認→対象/全体/固定UI連結検査→必要な公開承認→main/既存配布→配信一致/実READ確認。UIだけなら不要なGAS再配布やSecret再認証はしません。最新の公開状態は[現在地](CURRENT-STATUS.md)で分けています。
 
 結果不明の保存は同じ操作ID/入力で再確認し、新規送信を重ねません。原打刻・内部ID・履歴を消して復旧せず、token/鍵/個人情報をURL/console/Storageへ出しません。遅いからといって最新認可や保存後の全行読戻しを省略しません。[性能](PERFORMANCE.md)、[起動](STARTUP.md)、[自動読取](AUTO-READ.md)、[URL移行](URL-MIGRATION.md)。
 
