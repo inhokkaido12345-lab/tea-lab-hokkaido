@@ -15,7 +15,7 @@ const key=(code,day)=>code+'|'+day,half=day=>Number(day.slice(8))<=15?'FIRST':'S
       if(Object.hasOwn(value,'inputSheetUrl')&&(typeof value.inputSheetUrl!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit$/.test(value.inputSheetUrl)))return false;
       for(const part of ['FIRST','SECOND'])if(!global.TlhSchedule.validate(value.halves[part],month,true,part))return false;
       const a=value.halves.FIRST.employees,b=value.halves.SECOND.employees;
-      return JSON.stringify(a)===JSON.stringify(b)&&new Set(a.map(p=>p.employeeCode)).size===a.length&&value.halves.FIRST.inputMode===value.halves.SECOND.inputMode;
+      return JSON.stringify(a)===JSON.stringify(b)&&new Set(a.map(p=>p.employeeCode)).size===a.length&&value.halves.FIRST.inputMode===value.halves.SECOND.inputMode&&value.halves.FIRST.deadlineRevision===value.halves.SECOND.deadlineRevision&&JSON.stringify(value.halves.FIRST.requestDeadlines)===JSON.stringify(value.halves.SECOND.requestDeadlines);
     }catch(_e){return false;}
   }
 

@@ -5,7 +5,7 @@ export function managementSnapshot(){const s=bulkSnapshot(1);s.inputSheetUrl='ht
 export function sheetReply(snapshot=managementSnapshot(),changes=[]){return{version:1,month:snapshot.month,csv:'',snapshot,sheet:{url:'https://docs.google.com/spreadsheets/d/fixture/edit#gid=1',created:false},authority:{sourceDigest:'a'.repeat(64),targetDigest:'b'.repeat(64),preview:{month:snapshot.month,changes,blanks:0,unchanged:0,eventChanges:0,eventDetails:[]}}};}
 export function managementHarness(){
  const nodes=new Map(),events={},sent=[],timers=new Map(),loginCalls=[];let seq=0;
- function make(tag='div'){return{tagName:tag,children:[],attrs:{},events:{},value:'',disabled:false,hidden:false,textContent:'',
+ function make(tag='div'){return{tagName:tag,children:[],attrs:{},dataset:{},events:{},value:'',disabled:false,hidden:false,textContent:'',
   addEventListener(k,f){this.events[k]=f;},setAttribute(k,v){this.attrs[k]=v;},getAttribute(k){return this.attrs[k]??null;},removeAttribute(k){delete this.attrs[k];},focus(){},remove(){},
   appendChild(n){this.children.push(n);n.parentElement=this;return n;},replaceChildren(){this.children=[];},querySelectorAll(selector){assert.equal(selector,'button');return walk(this).filter(n=>n.tagName==='button');},submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
  const walk=n=>[n,...n.children.flatMap(walk)];

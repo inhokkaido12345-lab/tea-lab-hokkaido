@@ -18,11 +18,11 @@ test('period-bound employee form displays availability and sends selected half w
  h.n('day').value='2026-11-16';h.n('reason').value='希望';h.click('save');assert.equal(h.sent.length,1);assert.match(h.n('status').textContent,/期間に含まれる/);
  h.n('day').value='2026-11-05';h.click('save');assert.equal(JSON.parse(h.sent[1].input).period,'FIRST');
 });
-test('unconfigured and closed periods explain disabled submission; annual leave remains separately available',async()=>{
+test('unconfigured months accept wishes, while configured deadlines close ordinary preferences but not annual leave',async()=>{
  for(const phase of ['NOT_OPEN','DRAFT','COLLECTING']){
   const h=scheduleUiHarness(),s={...h.snapshot(),phase,deadline:phase==='COLLECTING'?'2026-11-03T00:00:00.000Z':''};await h.api.read();await h.reply(h.sent[0],s);
-  assert.equal(h.n('save').disabled,true);assert.match(h.n('availability').textContent,phase==='NOT_OPEN'?/未設定/:phase==='DRAFT'?/開始していません/:/締切済み/);
-  if(phase!=='NOT_OPEN'){h.n('leave').value='PAID';h.n('leave').events.change();assert.equal(h.n('save').disabled,false);}
+  assert.equal(h.n('save').disabled,phase==='COLLECTING');assert.match(h.n('availability').textContent,phase==='COLLECTING'?/締切済み/:/送信できます/);
+  h.n('leave').value='PAID';h.n('leave').events.change();assert.equal(h.n('save').disabled,false);
  }
 });
 test('a signed reply for another half is ignored and second-half calendar starts on the sixteenth',async()=>{
