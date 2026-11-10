@@ -1,3 +1,7 @@
+## 公開URLの移行（2026-11-10）
+
+利用者の指定で公開入口を **https://tealabhokkaido.com/software/worktime/** へ統一します。旧URLは互換転送、既存PWAのmanifest URL/idとLINE IDは維持します。編集元は引き続き`workforce/`、公開HTMLは`python scripts/sync-worktime-url.py`で再生成。新URL・LINE設定・PWA・在庫認証・戻し方は[URL移行手順](URL-MIGRATION.md)を参照してください。以下の「URLは変更しない」は以前の表示名だけを変えた時点の記録です。保存先・最新認可・固定ID再送・保存読戻しは変更しません。
+
 # TLH Work Time：利用・開発・改造の入口
 
 勤怠・シフト管理のオンラインWebアプリです。制作元は **TEA LABORATORY HOKKAIDO/SOFTWARE/xxx**。`SOFTWARE`は部門、`xxx`は未定の部門ブランド名の仮表記です。名称決定時はホーム「その他」・従業員ヘルプ末尾と、この説明・AGENTS/PWA・表示見本を同期します。表示名だけを変更しており、URLと内部識別子の `/workforce/` は維持します。

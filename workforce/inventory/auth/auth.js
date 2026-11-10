@@ -1,5 +1,5 @@
 /**
- * 共通LIFF Endpoint内の認証窓口。/software/inventory/のemployee-login.jsが明示操作で開く。
+ * 共通LIFF Endpoint内の認証窓口（旧URLは互換転送を経由）。/software/inventory/のemployee-login.jsが明示操作で開く。
  * SDK初期化→本人ログイン→openerへREADY→nonce付き要求→結果1回返信。
  * 削除で独立PWAの本人確認不可。WorkTimeの打刻/社員データは扱わない。
  * 概念: authentication broker / auxiliary browsing context / challenge correlation。
@@ -11,7 +11,7 @@
  'use strict';
  const origin='https://tealabhokkaido.com',status=document.getElementById('auth-status');
  let ready=false,done=false;
- if(global.location.origin!==origin||global.location.pathname!=='/workforce/inventory/auth/'||!global.opener){
+ if(global.location.origin!==origin||global.location.pathname!=='/software/worktime/inventory/auth/'||!global.opener){
   status.textContent='在庫アプリの「LINEでログイン」から開いてください。';return;
  }
  global.addEventListener('message',event=>{
@@ -26,7 +26,7 @@
  try{
   await global.liff.init({liffId:'2011940133-JXUDzLnG'});
   if(!global.liff.isLoggedIn()){
-   global.liff.login({redirectUri:origin+'/workforce/inventory/auth/'});return;
+   global.liff.login({redirectUri:origin+'/software/worktime/inventory/auth/'});return;
   }
   ready=true;status.textContent='在庫アプリへ本人確認の結果を返しています…';
   global.opener.postMessage({type:'TLH_INVENTORY_LOGIN_READY'},origin);

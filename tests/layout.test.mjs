@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { webcrypto, createHmac } from 'node:crypto';
 
-const html = fs.readFileSync(new URL('../workforce/index.html', import.meta.url), 'utf8');
+const html = fs.readFileSync(new URL('../software/worktime/index.html', import.meta.url), 'utf8');
 const layout = fs.readFileSync(new URL('../workforce/layout.js', import.meta.url), 'utf8');
 async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = true, initFailure = false, loginFailure = false } = {}) {
   const loginCalls=[];let reloads=0;
@@ -30,7 +30,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   node('journal-mode').value='self'; // 実HTMLの唯一のoptionが初期選択される。
   const diagnostics = { open: false };
   const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,MutationObserver:Observer,
-    location: { href:'https://tealabhokkaido.com/workforce/',origin: 'https://tealabhokkaido.com', pathname: '/workforce/',reload(){reloads++;} },
+    location: { href:'https://tealabhokkaido.com/software/worktime/',origin: 'https://tealabhokkaido.com', pathname: '/software/worktime/',reload(){reloads++;} },
     confirm: () => false,
     liff: { init: async () => {if(initFailure)throw Error('fixture init failure');}, isLoggedIn: () => loggedIn, isInClient: () => inClient, getIDToken: () => proof,
       login(options){loginCalls.push(JSON.parse(JSON.stringify(options)));if(loginFailure)throw Error('fixture login failure');} },
@@ -123,7 +123,7 @@ test('external first launch offers explicit LINE login without loops, saved toke
   assert.equal(h.node('workforce-tabs').hidden,true);assert.equal(h.sent.length,0);assert.equal(h.loginCalls.length,0);
   h.context.location.search='?code=private';h.context.location.hash='#private';
   h.click('home-line-login');h.click('home-line-login');
-  assert.deepEqual(h.loginCalls,[{redirectUri:'https://tealabhokkaido.com/workforce/'}]);
+  assert.deepEqual(h.loginCalls,[{redirectUri:'https://tealabhokkaido.com/software/worktime/'}]);
   assert.equal(h.sent.length,0);assert.equal(h.node('home-line-login').disabled,true);
   h.depart();h.click('home-line-login');assert.equal(h.loginCalls.length,1);
 });
@@ -235,7 +235,7 @@ test('management categories retain inputs and pending state, hide unrelated form
 test('management choices stay closed for employees; labor review has a separate page',async()=>{
  const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');for(const name of ['employees','attendance','schedule']){assert.equal(h.node('manager-'+name+'-choice').disabled,true);h.click('manager-'+name+'-choice');}
  assert.equal(h.node('schedule-admin-entry').hidden,true);assert.equal(h.node('manager-registration-panel').hidden,true);assert.equal(h.sent.length,3);
- assert.doesNotMatch(html,/id="labor-policy-section"|laborPolicyUi|src="labor-policy.js/);assert.match(html,/href="labor-policy.html"/);
+ assert.doesNotMatch(html,/id="labor-policy-section"|laborPolicyUi|src="labor-policy.js/);assert.ok(html.includes('href="/software/worktime/labor-policy.html"'));
 });
 
 test('employee shift activation cannot reveal or request administrator controls',async()=>{const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');h.click('schedule-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.node('schedule-admin-entry').hidden,true);assert.ok(!h.wire.some(r=>r.action==='bridgeScheduleV1'&&JSON.parse(r.input).audience==='admin'));});

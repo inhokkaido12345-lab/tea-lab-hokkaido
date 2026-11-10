@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- 現役シフト入口。表示/入力はschedule.js、認可/締切/保存/勤務算入は既存GAS。
+     削除するとこの役割の入口だけ停止。id/fieldset disabled/iframe契約を改名しない。
+     役割分離の一般例: 本人の希望と、管理者の予定確定は同じ保存処理を違う権限で呼ぶ。
+     改造はSCHEDULE.md/DESIGN.md、対のHTML、GAS Service/Bridge、両repoテストを同期。
+     理由/予定/本人情報はURL・Storage・ログに出さず、返信は署名検査後にtextContentへ。 -->
+<html lang="ja"><head>
+<base href="/workforce/">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>月間シフト・希望の提出 | TLH Work Time</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule.css?v=20261110-hierarchy1">
+<script defer src="current-workplace.js?v=20261105-store2"></script>
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261109-authority1"></script><script defer src="schedule.js?v=20261110-login1" data-bootstrap="true"></script>
+</head><body class="secondary-page schedule-page" data-audience="employee"><header><strong>TLH Work Time</strong><a class="button secondary" href="/software/worktime/index.html#schedule">シフトタブへ戻る</a></header>
+<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
+<main><div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望の提出</h1></div></div>
+<button id="schedule-login" type="button" hidden>LINEログイン</button>
+<div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>希望申請・出力の対象期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" disabled>最新の状態に更新</button></div>
+<p class="footnote">カレンダーは1日〜月末の月全体です。半月の選択は希望・変更申請と出力の対象期間です。スマホではカレンダーを横にスクロールできます。</p>
+<p id="schedule-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="schedule-summary"></p><p id="schedule-published-at" class="schedule-updated" aria-live="polite"></p>
+<section class="schedule-export"><h2>確定シフトの共有・印刷</h2><button id="schedule-print" type="button" disabled>印刷・PDF保存</button> <button id="schedule-csv" type="button" disabled>CSV保存</button><p id="schedule-export-status" role="status">確定シフトの取得後に出力できます。</p><p class="footnote">印刷画面で「PDFに保存」を選べます。保存したファイルをLINE・メールへ添付してください。LINE内で保存できない場合は通常のブラウザで開きます。非公開メモや未確定の希望は出力しません。</p></section>
+<button id="schedule-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button>
+<p class="footnote">時刻は日本時間。希望の提出だけでは予定は確定しません。未設定の日を公休や0時間とみなしません。勤務予定は実際の打刻とは別です。</p>
+<section class="management-section" hidden><h2>期間の受付と確定公開</h2><fieldset id="schedule-month-form" disabled><label>この期間の希望締切（日本時間）<input id="schedule-deadline" type="datetime-local"></label><button id="schedule-month-save" type="button">この期間の希望受付・締切を設定</button></fieldset><button id="schedule-publish" type="button" disabled>この期間の下書きを確定公開</button><p class="footnote">締切後に公開できます。確定後の勤務変更は本人の申請または同意を経て承認します。未設定の日が残っている場合は確認してください。</p></section>
+<section class="management-section"><h2>全員の確定シフト</h2><p class="footnote">全員向けには確定した勤務区間と休暇の表示を共有します。「全員に公開する特記事項」も共有します。希望理由・非公開メモ・用事の名称や場所は共有しません。</p><div class="schedule-calendar-scroll" tabindex="0" role="region" aria-label="月全体のシフトカレンダー"><div id="schedule-calendar" class="schedule-calendar"></div></div></section>
+<section class="management-section"><h2>自分の希望・変更申請</h2><p id="schedule-request-deadline" class="schedule-deadline-banner" role="status" aria-live="polite">希望休の締切を確認しています。</p><p id="schedule-availability" role="status" aria-live="polite">受付状態を確認しています。</p><fieldset id="schedule-editor" disabled>
+<label hidden>対象の従業員<select id="schedule-employee"></select></label>
+<label>勤務開始日・希望の日<input id="schedule-day" type="date"></label>
+<label >申請の区分<select id="schedule-kind"><option value="SHIFT_PREFERENCE">勤務・希望休・特記の希望</option><option value="ANNUAL_LEAVE">年休の申出（希望締切とは別）</option><option value="STATUTORY_LEAVE">制度上の休暇等の申出（希望締切とは別）</option></select></label>
+<label>予定・希望の種類<select id="schedule-leave"><option value="NONE">勤務・用事（未定の場合は勤務区間なし）</option><option value="PUBLIC_OFF">公休・休みの希望</option><option value="PAID">有給休暇の申出・予定</option><option value="OTHER">その他の休暇</option></select></label>
+<h3>勤務区間</h3><p class="footnote">中抜けは別の区間を追加します。区間の間は勤務にも休憩にも含めません。</p><div id="schedule-periods"></div><button id="schedule-add-period" type="button">＋ 勤務区間を追加</button>
+<details class="tool-help"><summary>会議・出張・打合せなどの用事</summary><p>会社の指示・拘束に当たる用事は勤務に含めます。算入しない場合は根拠を確認し、未確認のまま確定公開しないでください。</p><div id="schedule-appointments"></div><button id="schedule-add-appointment" type="button">＋ 用事を追加</button></details>
+<label>全員に公開する特記事項（確定シフトで共有）<textarea id="schedule-public-note" maxlength="1000" rows="2" placeholder="例：地元に帰省（北海道に居ません）"></textarea></label><p class="footnote">この欄は確定公開後、全員に表示されます。非公開の事情は下の欄へ。希望・変更申請は承認と確定公開を経て共有されます。</p>
+<label>非公開の特記事項（本人・管理者だけ）<textarea id="schedule-note" maxlength="1000" rows="3"></textarea></label>
+<label>希望・申出の理由／確定後の変更理由<textarea id="schedule-reason" maxlength="500" rows="3"></textarea></label>
+<button id="schedule-save" type="button">希望・申出を提出する</button></fieldset><p class="footnote">初版の休暇入力は全日です。有給残数や給与は自動計算しません。確定後に管理者から変更案を出す場合は本人同意が必要です。</p></section>
+<section class="management-section" hidden><h2>祝日・営業上のイベント</h2><p class="footnote">祝日名、祭りやライブなど、経営上共有する情報を手入力します。確定後も共有イベントを更新できます。従業員の勤務予定の変更は別の手順です。</p><fieldset id="schedule-event-form" disabled><label>日付<input id="schedule-event-day" type="date"></label><label>名称<input id="schedule-event-title" maxlength="200"></label><label>全員へ共有する補足<textarea id="schedule-event-note" maxlength="500" rows="2"></textarea></label><button id="schedule-event-save" type="button">イベントを下書き保存</button></fieldset></section>
+<section class="management-section"><h2>自分の申請・本人同意の確認</h2><div id="schedule-requests" class="record-list"></div></section>
+<iframe id="schedule-frame" name="tlhScheduleFrame" title="シフトの署名付き応答" hidden></iframe>
+<!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
+<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。空欄・予定未設定は公休や0時間を意味しません。</p><table><thead><tr><th>日付・曜日</th><th>社員番号</th><th>氏名</th><th>勤務予定（日本時間）</th><th>予定休憩（分）</th><th>予定実働（分）</th><th>休暇</th><th>公開特記事項</th><th>共有イベント</th></tr></thead><tbody id="schedule-report-rows"></tbody></table></section>
+</main></body></html>

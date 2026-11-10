@@ -274,7 +274,7 @@ test('login is explicit with a fixed redirect under the existing endpoint; no pr
     source,
     /localStorage|sessionStorage|indexedDB|console\.|getDecodedIDToken|bridgePunch|bridgeCreateAccount|location\.(?:search|hash)\s*=/
   );
-  assert.match(source, /https:\/\/tealabhokkaido\.com\/workforce\/sandbox\//);
+  assert.match(source, /https:\/\/tealabhokkaido\.com\/software\/worktime\/sandbox\//);
   assert.doesNotMatch(html, /onload=|grantFirst|TLH_ACCOUNT_SIGNUP_ENABLED/);
 });
 

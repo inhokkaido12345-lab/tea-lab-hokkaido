@@ -1,3 +1,5 @@
+公開URLの変更・旧URL/PWA/LINEの互換性は[URL移行手順](URL-MIGRATION.md)。
+
 # TLH Work Timeの説明書索引
 
 現行の入口は[README](README.md)、[公開状態](CURRENT-STATUS.md)、[従業員ヘルプ](employee-help.html)、[管理者ガイド](admin-guide.html)、[シフト運用](SCHEDULE.md)、[正本入力](SHEET-INPUT.md)。今回の整理/計測は[CLEANUP](CLEANUP-20261109.md)。history配下は過去の説明です。本文中の当時の版や件数を現行として扱わないでください。

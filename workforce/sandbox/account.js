@@ -305,7 +305,7 @@
     login.addEventListener('click', () => {
       if (disposed || !global.liff) return;
       try {
-        global.liff.login({ redirectUri: 'https://tealabhokkaido.com/workforce/sandbox/' });
+        global.liff.login({ redirectUri: 'https://tealabhokkaido.com/software/worktime/sandbox/' });
       } catch (_error) {
         text(messages.LINE_REJECTED, true);
       }
