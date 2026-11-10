@@ -35,6 +35,6 @@ audience・HTML・disabledはサーバー認可ではありません。管理API
 
 ## 確認方法
 
-`node --test tests/*.mjs`で、本人ページからDIRECT/REVIEWが送信されないこと、管理ページからSELFが送信されないこと、起動確認前の管理読取/保存が送信されないこと、管理の両操作・本人SELF申請・中抜けと既存の再送抑止を確認します。private repoの4つのUI固定manifest/hash/workflowも同じ公開commitへ同期して連結試験を実行します。
+`node --test tests/*.mjs`で、本人ページからDIRECT/REVIEWが送信されないこと、管理ページからSELFが送信されないこと、起動確認前の管理読取/保存が送信されないこと、管理の両操作・本人SELF申請・中抜けと既存の再送抑止を確認します。private repoの対象UI固定manifestと全体の14個の参照/hash/workflowも同じ公開commitへ同期して連結試験を実行します。
 
 公開後はLINEで「管理→訂正/承認」「打刻/記録→自分の訂正申請」「管理→従業員記録」「記録→自分の記録」の表示を確認してください。表示確認では保存ボタンを押す必要はありません。

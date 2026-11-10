@@ -27,7 +27,7 @@ node --test tests/*.mjs
 
 ## LINE設定と配布順
 
-既存の本番LIFF IDは`2011940133-JXUDzLnG`のままです。LINE Developersの同じミニアプリ→ウェブアプリ設定→**本番用エンドポイントURL**を`https://tealabhokkaido.com/software/worktime/`へ変更します。開発用・審査用・scope・チャネルシークレット・GAS設定を一緒に変更しません。
+既存の本番LIFF IDは`2011940133-JXUDzLnG`のままです。LINE Developersの同じミニアプリ→ウェブアプリ設定→**本番用エンドポイントURL**を`https://tealabhokkaido.com/software/worktime/`へ変更済みです。今後の移行を再現する場合も同じ項目だけを変更します。開発用・審査用・scope・チャネルシークレット・GAS設定を一緒に変更しません。
 
 [LINE公式仕様](https://developers.line.biz/en/docs/liff/developing-liff-apps/)上、SDK初期化・ログインの戻り先はEndpoint自身かその配下でなければなりません。GitHub Pagesの配信成功と新HTML/共有資産の一致を確認してから、同じ既存EndpointのURLだけを切り替えます。短時間の移行中に古い認証を開始した利用者は新入口からやり直します。LINEのミニアプリURLそのものは変わりません。
 
