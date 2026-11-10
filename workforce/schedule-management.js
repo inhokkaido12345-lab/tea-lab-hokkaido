@@ -68,9 +68,9 @@
         el(options.embedded?'h4':'h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);
         const plan=r.payload.plan,kind={SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'勤務変更'}[r.kind];
         el('p',kind+'：'+(plan.periods.map(p=>p.start+'〜'+(p.endNextDay?'翌':'')+p.end+' / 休憩'+p.breakMinutes+'分').join('、')||({PUBLIC_OFF:'希望休',PAID:'有給',OTHER:'その他休暇',NONE:'勤務区間なし'}[plan.leave.type])),card);
-        if(plan.leave.unit&&plan.leave.type!=='NONE')el('p','休暇単位：'+plan.leave.unit+(plan.leave.minutes?' / '+plan.leave.minutes+'分':'')+(plan.leave.note?' / '+plan.leave.note:''),card);
+        if(plan.leave.unit&&plan.leave.type!=='NONE')el('p','休暇単位：'+({DAY:'全日',HALF_DAY:'半日',HOURS:'時間'}[plan.leave.unit]||'要確認')+(plan.leave.minutes?' / '+plan.leave.minutes+'分':'')+(plan.leave.note?' / '+plan.leave.note:''),card);
         if(plan.note)el('p','非公開メモ：'+plan.note,card);if(plan.publicNote)el('p','公開特記事項：'+plan.publicNote,card);
-        for(const item of plan.appointments)el('p','用事：'+item.title+' / '+item.location+' / '+item.start+'〜'+(item.endNextDay?'翌':'')+item.end+' / '+(item.countsAsWork?'勤務に含む':'算入外')+' / 会社指示：'+String(item.requiredByEmployer??'未確認')+' / '+(item.classificationReason||''),card);
+        for(const item of plan.appointments)el('p','用事：'+item.title+' / '+item.location+' / '+item.start+'〜'+(item.endNextDay?'翌':'')+item.end+' / '+(item.countsAsWork?'勤務に含む':'算入外')+' / 会社指示：'+(item.requiredByEmployer===true?'あり':item.requiredByEmployer===false?'なし':'未確認')+' / '+(item.classificationReason||''),card);
         el('p','理由：'+r.payload.reason,card);
         if(r.status==='AWAITING_CONSENT'){el('p','本人の同意を待っています。',card);continue;}
         const label=el('label','判断理由',card),reason=el('textarea',undefined,label);reason.maxLength=500;reason.rows=2;
@@ -136,8 +136,8 @@
         if(!flow)return;
         const a=value.authority;if(!a){flow=null;n.status.textContent=messages.SCHEDULE_SHEET_SOURCE_REQUIRED;controls();return;}
         flow.digest=a.sourceDigest;flow.authority=a;
-        const count=a.preview.changes.length,events=a.preview.eventChanges;
-        review({command:'publish-flow'},value.month+'のシート変更 '+count+'日分・共有イベント '+events+'期間を反映します。対象は月全体です。'+(selected().phase==='PUBLISHED'?'公開済み勤務の変更は本人の同意・承認待ちになります。':(flow.period==='FIRST'?'前半':'後半')+'だけを全員に公開します。')+'空欄は削除として反映します。シートを確認済みですか？',a.preview.changes.some(c=>c.published));return;
+        const count=a.preview.changes.length,events=a.preview.eventDetails.length;
+        review({command:'publish-flow'},value.month+'の勤務・備考等 '+count+'件、共有イベント '+events+'件を反映します。対象は月全体です。'+(selected().phase==='PUBLISHED'?'公開済み勤務の変更は本人の同意・承認待ちになります。':(flow.period==='FIRST'?'前半':'後半')+'だけを全員に公開します。')+'空欄は削除として反映します。シートを確認済みですか？',a.preview.changes.some(c=>c.published));return;
       }
       if(['batchRead','sheetImport'].includes(request.command))updateBatch(value);else{snapshot.halves[expected.period]=value;render();}
       if(request.command==='sheetImport'&&flow){options.onSaved?.();publishImported();return;}
