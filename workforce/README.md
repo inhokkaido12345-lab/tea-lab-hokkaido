@@ -1,3 +1,13 @@
+# 最新公開：読取削減と入力ファイル識別（2026-11-10）
+
+2026-11-10、本人承認によりbackend PR #59/main `7b93a00aca3b3cc30a27e4739787f5b36f97bf9e` → GAS v80 → UI PR #74/main `3fea990b2bd099bb8cfd91240890fb237377b0f8` の順で公開済み。GASのHEAD/公開版全66ファイル・manifest・既存公開範囲をGETで一致確認。画面変更11ファイルの配信一致、Actions/Pages成功。backend834件・UI327件・今回の固定UIとの連結71件、計1,232件成功。全14参照/workflowは `daaf2af8a188a721f2126fcdadb7b89c19bc9f7b` に統一。
+
+入力ファイルの識別情報1件をSpreadsheet階層へ設定し、返却metadataで固定ファイル/会社/店舗/版を照合。「使い方」B11/B13/B14だけを月全体公開の説明へ更新、書式・隣接値を保持して読戻し/実画面を確認。月タブは追加していない。
+
+実ブラウザで期限切れから既存LINEによる明示ログイン復帰、新版script参照、最新管理者認可、従業員の月暦/希望受付、管理の月READ、打刻READで勤務外・出勤ボタン有効を確認。入力確認はREAD段階だけで停止し、旧形式エラーからSCHEDULE_SHEET_NOT_FOUND（対象月を作成する案内）へ変わったことを確認。これにより実GASでファイル識別検査を通過したことを確認した。作成/取込み/公開/申請/実打刻は実行していない。
+
+初回作成・再操作時の入力保持・失権・異店舗/重複印/不正見出しは模擬試験済み。本人が希望する対象月を作成する実操作と、スマホでの同条件の実秒数比較は次の確認事項。PCの読取成功やAPI回数削減を、実機で何秒改善したという証拠にしない。在庫管理の手元変更8ファイルと既存改行状態を保持し、公開対象へ含めていない。
+
 # TLH Work Time：利用・開発・保守
 
 公開アプリは **https://tealabhokkaido.com/software/worktime/**。制作元は **TEA LABORATORY HOKKAIDO/SOFTWARE/xxx**（xxxは未定の部門ブランド名）です。[現在地](CURRENT-STATUS.md)、[従業員ヘルプ](employee-help.html)、[管理者ガイド](admin-guide.html)、[説明書索引](DOCUMENTS.md)から目的の資料へ進めます。
@@ -72,12 +82,12 @@ node --test tests/*.mjs
 
 [説明整理前の記録](history/20261110-before-guidance-audit-README.md)。
 
-## 未公開：タブ読込みの待機順（2026-11-10）
+## 公開済み：タブ読込みの待機順（2026-11-10）
 
 `auto-read.js`の`once(key, permitted, true)`は背景READ指定。起動後の管理概要/通知取得を省かず、未開始の概要より今開いたタブのREADを先に進めます。実行中の通信を中断せず、連打による重複取得も防ぎます。保存ボタンを自動取得の許可リストへ追加しないでください。
 
-再現検査は`node --test tests/auto-read.test.mjs`。HTML変更後は従来どおり`python scripts/sync-schedule-workspace.py`、`python scripts/build-workforce-design-preview.py`、`python scripts/sync-worktime-url.py`、`python scripts/sync-worktime-url.py --check`。シフトGAS側の要求内再利用も別repoで準備済み。公開後の本人端末の秒数比較は未実施です。
+再現検査は`node --test tests/auto-read.test.mjs`。HTML変更後は従来どおり`python scripts/sync-schedule-workspace.py`、`python scripts/build-workforce-design-preview.py`、`python scripts/sync-worktime-url.py`、`python scripts/sync-worktime-url.py --check`。シフトGAS側の要求内再利用もGAS v80へ公開済み。公開後の本人端末の秒数比較は未実施です。
 
-## 未公開：入力シートの識別エラーを分離
+## 公開済み：入力シートの識別エラーを分離
 
-月別入力がない場合の識別設定不足と、他店舗などの識別不一致を別の案内にしました。利用者の勤務入力ミスとは区別し、設定担当者に連絡する表示です。GASと固定入力ファイルの識別設定を整えた後に公開確認します。月の作成・既存入力・シフト公開は別操作です。
+月別入力がない場合の識別設定不足と、他店舗などの識別不一致を別の案内にしました。利用者の勤務入力ミスとは区別し、設定担当者に連絡する表示です。GAS v80と画面を公開し、固定入力ファイルの識別設定と実READを確認済みです。月の作成・既存入力・シフト公開は別操作です。
