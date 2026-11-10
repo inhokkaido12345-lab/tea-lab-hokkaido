@@ -60,7 +60,7 @@
     function render(){
       const s=selected();n.requests.replaceChildren();
       if(!s){n.phase.textContent='';controls();return;}
-      n.phase.textContent=(n.period.value==='FIRST'?'前半':'後半')+'：'+({NOT_OPEN:'希望受付未設定',DRAFT:'下書き',COLLECTING:'希望受付中',PUBLISHED:'公開済み'}[s.phase])+(s.deadline?' / 締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
+      n.phase.textContent=(n.period.value==='FIRST'?'前半':'後半')+'：'+({NOT_OPEN:'締切未設定（申請可）',DRAFT:'下書き・締切未設定（申請可）',COLLECTING:'希望受付中',PUBLISHED:'公開済み'}[s.phase])+(s.deadline?' / 締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
       for(const [part,key]of [['FIRST','deadline'],['SECOND','deadline-second']]){const deadline=snapshot.halves[part].deadline;n[key].value=deadline?new Date(Date.parse(deadline)+9*3600000).toISOString().slice(0,16):'';}
       // 閲覧は月全体、承認先は各申請が属する保存区分と版から固定する。公開用の選択を流用しない。
       const requests=['FIRST','SECOND'].flatMap(part=>snapshot.halves[part].requests.filter(r=>['PENDING','AWAITING_CONSENT'].includes(r.status)).map(r=>({s:snapshot.halves[part],part,r}))).sort((a,b)=>a.r.payload.plan.day.localeCompare(b.r.payload.plan.day)||a.r.employeeCode.localeCompare(b.r.employeeCode));

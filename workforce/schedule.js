@@ -11,7 +11,7 @@
 // 回帰確認: schedule-sheet-authorityと既存schedule系試験。hiddenを認可判定にしない。
 (function(global){'use strict';
   const TYPE='TLH_BRIDGE_SCHEDULE',ACTION='bridgeScheduleV1';
-  const messages={SCHEDULE_NOT_COLLECTING:'この期間は下書き作成中です。通常の希望受付はまだ開始していません。',SCHEDULE_READY:'最新のシフトを表示しました。',SCHEDULE_SAVED:'保存しました。',SCHEDULE_ALREADY_DONE:'保存済みの操作です。最新状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'変更案を保存しました。本人の同意後に管理者が承認します。',SCHEDULE_INVALID:'日付・時刻・入力内容を確認してください。',SCHEDULE_CHANGED:'確認後に内容が変わりました。更新して確認し直してください。',SCHEDULE_PERMISSION_REQUIRED:'この画面の利用権限がありません。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。',SCHEDULE_NOT_OPEN:'管理者が選択中の期間の希望受付を設定してください。',SCHEDULE_PUBLISHED_LOCKED:'確定済みです。従業員ごとの変更案・変更申請を使ってください。',SCHEDULE_DEADLINE_CLOSED:'通常の希望締切を過ぎています。年休等の申出は別の区分で提出できます。',SCHEDULE_DEADLINE_NOT_REACHED:'希望締切前は確定公開できません。締切設定を確認してください。',SCHEDULE_REQUEST_PENDING:'同じ日・区分の申請が未処理です。先に内容を確認・取消ししてください。',SCHEDULE_OPERATION_REUSED:'操作番号と内容が一致しません。更新して状態を確認してください。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入が未確認です。管理者が分類と根拠を確定してください。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外すことはできません。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務予定が重なっています。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の整合性確認が必要です。手編集せず、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できませんでした。変更は戻されています。同じ操作で再確認できます。',SCHEDULE_CAPACITY:'対象データが処理上限を超えています。管理者へ連絡してください。',SCHEDULE_UNAVAILABLE:'シフトを取得できませんでした。更新して確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて更新してください。'};
+  const messages={SCHEDULE_NOT_COLLECTING:'受付状態を更新して確認し直してください。',SCHEDULE_READY:'最新のシフトを表示しました。',SCHEDULE_SAVED:'保存しました。',SCHEDULE_ALREADY_DONE:'保存済みの操作です。最新状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'変更案を保存しました。本人の同意後に管理者が承認します。',SCHEDULE_INVALID:'日付・時刻・入力内容を確認してください。',SCHEDULE_CHANGED:'確認後に内容が変わりました。更新して確認し直してください。',SCHEDULE_PERMISSION_REQUIRED:'この画面の利用権限がありません。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。',SCHEDULE_NOT_OPEN:'この月の状態を更新して確認し直してください。',SCHEDULE_PUBLISHED_LOCKED:'確定済みです。従業員ごとの変更案・変更申請を使ってください。',SCHEDULE_DEADLINE_CLOSED:'通常の希望締切を過ぎています。年休等の申出は別の区分で提出できます。',SCHEDULE_DEADLINE_NOT_REACHED:'希望締切前は確定公開できません。締切設定を確認してください。',SCHEDULE_REQUEST_PENDING:'同じ日・区分の申請が未処理です。先に内容を確認・取消ししてください。',SCHEDULE_OPERATION_REUSED:'操作番号と内容が一致しません。更新して状態を確認してください。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入が未確認です。管理者が分類と根拠を確定してください。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外すことはできません。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務予定が重なっています。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の整合性確認が必要です。手編集せず、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できませんでした。変更は戻されています。同じ操作で再確認できます。',SCHEDULE_CAPACITY:'対象データが処理上限を超えています。管理者へ連絡してください。',SCHEDULE_UNAVAILABLE:'シフトを取得できませんでした。更新して確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて更新してください。'};
   messages.LINE_VERIFY_REJECTED='LINEログインの有効性を確認できません。下のボタンからログインし直してください。';
   Object.assign(messages,{SCHEDULE_SHEET_SOURCE_REQUIRED:'シフトの作成・訂正は正本スプレッドシートで行ってください。',SCHEDULE_SHEET_CONTENT_REQUIRED:'申請・下書きと正本シートの内容が一致しません。シートを確認して取り込み直してください。',SCHEDULE_SHEET_CHANGED:'確認後に正本シートが変わりました。取り込み直してください。',SCHEDULE_SHEET_AUX_REQUIRED:'用事・休暇詳細・共有イベントの入力タブを用意してください。',SCHEDULE_SHEET_FORMAT_REQUIRED:'正本シートの形式を確認してください。',SCHEDULE_SHEET_ROSTER_REQUIRED:'正本シートに全従業員の行が必要です。',SCHEDULE_SHEET_CONFIGURATION_REQUIRED:'正本シートの接続設定を確認してください。',SCHEDULE_SHEET_INVALID:'正本シートの入力を確認してください。'});
   const code=v=>typeof v==='string'&&/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(v),text=(v,max)=>typeof v==='string'&&v.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
@@ -83,7 +83,7 @@
     const requestSnapshot=day=>wholeMonth()?monthSnapshots[Number((day||n.day.value).slice(8))>15?'SECOND':'FIRST']:snapshot;
     function requestNotice(){
       const banner=admin?null:byId('schedule-request-deadline');if(!banner)return;
-      const s=requestSnapshot();banner.textContent=!s?'希望休の締切を確認しています。':(n.day.value||s.month)+'の希望締切：'+(s.deadline?new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）'+(Date.parse(s.serverNow)>=Date.parse(s.deadline)?'／締切済み':''):'未設定。受付状況は下の案内を確認してください。');
+      const s=requestSnapshot();banner.textContent=!s?'希望休の締切を確認しています。':(n.day.value||s.month)+'の希望締切：'+(s.deadline?new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）'+(s.phase==='PUBLISHED'?'／確定後の変更申請は随時':Date.parse(s.serverNow)>=Date.parse(s.deadline)?'／締切済み':''):'未設定。希望を申請できます。締切設定後はその締切に従います。');
     }
     function sharedMonth(){
       const halves=['FIRST','SECOND'].map(k=>monthSnapshots[k]),published=halves.filter(s=>s.phase==='PUBLISHED');
@@ -91,8 +91,10 @@
       return{phase:published.length?'PUBLISHED':'NOT_OPEN',month:snapshot.month,period:'MONTH',publishedAt:published.map(s=>s.publishedAt).sort().at(-1)||'',plans:published.flatMap(s=>s.plans),events:published.flatMap(s=>s.events),unpublishedDays};
     }
     function canRequest(){
-      const s=requestSnapshot();if(!s||s.phase==='NOT_OPEN')return false;
+      const s=requestSnapshot();if(!s)return false;
       if(s.phase==='PUBLISHED')return true;
+      // 締切未設定の正規状態だけ受付可。署名拒否/通信失敗/壊れたCOLLECTINGを受付可にしない。
+      if(['NOT_OPEN','DRAFT'].includes(s.phase))return s.deadline==='';
       if(n.kind.value!=='SHIFT_PREFERENCE'||n.leave.value==='PAID')return true;
       return s.phase==='COLLECTING'&&Date.parse(s.serverNow)<Date.parse(s.deadline);
     }
@@ -104,7 +106,7 @@
       // 管理者の編集は署名済み旧モードだけ。未確認/失敗/退場では隠し、本人申請とは区別する。
       const sheet=admin&&snapshot?.inputMode==='SHEET',hideAdminEditor=admin&&(!snapshot||sheet);n.editor.hidden=hideAdminEditor;n['event-form'].hidden=!admin||!snapshot||sheet;n.editor.disabled=n.editor.disabled||sheet;n['event-form'].disabled=n['event-form'].disabled||sheet;n.save.disabled=n.save.disabled||sheet;
       if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=byId(id);if(node)node.hidden=hideAdminEditor;}const banner=byId('schedule-source-banner');if(banner)banner.hidden=!sheet;}
-      n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(requestSnapshot().phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(requestSnapshot().phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':requestSnapshot().phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
+      n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(requestSnapshot().phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(['NOT_OPEN','DRAFT'].includes(requestSnapshot().phase)?'受付状態を確認できません。最新状態を読み直してください。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
       if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。全日の希望休は、承認時に非公開備考へ「希望休」を自動記入します。既存予定があれば「【希望休と競合】」を併記するため、シートで調整してください。勤務変更・年休等は承認前に申請と同じ内容をシートへ記入してください。';
       n.scope.disabled=stopped||login.locked()||!!pending||!!uncertain;
       // 過去の月全体保存が存在する場合だけ互換入口を出す。通常の月暦へ半月フィルターを戻さない。
@@ -153,7 +155,7 @@
       if(!date(n.day.value)||n.day.value<range.start||n.day.value>range.end)n.day.value=range.start;
       byId('schedule-legacy-option').hidden=!s.legacyAvailable;
       const periodLabel=s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体（従来データ）';
-      const state={NOT_OPEN:'未作成（希望受付前でも下書き作成できます）',DRAFT:'下書き作成中・希望受付は未開始',COLLECTING:Date.parse(s.serverNow)>=Date.parse(s.deadline)?'初回希望締切済み・下書き作成':'希望受付中・下書き作成',PUBLISHED:'確定公開済み'}[s.phase];n.summary.textContent=s.month+' '+periodLabel+'：'+state+(s.deadline?' / 希望締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
+      const state={NOT_OPEN:'未作成・締切未設定（希望申請可）',DRAFT:'下書き作成中・締切未設定（希望申請可）',COLLECTING:Date.parse(s.serverNow)>=Date.parse(s.deadline)?'初回希望締切済み・下書き作成':'希望受付中・下書き作成',PUBLISHED:'確定公開済み'}[s.phase];n.summary.textContent=s.month+' '+periodLabel+'：'+state+(s.deadline?' / 希望締切 '+new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'');
       // 未認証名簿は管理者の予定対象。本人認可や共有DTOには転用しない。GAS/検査/登録後引継ぎも同期。
       n.employee.replaceChildren();for(const p of s.employees){const o=el('option',p.employeeCode+'（'+p.employeeName+'）'+(p.registrationStatus==='PENDING_LINK'?'［未認証］':''),n.employee);o.value=p.employeeCode;}
       if(admin)n.publish.textContent=(s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体')+'の下書きを確定公開';
