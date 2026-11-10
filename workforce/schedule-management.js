@@ -1,5 +1,6 @@
 /**
  * 管理者用シフトの入口だけを担当する。編集はシート、画面は作成/希望受付/承認/公開。
+ * 呼出元: admin-schedule.html / schedule-workspace.js。先: 契約検査→既存bridgeScheduleV1。
  * 本人の希望申請はschedule.js。CSV選択・月間セル編集・下書き一覧はここへ戻さない。
  * 一般化: state→検証済みDTO→表示。公開はREAD→明示確認→反映→公開の状態機械。
  * 削除影響: 管理者のシフト操作だけ停止。原打刻/シート/本人の申請は消えない。
@@ -20,23 +21,27 @@
   };
   const unknownCodes=new Set(['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED','SCHEDULE_SHEET_REVIEW_REQUIRED','WRITE_REVIEW_REQUIRED']);
   function related(source,target){try{for(let i=0;source&&i<8;i++){if(source===target)return true;const parent=source.parent;if(!parent||parent===source)return false;source=parent;}}catch(_e){}return false;}
+  /** 返信本文と待機中要求を照合。型/nonce/command/HMACが一致した時だけtrue。暗号例外は受信側で拒否する。 */
   async function verify(data,request){
     if(!data||data.type!==TYPE||data.action!==ACTION||data.command!==request.command||data.nonce!==request.nonce||!Object.hasOwn(messages,data.code)||typeof data.data!=='string'||data.data.length>1500000||typeof data.mac!=='string'||!/^[a-f0-9]{64}$/.test(data.mac))return false;
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(request.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(data.mac.match(/../g),x=>parseInt(x,16)),enc.encode([TYPE,ACTION,data.command,data.nonce,data.code,data.data].join('\n')));
   }
+  /** DOMと既存LIFFを接続しloadを返す。初期化では保存しない。欠落したIDはビルド/検査で直す。 */
   function init(options){
     const ids=['month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
+    if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
     const contract=global.TlhScheduleManagementContract;
     const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!confirmation||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。';}});
     const selected=()=>snapshot?.halves[n.period.value];
+    // 表示と操作待機の担当。ここで権限を作らず、通信ごとのGAS認可を残す。
     function controls(){
       const busy=stopped||!!pending||!!uncertain||!!confirmation||!!flow,ready=!!snapshot&&selected()?.inputMode==='SHEET'&&!login.locked()&&!busy;
       n.month.disabled=busy||login.locked();n.period.disabled=busy||login.locked();
       n['edit-tab'].disabled=busy;n['requests-tab'].disabled=busy;
-      n['edit-tab'].setAttribute('aria-selected',String(category==='edit'));n['requests-tab'].setAttribute('aria-selected',String(category==='requests'));
+      n['edit-tab'].setAttribute('aria-selected',String(category==='edit'));n['requests-tab'].setAttribute('aria-selected',String(category==='requests'));n['edit-tab'].tabIndex=category==='edit'?0:-1;n['requests-tab'].tabIndex=category==='requests'?0:-1;
       n['edit-panel'].hidden=category!=='edit';n['requests-panel'].hidden=category!=='requests';
       n['sheet-create'].disabled=!ready;n['deadline-save'].disabled=!ready;n.deadline.disabled=!ready;
       n.publish.disabled=!ready||!['COLLECTING','PUBLISHED'].includes(selected()?.phase);
@@ -47,8 +52,8 @@
       n['reason-label'].hidden=!confirmation?.reason;n.reason.disabled=!confirmation?.reason||!!pending;
       // 動的な申請ボタンにも同じ待機ガードを適用。disabledは表示用で、GASの認可は毎回行う。
       for(const button of n.requests.querySelectorAll('button'))button.disabled=!ready;
-      login.update();n.status.setAttribute('aria-busy',String(!!pending));
-      options.onNavigationLock?.(busy);
+      n.status.setAttribute('aria-busy',String(!!pending));
+      options.onNavigationLock?.(busy);login.update();
     }
     function el(tag,text,parent){const node=document.createElement(tag);if(text!==undefined)node.textContent=text;parent?.appendChild(node);return node;}
     function base(){return{month:snapshot.month,period:n.period.value,audience:'admin',expectedMonthRevision:selected().monthRevision};}
@@ -60,11 +65,12 @@
       const requests=s.requests.filter(r=>['PENDING','AWAITING_CONSENT'].includes(r.status));
       for(const r of requests){
         const card=el('article',undefined,n.requests);card.className='record-item';
-        el('h4',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);
+        el(options.embedded?'h4':'h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);
         const plan=r.payload.plan,kind={SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'勤務変更'}[r.kind];
-        el('p',kind+'：'+(plan.periods.map(p=>p.start+'〜'+(p.endNextDay?'翌':'')+p.end).join('、')||({PUBLIC_OFF:'希望休',PAID:'有給',OTHER:'その他休暇',NONE:'勤務区間なし'}[plan.leave.type])),card);
+        el('p',kind+'：'+(plan.periods.map(p=>p.start+'〜'+(p.endNextDay?'翌':'')+p.end+' / 休憩'+p.breakMinutes+'分').join('、')||({PUBLIC_OFF:'希望休',PAID:'有給',OTHER:'その他休暇',NONE:'勤務区間なし'}[plan.leave.type])),card);
+        if(plan.leave.unit&&plan.leave.type!=='NONE')el('p','休暇単位：'+plan.leave.unit+(plan.leave.minutes?' / '+plan.leave.minutes+'分':'')+(plan.leave.note?' / '+plan.leave.note:''),card);
         if(plan.note)el('p','非公開メモ：'+plan.note,card);if(plan.publicNote)el('p','公開特記事項：'+plan.publicNote,card);
-        for(const item of plan.appointments)el('p','用事：'+item.title+' / '+item.location+' / '+item.start+'〜'+item.end,card);
+        for(const item of plan.appointments)el('p','用事：'+item.title+' / '+item.location+' / '+item.start+'〜'+(item.endNextDay?'翌':'')+item.end+' / '+(item.countsAsWork?'勤務に含む':'算入外')+' / 会社指示：'+String(item.requiredByEmployer??'未確認')+' / '+(item.classificationReason||''),card);
         el('p','理由：'+r.payload.reason,card);
         if(r.status==='AWAITING_CONSENT'){el('p','本人の同意を待っています。',card);continue;}
         const label=el('label','判断理由',card),reason=el('textarea',undefined,label);reason.maxLength=500;reason.rows=2;
@@ -85,6 +91,7 @@
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     function review(job,question,reason=false){confirmation={...job,reason};n.question.textContent=question;n.reason.value='';controls();}
+    // JSON本文/操作IDは保存前に固定。再確認でも同一内容、nonceと署名鍵だけ新しくする。
     async function send(command,input,operationId=READS.has(command)?'':random(16)){
       if(stopped||pending||login.locked())return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
@@ -99,9 +106,10 @@
       document.body.appendChild(form);try{global.TlhCurrentWorkplace?global.TlhCurrentWorkplace.submit(form):form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     async function load(){if(stopped||pending||uncertain||confirmation||flow||login.locked())return;try{contract.days(n.month.value);}catch(_e){n.status.textContent='月を確認してください。';return;}clear();await send('batchRead',{month:n.month.value,audience:'admin'});}
+    // 明示確認済みflowだけ継続する。取込みの結果不明中はここへ進まず、同一IDの照合を待つ。
     function publishImported(){
       if(!flow?.confirmed)return;
-      if(selected().phase==='PUBLISHED'){flow=null;n.status.textContent='シート変更の反映結果を確認しました。確定勤務の変更は本人同意・承認後に反映されます。';controls();return;}
+      if(selected().phase==='PUBLISHED'){const changed=flow.authority.preview.changes.length||flow.authority.preview.eventChanges;flow=null;n.status.textContent=changed?'シート変更の反映結果を確認しました。確定勤務の変更は本人同意・承認後に反映されます。':'シートに変更はありません。公開済みの予定を維持しています。';controls();return;}
       // 月の版はサーバー応答、内容のdigestは本人が確認したREADから固定して引き継ぐ。
       void send('publish',{...base(),period:flow.period,expectedMonthRevision:snapshot.halves[flow.period].monthRevision,sourceDigest:flow.digest});
     }
@@ -142,6 +150,7 @@
     });
     n.refresh.addEventListener('click',()=>void load());n.month.addEventListener('change',()=>void load());n.period.addEventListener('change',()=>{if(!pending&&!uncertain&&!confirmation&&!flow)render();});
     for(const key of ['edit','requests'])n[key+'-tab'].addEventListener('click',()=>{if(pending||uncertain||confirmation||flow)return;category=key;controls();});
+    for(const key of ['edit','requests'])n[key+'-tab'].addEventListener('keydown',event=>{if(pending||uncertain||confirmation||flow)return;if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();category=event.key==='Home'?'edit':event.key==='End'?'requests':category==='edit'?'requests':'edit';controls();n[category+'-tab'].focus();});
     n['sheet-create'].addEventListener('click',()=>{if(canAct())review({command:'sheetCreate',input:{month:n.month.value,audience:'admin'}},n.month.value+'の入力シートを作成します。既存の入力は保持します。新しい月の従業員メモだけ、直近の過去月から初回継承します。');});
     n['deadline-save'].addEventListener('click',()=>{if(!canAct())return;let deadline;try{deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='希望締切を入力してください。';return;}review({command:'month',input:{...base(),deadline}},'選択期間の希望受付と締切を設定しますか？');});
     n.publish.addEventListener('click',()=>{if(!canAct()||n.publish.disabled)return;flow={period:n.period.value,confirmed:false};void send('sheetRead',{month:n.month.value,audience:'admin'});});

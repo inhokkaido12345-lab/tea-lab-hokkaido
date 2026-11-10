@@ -30,3 +30,5 @@
 | [workforce/history/AGENTS-20261103.md](history/AGENTS-20261103.md) | 過去の公開記録 |
 | [workforce/history/README-20261103.md](history/README-20261103.md) | 過去の公開記録 |
 | [workforce/sandbox/README.md](sandbox/README.md) | 試験・試作 |
+
+- [管理シフトの二分類・公開と月別メモ](SCHEDULE-MANAGEMENT.md)

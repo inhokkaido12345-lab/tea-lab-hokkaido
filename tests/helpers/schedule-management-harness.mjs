@@ -15,7 +15,7 @@ export function managementHarness(){
  const runtime={window,document:{currentScript:null,getElementById(id){assert.ok(nodes.has(id),'missing DOM: '+id);return nodes.get(id);},createElement:make,body:make()},crypto:webcrypto,Uint8Array,TextEncoder,Date,Intl,setTimeout(f){timers.set(++seq,f);return seq;},clearTimeout(id){timers.delete(id);}};
  for(const file of ['schedule-view.js','schedule.js','schedule-management-contract.js','schedule-management.js'])vm.runInNewContext(fs.readFileSync(new URL('../../workforce/'+file,import.meta.url),'utf8'),runtime,{filename:file});
  const liff={getIDToken:()=> 'fake.jwt.proof',isInClient:()=>false,logout(){loginCalls.push('logout');},login(o){loginCalls.push(o);}};
- const api=window.TlhScheduleManagement.init({gasUrl:'https://offline.invalid/exec',liff});
+ let ownBusy=false;const api=window.TlhScheduleManagement.init({gasUrl:'https://offline.invalid/exec',liff,loginBlocked:()=>ownBusy,onNavigationLock:v=>ownBusy=v});
  async function dispatch(event){for(const fn of events.message||[])await fn(event);}
  return{api,n,window,liff,sent,events,timers,walk,loginCalls,contract:window.TlhScheduleManagementContract,click:id=>n(id).events.click(),depart(){for(const fn of events.pagehide||[])fn();},expire(){for(const [id,fn]of [...timers]){timers.delete(id);fn();}},
  async reply(request,value=managementSnapshot(),code='SCHEDULE_READY',patch={},origin='null',source=n('frame').contentWindow){const d={type:'TLH_BRIDGE_SCHEDULE',action:'bridgeScheduleV1',command:request.command,nonce:request.nonce,code,data:value?JSON.stringify(value):''};d.mac=createHmac('sha256',request.responseKey).update([d.type,d.action,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');await dispatch({source,origin,data:{...d,...patch}});},

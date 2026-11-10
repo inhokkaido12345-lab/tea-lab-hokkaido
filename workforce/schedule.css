@@ -77,8 +77,8 @@
 
 /* 管理シフトは二分類だけ。色やhiddenは認可を代替しない。動的申請はcontrollerが待機時無効化する。 */
 .schedule-management-tabs { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:24px 0; border-bottom:1px solid var(--line); }
-.schedule-management-tabs button { background:transparent; color:var(--muted); border:0; border-bottom:3px solid transparent; border-radius:0; }
-.schedule-management-tabs button[aria-selected="true"] { color:var(--teal); background:var(--soft); border-bottom-color:var(--teal); }
+#schedule-management-root .schedule-management-tabs button { background:transparent; color:var(--muted); border:0; border-bottom:3px solid transparent; border-radius:0; }
+#schedule-management-root .schedule-management-tabs button[aria-selected="true"] { color:var(--teal); background:var(--soft); border-bottom-color:var(--teal); }
 .schedule-sheet-actions { display:flex; gap:12px; flex-wrap:wrap; margin:24px 0; }
 #schedule-management-confirm { margin-top:24px; padding:20px; }
 #schedule-management-question { font-size:var(--type-subhead); margin-bottom:16px; }

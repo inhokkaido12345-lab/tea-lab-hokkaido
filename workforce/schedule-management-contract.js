@@ -1,4 +1,5 @@
 /** 管理UIの署名済みDTO検査。CSV・セル編集は含めない。認可はGASが毎回実行する。
+ * 呼出元はschedule-management.js、先はschedule.jsの共通Plan/期間DTO検査。
  * 削除すると不正/異なる月の応答を検査できない。署名・shape・月/期間/社員/版を一緒に維持する。
  * 魔改造: BridgeのDTO変更はこの許可型・UI試験・実Service連結を同時更新。実データ/Storageなし。 */
 (function(global){'use strict';

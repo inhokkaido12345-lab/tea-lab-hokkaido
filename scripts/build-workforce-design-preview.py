@@ -33,7 +33,7 @@ for name, body in parts.items():
     body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:employee-work-panel|records-work-panel|punch-section|home-journal-section|daily-summary-section|monthly-work-section|manager-tools-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
     if name.startswith('manager'):
         selected={'manager':'attendance','manager-employees':'employees','manager-schedule':'schedule'}[name]
-        groups={'manager-attendance-panel':'attendance','manager-registration-panel':'employees','manager-maintenance-panel':'employees','manager-schedule-panel':'schedule','schedule-admin-entry':'schedule','schedule-admin-shortcuts':'schedule'}
+        groups={'manager-attendance-panel':'attendance','manager-registration-panel':'employees','manager-maintenance-panel':'employees','manager-schedule-panel':'schedule','schedule-admin-entry':'schedule','schedule-management-root':'schedule'}
         for panel, category in groups.items():
             def visibility(m, visible=category == selected):
                 tag=re.sub(r'\s+hidden(?=[\s>])', '', m.group(0))
@@ -56,8 +56,8 @@ for name, body in parts.items():
         '<title>' + title + 'の表示見本 | TLH Work Time</title>'
         '<link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1">'
         '<link rel="stylesheet" href="../app.css?v=20261110-hierarchy1">'
-        '<link rel="stylesheet" href="../schedule.css?v=20261110-hierarchy1">'
-        '<link rel="stylesheet" href="../schedule-bulk.css?v=20261109-sheet1"></head>'
+        '<link rel="stylesheet" href="../schedule.css?v=20261110-management1">'
+        '</head>'
         '<body class="home-page"><div class="app"><main>'
         '<p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。'
         ' <a href="punch.html">打刻</a> / <a href="records.html">記録</a> / <a href="schedule.html">従業員シフト</a> / <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p>'

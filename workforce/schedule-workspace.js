@@ -21,7 +21,7 @@
     // 既定月だけ共通。以後は本人の未送信希望と、管理側の月/公開待ちを独立させる。
     document.getElementById('schedule-management-month').value=month.value;
     employeeUi=global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'employee',monthly:true,onMonthChange:employeeMonthChanged,onNavigationLock:value=>lock('employee',value),onSaved:()=>{notice.hidden=true;invalidate(['scheduleManagement']);}});
-    global.TlhScheduleManagement.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,onNavigationLock:value=>lock('management',value),onSaved:()=>invalidate(['schedule'])});
+    global.TlhScheduleManagement.init({embedded:true,gasUrl:options.gasUrl,liff:options.liff,loginBlocked,onNavigationLock:value=>lock('management',value),onSaved:()=>invalidate(['schedule'])});
     return Object.freeze({activate(){controls();options.autoReads.once('schedule',employeeReadPermitted);},activateAdmin(){controls();if(adminPermitted())options.autoReads.once('scheduleManagement',adminPermitted);}});
   }
   global.TlhScheduleWorkspace=Object.freeze({init});
