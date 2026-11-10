@@ -20,6 +20,7 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   hour: 'numeric', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
 const quantities = grams => quantityFormatter.format(grams / 1000) + ' kg';
+const measurementQuantity = grams => grams<1000?quantityFormatter.format(grams)+' g':quantities(grams);
 const formatRecordedAt = value => value ? dateFormatter.format(new Date(value)) : '算出前';
 const calendarFormatter = new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo',month:'numeric',day:'numeric'});
 const calendarDate = value => value ? calendarFormatter.format(new Date(value)) : '算出前';
@@ -44,6 +45,7 @@ const forecastMessages = {
   NEEDS_DELIVERY_HISTORY: '納期は未学習です。発注と受取完了の実績から自動計算します',
   ORDER_NOW: '発注期限に達しています',
   OK: '発注期限まで余裕があります',
+  NO_USAGE_OBSERVED: '観測した投入量は0です。在庫切れ日時はまだ算出しません',
 };
 
 function inventoryQuantityLabel(item) {
@@ -102,10 +104,9 @@ function renderOrderBuffer(container, item) {
   container.append(save);
 }
 
-/** 標本を測る袋だけ開始/終了する。全袋の記録や次の袋の自動開始は要求しない。 */
+/** 計測方式にかかわらず、投入量/日へ統一した予測と根拠を表示する。 */
 function renderConsumption(card, item) {
   const forecast = item.forecast;
-  const unit = item.units[0];
   card.append(el('p', forecastMessages[forecast.status] || forecast.status,
       forecast.status === 'ORDER_NOW' ? 'badge low' : 'muted'));
   const dates=el('div','','forecast-dates');
@@ -121,9 +122,8 @@ function renderConsumption(card, item) {
       (forecast.baselineSource === 'RECEIPT' ? ' ／初回入荷前の在庫を0として推定' : ' ／棚卸実数から推定'), 'muted'));
   }
   if (forecast.rate) {
-    explanation.append(el('p', '計測 '+forecast.sampleCount+'回 ／平均 '+
-      (unit.baseQuantity/forecast.averageRate).toFixed(1)+'日/袋 ／直近 '+
-      (unit.baseQuantity/forecast.recentRate).toFixed(1)+'日/袋'));
+    explanation.append(el('p', '計測 '+forecast.sampleCount+'件 ／平均 '+measurementQuantity(forecast.averageRate)+
+      '/日 ／7日換算 '+measurementQuantity(forecast.averageRate*7)));
     explanation.append(el('p', '直近/平均の速度 '+forecast.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定します。'));
     explanation.append(el('p', '最終計測 '+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
   }
@@ -140,7 +140,37 @@ function renderConsumption(card, item) {
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
 }
 
-/** 1袋の閉じた標本を測る操作だけ。棚卸と納期入力は別作業に置く。 */
+/** 共通数量入力。袋・個は換算版付きで送り、g/kgを含めサーバーが最終換算する。 */
+function measurementAmountField(container,item,label){
+  const input=appendNumberField(container,label,'');
+  const select=el('select','');select.setAttribute('aria-label',label+'：単位');
+  select.append(new Option('g','g'),new Option('kg','kg'));
+  for(const unit of item.units)select.append(new Option(unit.label+'（'+measurementQuantity(unit.baseQuantity)+'）','pack:'+unit.id));
+  container.append(select);
+  return {read(optional=false){
+    if(String(input.value).trim()===''){if(optional)return null;throw Error('量を入力してください');}
+    const value=Number(input.value);if(!Number.isFinite(value)||value<0)throw Error('量を確認してください');
+    if(select.value.startsWith('pack:')){
+      const unit=item.units.find(u=>u.id===select.value.slice(5));
+      if(!unit)throw Error('単位を選び直してください');
+      return {value,unit:'pack',unitId:unit.id,conversionVersion:unit.version};
+    }
+    return {value,unit:select.value};
+  }};
+}
+/** 日時入力は日本時間。記録した日時と実際に測った日時を区別する。 */
+function measurementTimeField(container,label,required=false){
+  const wrapper=el('label',label),input=el('input','');input.type='datetime-local';input.step='60';
+  input.setAttribute('aria-label',label);wrapper.append(input);container.append(wrapper);
+  return {read(){
+    if(!input.value){if(required)throw Error('開始と終了の日時を入力してください');return null;}
+    const time=Date.parse(input.value+'+09:00');
+    if(!Number.isFinite(time))throw Error('日時を確認してください');return new Date(time).toISOString();
+  }};
+}
+function sendMeasurement(makeCommand){try{send(makeCommand());}catch(error){message(error.message);}}
+
+/** 1つの計測を途中確認→使い切りへ更新する。棚卸の実在庫とは別の観測。 */
 function renderSampleActions(card,item){
   const forecast=item.forecast;
   if(forecast.lastMeasuredAt)card.append(el('p','最終計測 '+formatRecordedAt(forecast.lastMeasuredAt),'muted'));
@@ -151,16 +181,70 @@ function renderSampleActions(card,item){
     const cancel = el('button', 'この計測を取り消す');
     cancel.onclick = () => send({type:'CANCEL_SAMPLE',itemId:item.id,openOperationId:forecast.open.operationId});
     card.append(finish, cancel);
-  } else {
-    const select = el('select', '');select.setAttribute('aria-label', '今回計測する袋の容量');
-    const units = new Map(item.units.map(value => [value.id, value]));
-    for (const value of item.units) select.append(new Option(value.label+' '+quantities(value.baseQuantity),value.id));
-    const start = el('button', '消費速度の計測を開始（1袋）', 'primary');
-    start.onclick = () => {
-      const selected=units.get(select.value);
-      send({type:'START_SAMPLE',itemId:item.id,unitId:selected.id,conversionVersion:selected.version});
+    return; // 以前から継続中の1袋計測を閉じてから、新方式へ進む。
+  }
+  const measurement=forecast.measurement;
+  if(measurement){
+    card.append(el('p','計測中：'+formatRecordedAt(measurement.startedAt)));
+    if(measurement.initialAmount!==null)card.append(el('p','開始時の量 '+measurementQuantity(measurement.initialAmount)));
+    if(measurement.measuredUntil)card.append(el('p','前回確認 '+formatRecordedAt(measurement.measuredUntil)+' ／累計投入 '+measurementQuantity(measurement.usedAmount),'muted'));
+    const kind=el('select','');kind.setAttribute('aria-label','投入量と残り量の選択');
+    kind.append(new Option('開始から使った量を入力','used'));
+    if(measurement.initialAmount!==null)kind.append(new Option('計測対象の今の残り量を入力','remaining'));
+    card.append(kind);
+    const amount=measurementAmountField(card,item,'確認した量');
+    const end=measurementTimeField(card,'確認・使い切り日時（日本時間、空欄なら今）');
+    card.append(el('p','「使った量」は開始からの累計です。残量は計測対象の袋・容器の残りで、店の総在庫とは別です。','muted'));
+    const command=finished=>{
+      const value=amount.read(),endedAt=end.read();
+      return {type:'UPDATE_MEASUREMENT',itemId:item.id,measurementId:measurement.id,expectedRevision:measurement.revision,
+        finished,[kind.value]:value,...(endedAt?{endedAt}:{})};
     };
-    card.append(select, start);
+    const partial=el('button','途中の量を記録');partial.onclick=()=>sendMeasurement(()=>command(false));
+    const finish=el('button','この計測を終了','primary');finish.onclick=()=>sendMeasurement(()=>command(true));
+    card.append(partial,finish);
+    if(measurement.initialAmount!==null){
+      const empty=el('button','使い切った（全量で終了）');
+      empty.onclick=()=>sendMeasurement(()=>{const endedAt=end.read();return {type:'UPDATE_MEASUREMENT',itemId:item.id,
+        measurementId:measurement.id,expectedRevision:measurement.revision,used:{value:measurement.initialAmount,unit:'g'},finished:true,...(endedAt?{endedAt}:{})};});
+      card.append(empty);
+    }
+    const cancel=el('button','この計測を取り消す');cancel.onclick=()=>send({type:'CANCEL_MEASUREMENT',itemId:item.id,measurementId:measurement.id,expectedRevision:measurement.revision});
+    card.append(cancel);
+  } else {
+    card.append(el('h4','これからの期間を測る'));
+    const begin=measurementTimeField(card,'開始日時（日本時間、空欄なら今）');
+    const initial=measurementAmountField(card,item,'計測する最初の量（任意）');
+    card.append(el('p','残量差で測る袋・容器なら最初の量を入力します。期間中の袋数や投入量を数える場合は空欄で始められます。残量で測る対象には継ぎ足さないでください。','muted'));
+    const start=el('button','計測を始める','primary');
+    start.onclick=()=>sendMeasurement(()=>{const startedAt=begin.read(),value=initial.read(true);return {
+      type:'START_MEASUREMENT',itemId:item.id,...(startedAt?{startedAt}:{}),...(value?{initial:value}:{})};});
+    card.append(start);
+  }
+  const past=el('details','');past.append(el('summary','終わった期間の消費を入力'));
+  let mounted=false;
+  past.ontoggle=()=>{
+    if(!past.open||mounted)return;mounted=true;
+    const begin=measurementTimeField(past,'期間の開始（日本時間）',true),end=measurementTimeField(past,'期間の終了（日本時間）',true);
+    const used=measurementAmountField(past,item,'期間中に使った量');
+    past.append(el('p','1週間の袋数、gで量った投入量、長期間で使い切った1袋を同じ記録で扱います。袋数0は使いかけ分の消費ゼロを意味しません。','muted'));
+    const save=el('button','この期間の消費を保存','primary');
+    save.onclick=()=>sendMeasurement(()=>({type:'RECORD_MEASUREMENT',itemId:item.id,startedAt:begin.read(),endedAt:end.read(),used:used.read()}));
+    past.append(save);lock(busy);
+  };
+  card.append(past);
+  if(forecast.observations?.length){
+    const history=el('details','');history.append(el('summary','最近の計測結果'));
+    for(const observation of forecast.observations.slice().reverse()){
+      const days=(Date.parse(observation.endedAt)-Date.parse(observation.startedAt))/86400000;
+      history.append(el('p',formatRecordedAt(observation.startedAt)+'〜'+formatRecordedAt(observation.endedAt)+' ／'+measurementQuantity(observation.amount)+' ／'+days.toFixed(1)+'日間'+(observation.partial?'（途中確認）':''),'muted'));
+      if(observation.revision){
+        const cancel=el('button','この計測結果を取り消す');
+        cancel.onclick=()=>{if(confirm('この計測結果を速度の計算から外しますか？'))send({type:'CANCEL_MEASUREMENT',itemId:item.id,measurementId:observation.id,expectedRevision:observation.revision});};
+        history.append(cancel);
+      }
+    }
+    card.append(history);
   }
 }
 
@@ -174,13 +258,13 @@ function showStockAction(name){
   overview.hidden=name!=='overview';host.hidden=name==='overview';
   for(const [key,node] of stockWorkspaces)node.hidden=key!==name;
   if(name==='overview'||!view||stockWorkspaces.has(name))return;
-  const titles={sampling:'消費速度を計測する',counting:'在庫を数える'};
-  const help={sampling:'測る1袋だけ、開始→使い切りで終了。普段の袋交換は記録不要です。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。'};
+  const titles={sampling:'消費を測る',counting:'在庫を数える'};
+  const help={sampling:'期間と投入量で測ります。袋・個数、g・kg、途中の残量確認に対応。後からまとめて入力でき、繁忙中の操作は必須ではありません。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。'};
   const workspace=el('div','','stock-workspace');workspace.append(el('h3',titles[name]),el('p',help[name],'muted'));
   stockWorkspaces.set(name,workspace);host.append(workspace);
   if(!view.permissions.includes('inventory.receive')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
   const label=el('label','対象の品目'),select=el('select','');select.setAttribute('aria-label',titles[name]+'：対象の品目');
-  for(const item of view.items.filter(i=>i.forecast))select.append(new Option(item.name+(name==='sampling'&&item.forecast.open?'（計測中）':''),item.id));
+  for(const item of view.items.filter(i=>i.forecast))select.append(new Option(item.name+(name==='sampling'&&(item.forecast.open||item.forecast.measurement)?'（計測中）':''),item.id));
   label.append(select);workspace.append(label);
   const cards=new Map();
   const choose=()=>{
@@ -253,7 +337,7 @@ function render(){
 function renderHistory(){
  historyDirty=false;
  $('logs').replaceChildren();
- for(const log of view.history){const names={START_SAMPLE:'消費速度の計測開始',FINISH_SAMPLE:'消費速度の計測完了',CANCEL_SAMPLE:'計測取消',COUNT_STOCK:'在庫基準の補正',SET_FORECAST:'発注期限の設定',RECEIVE:'入荷',MARK_ORDERED:'発注済み記録',CANCEL_ORDERED:'発注済みの取消し',COMPLETE_CASE:'受取完了'};const row=el('article','','line');row.append(el('p',names[log.type]||'記録'),el('p',formatRecordedAt(log.at),'muted'));for(const l of log.lines){const i=itemsById.get(l.itemId);row.append(el('p',(i?.name||'品目')+' '+quantities(l.amount)));}$('logs').append(row);}
+ for(const log of view.history){const names={START_MEASUREMENT:'消費の計測開始',RECORD_MEASUREMENT:'期間の消費記録',UPDATE_MEASUREMENT:'消費の確認・完了',CANCEL_MEASUREMENT:'消費計測の取消',START_SAMPLE:'消費速度の計測開始',FINISH_SAMPLE:'消費速度の計測完了',CANCEL_SAMPLE:'計測取消',COUNT_STOCK:'在庫基準の補正',SET_FORECAST:'発注期限の設定',RECEIVE:'入荷',MARK_ORDERED:'発注済み記録',CANCEL_ORDERED:'発注済みの取消し',COMPLETE_CASE:'受取完了'};const row=el('article','','line');row.append(el('p',names[log.type]||'記録'),el('p',formatRecordedAt(log.at),'muted'));if(log.measurement){const m=log.measurement;if(m.usedAmount!==null)row.append(el('p','累計投入 '+measurementQuantity(m.usedAmount)));if(m.endedAt)row.append(el('p','計測期間 '+formatRecordedAt(m.startedAt)+'〜'+formatRecordedAt(m.endedAt),'muted'));}for(const l of log.lines){const i=itemsById.get(l.itemId);row.append(el('p',(i?.name||'品目')+' '+quantities(l.amount)));}$('logs').append(row);}
  if(!view.history.length)$('logs').append(el('p','まだ記録はありません。','muted'));
 }
 /** 一品目一行。単位/換算版を読み取った値で送り、サーバー側で再検証する。 */
@@ -269,7 +353,7 @@ function addLine(itemId,container=$('lines'),ordering=false){
  const remove=el('button','この行を削除');remove.type='button';remove.onclick=()=>row.remove();
  row.append(item,count,unit,hint);if(!ordering)row.append(remove);row.requestLine=()=>{if(ordering&&count.value.trim()==='')return null;const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);return {itemId:i.id,quantity:Number(count.value),unitId:u.id,conversionVersion:u.version};};container.append(row);return row;
 }
-const errors={ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
+const errors={INVALID_MEASUREMENT:'量と単位を確認してください。袋数0では使いかけ分を計れません。',FUTURE_MEASUREMENT:'未来の日時は記録できません。',MEASUREMENT_OVERLAP:'同じ品目の計測期間が重複しています。現在の計測を更新するか、期間を確認してください。',MEASUREMENT_NOT_FOUND:'対象の計測が見つかりません。最新の記録を読んでください。',MEASUREMENT_CHANGED:'他の操作で計測が更新されています。最新の記録を読んでください。',MEASUREMENT_CLOSED:'この計測は既に終了・取消されています。',ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
 /** 通信失敗なら操作IDを保持。成功後は原簿読戻し済みDTOを使用し、旧APIだけ別READする。 */
 async function send(command){
  if(busy||(!view&&!pending))return;
