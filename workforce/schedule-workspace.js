@@ -13,6 +13,8 @@
     const adminMonth=document.getElementById('schedule-management-month'),adminRefresh=document.getElementById('schedule-management-refresh');
     const locks=new Map(),notice=document.getElementById('schedule-draft-notice');let employeeUi=null;
     const employeePermitted=()=>options.visible(),employeeReadPermitted=()=>employeePermitted()&&!employeeUi?.hasUnsavedInput(),adminPermitted=()=>options.adminVisible()&&options.adminAllowed();
+    // 再ログインは画面全体の遷移。別のシフトcontrollerの通信/結果不明も動的に確認する。
+    const loginBlocked=()=>Array.from(locks.values()).some(Boolean);
     function blocked(group){return group==='employee'?!!locks.get('employee'):!!locks.get('admin')||!!locks.get('bulk');}
     function controls(){
       employeeMonth.disabled=blocked('employee');employeeRefresh.disabled=blocked('employee')||!employeePermitted();
@@ -36,12 +38,12 @@
     document.getElementById('schedule-admin-month').value=adminMonth.value;
     document.getElementById('bulk-month').value=adminMonth.value;
     document.getElementById('schedule-admin-scope').value=document.getElementById('schedule-scope').value;
-    employeeUi=global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,audience:'employee',monthly:true,
+    employeeUi=global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'employee',monthly:true,
       onMonthChange:employeeMonthChanged,onNavigationLock:value=>lock('employee',value),onSaved:()=>{notice.hidden=true;invalidate(['scheduleAdmin','scheduleBulk']);}});
-    global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,audience:'admin',monthly:true,
+    global.TlhSchedule.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'admin',monthly:true,
       idPrefix:'schedule-admin-',frameName:'tlhScheduleAdminFrame',report:false,lazyCalendar:true,
       onMonthChange:adminMonthChanged,onNavigationLock:value=>lock('admin',value),onSaved:()=>{invalidate(['schedule']);refreshReads(['scheduleBulk']);}});
-    global.TlhScheduleBulk.init({gasUrl:options.gasUrl,liff:options.liff,
+    global.TlhScheduleBulk.init({gasUrl:options.gasUrl,liff:options.liff,loginBlocked,
       onNavigationLock:value=>lock('bulk',value),onSaved:()=>{invalidate(['schedule']);refreshReads(['scheduleAdmin']);}});
     return Object.freeze({activate(){controls();options.autoReads.once('schedule',employeeReadPermitted);},
       activateAdmin(){controls();if(adminPermitted()){options.autoReads.once('scheduleAdmin',adminPermitted);options.autoReads.once('scheduleBulk',adminPermitted);}}});

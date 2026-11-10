@@ -53,7 +53,7 @@
   function init(options){
     const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','template','file','import-preview','import-summary','import-rows','import-apply','import-cancel','sheet-read','sheet-create','sheet-open','sheet-confirm','sheet-question','sheet-approve','sheet-cancel'].map(id=>[id,document.getElementById('bulk-'+id)]));
     let snapshot=null,pending=null,uncertain=null,stopped=false,page=0,selected=null,needReload=false;
-    const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain,changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
+    const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     const drafts=new Map(),texts=new Map(),errors=new Map(),cells=new Map();
     let importPreview=null,importing=false,directImport=false,createReview=false,authority=null;
     const sheetMode=()=>snapshot?.halves.FIRST.inputMode==='SHEET';

@@ -34,3 +34,8 @@ test('authentication rejection cannot reinterpret an uncertain write as a read o
 test('failed login initiation leaves an explicit retry and never emits authentication details',async()=>{
  const h=scheduleUiHarness('admin'),actions=loginFixture(h);h.liff.login=()=>{throw Error('private proof');};await h.api.read();await h.reply(h.sent[0],'','LINE_VERIFY_REJECTED');h.click('login');assert.equal(h.n('login').disabled,false);assert.doesNotMatch(h.n('status').textContent,/private/);assert.match(h.n('status').textContent,/開始できません/);assert.equal(actions.length,1);
 });
+
+test('an uncertain operation in another schedule controller prevents navigation until that operation is resolved',async()=>{
+ let otherBusy=false;const h=scheduleUiHarness('admin',{loginBlocked:()=>otherBusy}),actions=loginFixture(h);
+ await h.api.read();await h.reply(h.sent[0],'','LINE_VERIFY_REJECTED');otherBusy=true;h.click('login');assert.equal(actions.length,0);otherBusy=false;h.click('login');assert.equal(actions.length,2);
+});

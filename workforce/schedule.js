@@ -76,7 +76,7 @@
     const byId=id=>document.getElementById(id.replace(/^schedule-/,options.idPrefix||'schedule-'));
     const n=Object.fromEntries(ids.map(k=>[k,byId('schedule-'+k)]));
     const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
-    const login=createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain,changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
+    const login=createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function canRequest(){
       if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
