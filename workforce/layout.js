@@ -30,10 +30,10 @@
       name,ids.map(id=>document.getElementById(id)),
     ]));
     const statusHost=document.getElementById('staff-status-host');
-    const scheduleManagement=document.getElementById('schedule-admin-entry'),scheduleShortcuts=document.getElementById('schedule-admin-shortcuts');
+    const scheduleManagement=document.getElementById('schedule-admin-entry');
     const tabs = names.map(name => document.getElementById(name + '-tab'));
     const panes = Array.from(document.querySelectorAll('[data-workforce-pane]'));
-    if (choices.some(button=>!button)||!statusHost||!scheduleManagement||!scheduleShortcuts||Object.values(groupPanels).flat().some(panel=>!panel)||tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
+    if (choices.some(button=>!button)||!statusHost||!scheduleManagement||Object.values(groupPanels).flat().some(panel=>!panel)||tabs.some(tab => !tab) || names.some(name => !panes.some(pane => pane.dataset.workforcePane === name)) ||
         panes.some(pane => !names.includes(pane.dataset.workforcePane))) throw Error('WORKFORCE_LAYOUT_MISSING');
     // 表示と操作許可の分離: wrapperだけを隠す。中の入力/再送draft/確認結果はそのまま。
     // 選択中は色だけで示さず、aria-selectedとtabIndexも合わせて読み上げ/キー操作へ伝える。
@@ -45,7 +45,7 @@
         }
       }
       // 従業員シフトと管理シフトを分離。管理者本人でも従業員側には管理操作を出さない。
-      scheduleManagement.hidden=active!=='manager'||category!=='schedule'||!adminAllowed;scheduleShortcuts.hidden=scheduleManagement.hidden;
+      scheduleManagement.hidden=active!=='manager'||category!=='schedule'||!adminAllowed;
       choices.forEach((button,i)=>button.setAttribute('aria-pressed',String(categories[i]===category)));
       // 招待受取と発行の共通結果欄は保持し、管理中は従業員カテゴリでだけ見せる。
       statusHost.hidden=active==='manager'&&category!=='employees';

@@ -54,7 +54,7 @@ test('valid signature cannot render a different month, employee audience, duplic
  }
  const h=scheduleBulkHarness();await h.api.load();await h.reply(h.sent[0],bulkSnapshot(1),'SCHEDULE_READY',{},'null',{});assert.equal(h.n('rows').children.length,0);
 });
-test('monthly page DOM has all controller IDs, scoped POST helper and no local data persistence',()=>{
- const html=fs.readFileSync(new URL('../workforce/admin-schedule-bulk.html',import.meta.url),'utf8');for(const id of ['month','load','status','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','phases'])assert.match(html,new RegExp('id="bulk-'+id+'"'));
- const js=fs.readFileSync(new URL('../workforce/schedule-bulk.js',import.meta.url),'utf8');assert.doesNotMatch(js,/localStorage\.|sessionStorage\.|setInterval\(|console\./);assert.match(js,/TlhCurrentWorkplace.submit\(form\)/);
+test('retired monthly editor URL leads to sheet-only management without loading CSV or cell controllers',()=>{
+ const html=fs.readFileSync(new URL('../workforce/admin-schedule-bulk.html',import.meta.url),'utf8');assert.match(html,/url=admin-schedule.html/);assert.doesNotMatch(html,/type="file"|schedule-bulk.js|bulk-grid|bulk-file/);
+ const js=fs.readFileSync(new URL('../workforce/schedule-management.js',import.meta.url),'utf8');assert.doesNotMatch(js,/localStorage\.|sessionStorage\.|setInterval\(|console\./);assert.match(js,/TlhCurrentWorkplace.submit\(form\)/);
 });

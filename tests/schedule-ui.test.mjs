@@ -61,8 +61,8 @@ test('denial and departure erase calendars, private inputs and requests; late ve
  const n=scheduleUiHarness();await n.api.read();const late=n.reply(n.sent[0],n.snapshot());n.events.pagehide();await late;n.click('save');assert.equal(n.sent.length,1);assert.equal(n.timers.size,0);assert.equal(n.n('calendar').children.length,0);
 });
 test('role pages preserve disabled forms and direct-write separation, and source contains no network/storage shortcuts',()=>{
- const read=name=>fs.readFileSync(new URL('../workforce/'+name,import.meta.url),'utf8');for(const page of ['schedule.html','admin-schedule.html']){const html=read(page);assert.match(html,/name="tlhScheduleFrame"/);assert.match(html,/id="schedule-editor" disabled/);assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/fonts\/ibm-plex-sans-jp.css/);}
- assert.match(read('schedule.html'),/data-audience="employee"/);assert.match(read('admin-schedule.html'),/data-audience="admin"/);assert.doesNotMatch(read('schedule.js'),/\bfetch\(|localStorage|sessionStorage|console\.|innerHTML/);
+ const read=name=>fs.readFileSync(new URL('../workforce/'+name,import.meta.url),'utf8');const employee=read('schedule.html'),admin=read('admin-schedule.html');assert.match(employee,/name="tlhScheduleFrame"/);assert.match(employee,/id="schedule-editor" disabled/);assert.match(employee,/data-audience="employee"/);assert.match(admin,/name="tlhScheduleManagementFrame"/);assert.doesNotMatch(admin,/id="schedule-editor"|type="file"|bulk-grid/);
+ for(const html of [employee,admin]){assert.match(html,/name="referrer" content="no-referrer"/);assert.match(html,/fonts\/ibm-plex-sans-jp.css/);}assert.doesNotMatch(read('schedule.js'),/\bfetch\(|localStorage|sessionStorage|console\.|innerHTML/);
 });
 test('personal calendar details use only the matching verified employee, and mismatched private plans refuse rendering',async()=>{
  const h=scheduleUiHarness(),s=h.snapshot(),plan={day:'2026-11-05',periods:[],appointments:[{title:'本人だけの打合せ',location:'架空の場所',start:'09:00',end:'10:00',endNextDay:false,countsAsWork:true}],leave:{type:'NONE',unit:'DAY',minutes:null,note:''},note:'自分の特記事項'};
