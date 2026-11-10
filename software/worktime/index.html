@@ -29,7 +29,11 @@
   <!-- PWA準備：起動名/範囲/静的アイコンだけ。オフライン保存やService Workerは導入しない。PWA.md参照。 -->
   <link rel="manifest" href="/workforce/manifest.webmanifest">
   <meta name="theme-color" content="#2F5452">
-  <title>TLH Work Time | 勤怠・シフト管理</title>
+  <!-- manifest非対応のショートカットも同じ名前にする。既存端末の保存済みラベルを書き換える設定ではない。
+       改造時はmanifestのname/short_name・LINE側表示名・PWA.mdも揃え、id/scopeを名前変更で動かさない。 -->
+  <meta name="application-name" content="TLH Work Time">
+  <meta name="apple-mobile-web-app-title" content="TLH Work Time">
+  <title>TLH Work Time</title>
 
   <!--
     LINE公式のLIFF SDK。

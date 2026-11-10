@@ -27,3 +27,7 @@ LINEの既存IDを使い、本番Endpointは新URLへ設定済みです。未ロ
 `python scripts/sync-worktime-url.py --check`と`node --test tests/*.mjs`を実行。静的設定/資産寸法/保存しない境界を検査し、実機成功の代用にはしません。
 
 [説明整理前の記録](history/20261110-before-guidance-audit-PWA.md)。
+
+## 名前が旧名のままの場合（調査中・2026-11-10）
+
+LINE本番用LIFF名とmanifestのname/short_nameはTLH Work Time。審査用LINE名だけ旧名が残ります。本人端末の旧名がLINE上部・ホーム画面アイコン・本文のどこかは確認中で、原因を端末キャッシュと断定しません。入口HTMLのapplication-name/apple-mobile-web-app-titleとtitleを同名へ揃える候補は未公開。保存済みアイコンの名前を強制変更する機能ではありません。
