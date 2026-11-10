@@ -4,6 +4,11 @@
 
 ## LINE本人確認
 
+2026-11-10修正：LINE遷移後にopenerが切れる端末を考慮し、同一originの要求固有BroadcastChannelも使用します。要求nonceを認証窓口と固定redirectUriへ引き継ぎ、元画面が要求した結果だけを受け取ります。URLにtokenや個人情報は載せません。token・channelはページ内だけで、退場時に破棄します。受領確認前に認証窓口だけを成功扱いにせず、戻れない場合はAUTH_RETURN_UNAVAILABLEを表示します。
+
+この代替経路は同じブラウザー/保存領域内の画面間に限ります。別ブラウザーや別アプリの保存領域に切り替わる端末は実機確認が必要です。
+
+
 既存LINEの登録Endpointは /workforce/ 配下です。在庫PWA本体をそこへ戻す代わりに、「LINEでログイン」の明示操作で /workforce/inventory/auth/ の専用認証窓口を開きます。そこだけが既存LIFF SDKを初期化します。
 
 認証窓口は固定origin、opener、nonceを照合してから元の在庫ウィンドウへID tokenを返します。元画面もpopupのsource/origin/nonceを確認します。tokenはページ内メモリーだけで、URL・Storage・ログ・原簿へ保存しません。退場で破棄。APIは従来どおり毎操作Coreで本人・従業員を照合します。
@@ -26,7 +31,7 @@
 
 web/employee-login.jsは元ウィンドウ、web/auth.jsは認証窓口、web/employee-transport.jsは署名付きAPI通信です。scripts/build-employee-pwa.mjsがdist/employee-pwaへ生成します。
 
-- 通常7資産は公開repoのsoftware/inventory/へ置きます。
+- 通常7資産は公開repoのinventory/へ置きます。
 - auth-index.htmlとauth.jsはworkforce/inventory/auth/index.html・auth.jsへ置きます。
 - legacy-index.htmlは旧workforce/inventory/index.htmlへ置きます。旧入口からmanifestを参照しません。
 

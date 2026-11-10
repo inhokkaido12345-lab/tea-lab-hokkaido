@@ -21,7 +21,12 @@
     const url=new URL(href);
     if(url.origin!=='https://tealabhokkaido.com'||!url.pathname.startsWith('/workforce/'))return null;
     const page=url.pathname.slice('/workforce/'.length);
-    if(!routes.has(page)||[...url.searchParams.keys()].some(key=>!['organizationId','workplaceId'].includes(key)))return null;
+    if(!routes.has(page))return null;
+    // 在庫の既存復帰方式が使う、本人情報を含まない要求の目印だけは専用窓口で保持する。
+    // 他ページ・重複値・別queryに拡張せず、token/code/stateの受渡しに流用しない。
+    const inventoryRequest=['inventory/auth/','inventory/auth/index.html'].includes(page)&&
+      [...url.searchParams.keys()].join(',')==='request'&&/^[a-f0-9]{32}$/.test(url.searchParams.get('request')||'');
+    if(!inventoryRequest&&[...url.searchParams.keys()].some(key=>!['organizationId','workplaceId'].includes(key)))return null;
     const fragment=/^#[a-z][a-z0-9-]*$/i.test(url.hash)?url.hash:'';
     return url.origin+'/software/worktime/'+page+url.search+fragment;
   }

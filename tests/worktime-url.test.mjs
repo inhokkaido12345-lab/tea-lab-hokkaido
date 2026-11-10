@@ -59,7 +59,7 @@ test('旧在庫popupはopenerを維持して新Endpoint内の窓口へ移り、t
   const html=read('software/worktime/inventory/auth/index.html'),script=read('workforce/inventory/auth/auth.js');
   assert.match(html,/<base href="\/workforce\/inventory\/auth\/">/);
   assert.match(script,/'\/software\/worktime\/inventory\/auth\/'/);
-  assert.match(script,/redirectUri:origin\+'\/software\/worktime\/inventory\/auth\/'/);
+  assert.match(script,/redirectUri:origin\+path\+'\?request='\+nonce/);
   assert.match(script,/event\.source!==global\.opener/);assert.match(script,/event\.origin!==origin/);
   assert.doesNotMatch(script,/localStorage\.|sessionStorage\.|console\./);
 });
@@ -68,10 +68,10 @@ test('新在庫認証窓口は両URLで初期化し、同じopenerの正しい�
   for(const pathname of ['/software/worktime/inventory/auth/','/software/worktime/inventory/auth/index.html']){
     const messages=[],events={},status={textContent:''};
     const opener={postMessage:(data,origin)=>messages.push({data,origin})};
-    const window={location:{origin:'https://tealabhokkaido.com',pathname},opener,
+    const window={location:{origin:'https://tealabhokkaido.com',pathname,search:'?request='+'a'.repeat(32)},opener,
       addEventListener:(name,fn)=>events[name]=fn,
       liff:{init:async()=>{},isLoggedIn:()=>true,getIDToken:()=>'fake.jwt.proof'}};
-    vm.runInNewContext(read('workforce/inventory/auth/auth.js'),{window,document:{getElementById:()=>status}});
+    vm.runInNewContext(read('workforce/inventory/auth/auth.js'),{window,URLSearchParams,setTimeout:()=>1,clearTimeout:()=>{},document:{getElementById:()=>status}});
     await new Promise(resolve=>setImmediate(resolve));
     assert.equal(messages[0].data.type,'TLH_INVENTORY_LOGIN_READY');
     const data={type:'TLH_INVENTORY_LOGIN_REQUEST',nonce:'a'.repeat(32)};
@@ -81,4 +81,11 @@ test('新在庫認証窓口は両URLで初期化し、同じopenerの正しい�
     assert.equal(messages.length,2);assert.equal(messages[1].data.nonce,data.nonce);assert.equal(messages[1].data.idToken,'fake.jwt.proof');
     events.message({data,origin:window.location.origin,source:opener});assert.equal(messages.length,2);
   }
+});
+
+test('在庫ログイン復帰用の要求目印だけを窓口で保持し、偽造URLや重複要求を転送しない',()=>{
+  const nonce='a'.repeat(32),old='https://tealabhokkaido.com/workforce/inventory/auth/';
+  assert.equal(route(old+'?request='+nonce).redirects[0],'https://tealabhokkaido.com/software/worktime/inventory/auth/?request='+nonce);
+  for(const suffix of ['?request=invalid','?request='+nonce+'&request='+nonce,'?request='+nonce+'&code=secret'])assert.equal(route(old+suffix).redirects.length,0);
+  assert.equal(route('https://tealabhokkaido.com/workforce/?request='+nonce).redirects.length,0);
 });

@@ -23,7 +23,7 @@ node --test tests/*.mjs
 
 [LINE公式仕様](https://developers.line.biz/en/docs/liff/developing-liff-apps/)上、SDK初期化・ログインの戻り先はEndpoint自身かその配下でなければなりません。GitHub Pagesの配信成功と新HTML/共有資産の一致を確認してから、同じ既存EndpointのURLだけを切り替えます。短時間の移行中に古い認証を開始した利用者は新入口からやり直します。LINEのミニアプリURLそのものは変わりません。
 
-在庫アプリが使う旧`/workforce/inventory/auth/`も、新Endpoint内の`/software/worktime/inventory/auth/`へ互換転送します。popupのopener・固定origin/source/nonce照合と、メモリだけのtoken受渡しを維持します。在庫本体のURLやAPI/権限には触れません。試験用アカウント画面も`/software/worktime/sandbox/`へ引き継ぎます。
+在庫アプリが使う旧`/workforce/inventory/auth/`も、新Endpoint内の`/software/worktime/inventory/auth/`へ互換転送します。popupのopener・固定origin/source/nonce照合と、メモリだけのtoken受渡しを維持します。最新mainのopener切断対策（要求固有BroadcastChannel・受領確認）も残します。旧認証窓口からは本人情報を含まない32桁hexのrequestだけを厳密に保持します。在庫本体のURLやAPI/権限には触れません。試験用アカウント画面も`/software/worktime/sandbox/`へ引き継ぎます。
 
 ## ホーム画面アプリ
 
