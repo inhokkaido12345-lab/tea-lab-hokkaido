@@ -35,7 +35,7 @@ test('計測は単発で閉じ、次袋を自動開始しない',()=>{
 
 test('TLH共通資産と確認済み保存画面を使用する',()=>{
  assert.match(read('index.html'),/workforce\/fonts\/ibm-plex-sans-jp\.css/);
- assert.match(read('index.html'),/assets\/brand\/logo-horizontal\.svg/);
+ assert.doesNotMatch(read('index.html'),/brand-logo|logo-horizontal\.svg/);
  assert.match(read('app.js'),/view: result.value.view/);
  assert.match(read('app.js'),/if\(data.view\)/);
 });
