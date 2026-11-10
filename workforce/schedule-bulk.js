@@ -1,4 +1,5 @@
 /**
+ * 互換保守専用。現役の管理入口はschedule-management.jsで、この旧controllerは読み込まない。
  * 月型シフトの状態→表示→一括通信。セル入力/コピペ/従業員ページ切替はページ内だけ。
  * 削除影響: 月型編集の入口が停止。既存半月画面/原簿/従業員の希望受付は維持。
  * 概念: local draft / one bulk command / fixed-id retry / authenticated snapshot。

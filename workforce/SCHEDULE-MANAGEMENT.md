@@ -25,7 +25,7 @@
 
 シート作成時に `YYYY-MM従業員メモ` も用意します。「当月メモ（管理者用）」だけを編集します。初回作成時に直近の過去月から社員IDでコピーし、過去月がなければ空欄です。コピー後は各月独立で、前月の後日の修正も、作成済み翌月への修正も自動伝播しません。社員番号の変更で別人のメモを継承しないよう、非表示の社員IDを変更しないでください。
 
-旧「従業員メモ」タブは削除・上書きせず、自動ではコピーしません。必要な内容は月別メモへ手で移せます。メモを勤務制約として自動判定せず、従業員全員の閲覧・帳票・給与計算には渡しません。
+旧共通の「従業員メモ」は通常の入力先ではありません。現在店舗では空の旧表だけ2026-11-10に削除済みです。他環境の記入済み旧表は自動削除・推測移行しません。メモを勤務制約として自動判定せず、従業員全員の閲覧・帳票・給与計算には渡しません。
 
 ## 失敗・再送と保守
 
@@ -38,6 +38,8 @@ backendでは `ScheduleInputSheet.gs` が月別メモの初回継承、`Schedule
 ```powershell
 python scripts/sync-schedule-workspace.py
 python scripts/build-workforce-design-preview.py
+python scripts/sync-worktime-url.py
+python scripts/sync-worktime-url.py --check
 node --test tests/*.mjs
 # 隣接するbackendのルートで
 node --test tests/*.mjs

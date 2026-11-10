@@ -1,33 +1,23 @@
-## 統合シフトの起動
-
-schedule-workspace.jsが既存LIFFとauto-readを共用。本人monthRead→管理者monthRead→シート用batchReadを順に1回ずつ開始。従業員へは管理者READを送らず、タブ往復でも重複しません。共通月の変更/保存成功後も同じキューでREADだけを更新します。
-
-単独3ページを正本に `python scripts/sync-schedule-workspace.py` でindexの明示範囲を再生成。続いて `python scripts/build-workforce-design-preview.py` で操作無効の見本を更新します。schedule-admin- prefixとtlhScheduleAdminFrameはcontroller/生成器/検査で同期。生成物やGASを手編集しません。
-
-<!-- current-doc-status:start -->
-> 2026-11-05資料整理：機能仕様と保守資料。現在の公開・設定・未達状況は[最新状態](CURRENT-STATUS.md)を優先してください。本文の過去の日付・版・検査件数は当時の記録です。恒久的な安全方針は引き続き適用します。
-<!-- current-doc-status:end -->
-
-# 起動処理・重さ・魔改造の入口
-
-最新の公開済み変更：[PERFORMANCE](PERFORMANCE.md)。管理者確認→勤務状態→本日記録→名簿を既存キューで開始し、同時Lock待ちを抑えます。管理者確認失敗でも従業員読取りへ進みます。保存操作の自動実行は追加しません。
-
-このWorkの対象は従業員情報・出退勤・シフトのWebです。POS/顧客向けサイトは別プロジェクトです。
+# 起動・待機表示・改造の入口
 
 ## 現在の起動順
 
-本文DOM → LINE公式LIFF SDK → 各controller → index.html末尾の起動処理 → LINE初期化 → 表示対象の読取。
+新URLでは生成HTMLの本文DOM→LINE SDK→依存順のcontroller→末尾の起動処理→LINE初期化、の順です。`workforce/`は編集元兼共有資産の場所。旧HTMLのheadにだけ互換転送scriptがあり、新URLの生成HTMLでは除外します。現在の外部script本数を固定18本として案内しません。
 
-ホームの外部script18本をheadから本文の後へ移しました。HTMLの先頭でJS取得/実行待ちをせず、画面の骨組みとCSSを先に解析できます。相手GASの処理時間を短縮した、という変更ではありません。秒数の改善は未計測です。
+起動READは管理権限・打刻準備・本日記録の3項目をhome-read.jsで1 POSTへまとめ、完了後に名簿/承認件数へ進みます。管理権限がなくても本人読取は別に判定します。「その他」の本人情報、「記録」の日次/月次、「シフト」の本人月暦、管理シフトのbatchReadは表示時に必要な分だけ取得します。[読取の地図](AUTO-READ.md)。
 
-## 自分で変更するとき
+通信中は状態欄のaria-busyと軽量CSS表示を使い、完了/拒否/不明をcontrollerが判断します。時計の動きは通信成功の証明ではありません。
 
-- scriptを追加する場所：index.html末尾の外部script群。依存元を先に置き、起動処理の前に読み込む。schedule-view/report→schedule、auto-read→layout等の順序を維持。
-- asyncは順序を保証しません。deferだけを追加すると、末尾の即時起動がcontroller定義より先に実行されるため、そのまま付けないでください。
-- 起動処理を削除するとLINE初期化・タブ・各フォームが動きません。controllerを削除するとその機能が未定義になります。DOM idやinitの参照も検索してから変更。
-- 自動化してよいもの：auto-read.jsの固定した読取だけ。登録/打刻/申請/承認/停止/再送は追加しない。
-- キャッシュしてよいもの：現時点では既存の静的配信の範囲のみ。token/応答鍵/従業員名簿/打刻/未送信draftをStorageへ追加しない。
+## 改造・削除時の影響
 
-検査は`node --test tests/*.mjs`。startup-loading.test.mjsが本文とscriptの順序を、layout等の試験が実際のcontrollerと起動処理を検査します。GAS側の固定UI参照/hashと連結試験も更新します。実LINE端末・描画速度・印刷の受入れは別です。
+- controllerは依存元を先に、末尾の起動処理より前へ置きます。async/deferの一括追加で実行順を変えないでください。
+- 起動処理を消すと本人確認と初期化が停止。controller削除はinit/DOM/iframe/試験を検索してから判断します。
+- 自動化するのは固定READだけ。登録・打刻・申請・承認・停止・訂正preview・保存結果不明の再送は追加しません。
+- 未送信入力・応答鍵・本人情報の永続キャッシュは作りません。bfcache復元時は再読込し、最新認可へ戻します。
+- 統合HTMLの再生成後、公開URL用HTMLも再生成します。編集箇所は[README](README.md)、URL/PWAは[移行手順](URL-MIGRATION.md)。
 
-[API/通信の変更方法](README.md)と[デザインの改造](DESIGN.md)も併読してください。PWAの起動範囲・個人情報の扱いは[PWA準備](PWA.md)へ。
+## 検査と性能の読み方
+
+`node --test tests/*.mjs`のstartup-loading/layout/home-read/auto-read等と、backend連結検査を使います。表示開始の待ちを減らす変更と、GAS/LINE/Sheetsの往復秒数は別です。[性能記録](PERFORMANCE.md)を参照し、昔の計測値を現行の実打刻時間として再利用しません。
+
+[説明整理前の記録](history/20261110-before-guidance-audit-STARTUP.md)。

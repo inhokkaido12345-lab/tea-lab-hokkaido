@@ -7,7 +7,7 @@
   魔改造の入口: ボタン文言はbodyのbutton/strong、色と余白はapp.css、動作はaddEventListener('click')、応答はmessage listener。GAS側actionも併せて修正。
   セキュリティ境界: ID tokenをURLやconsoleに載せない。postMessageのorigin='null'許容を給与・従業員情報に流用しない。LIFF_IDとGAS_URLは接続設定。
   依存するもの: 本番MINI AppのEndpoint URL→このファイル。GASのApi.gs/各Bridgeと通信。設計概要: tlh-platform/docs/コード構造と魔改造ガイド.md。
-  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary/monthly-work-summary.test.mjs→Actions→LINE実機。D14受付は初期閉鎖。
+  検証: tests/workforce-invitation/staff-enrollment/staff-maintenance/work-state/punch/daily-summary/monthly-work-summary.test.mjs→Actions→LINE実機。打刻受付はサーバー設定で管理し、説明整理では変更しない。
   改造の連動: D9以降の文言/検査は各controllerのmessages/verifyResponse。durationは日次/月次で共有。
   削除前: script読込/init/section/iframeを検索。GASの共有helperがあるD番号別ファイルは独立削除不可。
   再現: workforce/README.mdとprivate repo docs/現行再構築手順.md。GAS一時関数追加の旧案は使わない。
@@ -15,7 +15,7 @@
   一般化: information architecture（情報の置き場所）/ progressive disclosure（必要な時だけ詳細を開く）。
   デザイン改造MAP: workforce/DESIGN.md。classは表示、id/iframeは既存処理との契約として区別する。
   変更時の影響: app.cssはこの画面と日別/訂正の3ページへ波及。recovery/sandboxには別CSSがある。
-  UI2: layout.jsが新しいpane wrapperだけを切り替える。既存controllerのhidden/disabled/draftは触らない。
+  画面構成: layout.jsがpane wrapperだけを切り替える。既存controllerのhidden/disabled/draftは触らない。
   初期表示: 打刻準備の状態とボタンを主役にし、D13単独照会は診断へ。一般登録/招待/受付の認可は従来のGASが担当。
 -->
 <!doctype html>
@@ -379,7 +379,7 @@
 <button id="schedule-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="schedule-work-panel"><span aria-hidden="true">▦</span>シフト</button>
 <button id="manager-tab" type="button" role="tab" disabled aria-disabled="true" aria-describedby="admin-access-status" aria-selected="false" tabindex="-1" aria-controls="manager-tools-panel manager-schedule-panel manager-registration-panel manager-maintenance-panel manager-test-panel"><span aria-hidden="true">⚙&#xFE0E;</span>管理 <span data-approval-badge class="approval-badge" hidden></span></button>
 <button id="more-tab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="employee-registration-panel more-tools-panel"><span aria-hidden="true">•••</span>その他</button>
-</nav><footer class="app-footer">TLH Work Time <span>UI2</span></footer>
+</nav><footer class="app-footer">TLH Work Time <span>オンライン版</span></footer>
 </div>
   <!--
     HTML formのtargetとなるiframe。通信結果の表示には使わない。
@@ -426,7 +426,7 @@
   <script src="current-workplace.js?v=20261105-store2"></script>
   <script src="home-read.js?v=20261108-batch1"></script>
   <script src="demo-invitation.js?v=20261105-store1"></script>
-  <script src="staff-enrollment.js?v=20261105-store1"></script>
+  <script src="staff-enrollment.js?v=20261110-guidance1"></script>
   <script src="admin-overview.js?v=20261105-timing1"></script>
   <script src="staff-maintenance.js?v=20261105-store1"></script>
   <script src="work-state.js?v=20261105-store1"></script>
@@ -461,7 +461,7 @@
 
     // LIFF IDは公開識別子。Channel Secretとは別物。
     const LIFF_ID = '2011940133-JXUDzLnG';
-    const DIAGNOSTIC_VERSION = 'UI2 (2026-11-03)';
+    const DIAGNOSTIC_VERSION = 'Work Time 公開URL移行版 (2026-11-10)';
     const INIT_TIMEOUT_MS = 15000;
 
     /**
