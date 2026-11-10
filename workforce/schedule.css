@@ -1,9 +1,9 @@
 /* シフト専用の表示。既存パレット/字体/入力部品はapp.cssを共有。
  * 削除影響: 月暦と区間の配置だけ崩れる。認可/版/保存はschedule.jsとGASが担当。
- * 改造: PC7列→スマホ日別カード。空白日は曜日合わせ、非表示はこの見た目だけに限定する。
+ * 改造: 月暦は7列、スマホも月暦を横スクロール。空白日は曜日合わせ、非表示はこの見た目だけに限定する。
  * hidden/disabledを解除せず、個人の申請や予定値をCSSへ埋め込まない。SCHEDULE.md参照。 */
-.management-section { border-top:1px solid var(--line); padding-top:24px; margin-top:28px; }
-.management-section>h2 { margin-bottom:14px; font-size:20px; }
+.management-section { border-top:1px solid var(--line); padding-top:var(--space-section-inset); margin-top:var(--space-section); }
+.management-section>h2 { margin-bottom:var(--space-heading); font-size:var(--type-section); }
 .schedule-calendar { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; margin-top:18px; }
 .schedule-day { min-width:0; border:1px solid var(--line); border-radius:8px; padding:12px; background:var(--paper); overflow-wrap:anywhere; }
 .schedule-day h3 { margin-bottom:10px; }
@@ -32,7 +32,7 @@
 .schedule-task-nav{display:flex;flex-wrap:wrap;gap:10px 20px;margin:24px 0}.schedule-task-nav a{font-weight:600}.schedule-public-note{border-left:3px solid var(--accent,#2F5452);padding-left:10px}#schedule-overview>summary,#schedule-admin-overview>summary{font-size:1.2rem;font-weight:600;cursor:pointer}section[id],details[id]{scroll-margin-top:24px}
 
 /* 出力は共有専用の許可列だけ。管理画面や本人の詳細を印刷対象に含めない。 */
-.schedule-updated{font-weight:600}.schedule-export{margin:24px 0;padding-block:18px;border-block:1px solid var(--line)}.schedule-export h2{font-size:18px}.schedule-print-only{display:none}
+.schedule-updated{font-weight:600}.schedule-export{margin:24px 0;padding-block:18px;border-block:1px solid var(--line)}.schedule-export h2{font-size:var(--type-section)}.schedule-print-only{display:none}
 @media print{
  @page{size:A4 landscape;margin:12mm}
  body.schedule-page{background:#fff;color:#000}
@@ -62,6 +62,14 @@
 .schedule-month-calendar{min-width:980px;grid-template-columns:repeat(7,minmax(130px,1fr))}
 .schedule-month-calendar .schedule-weekday,.schedule-month-calendar .schedule-blank{display:block}
 .schedule-deadline-banner{padding:16px;border-left:4px solid var(--teal,#2F5452);background:var(--soft,#E5EBE9);font-weight:600;margin-bottom:20px}
-#schedule-admin-entry{border-top:2px solid var(--teal,#2F5452);margin-top:36px;padding-top:24px}
+#schedule-admin-entry{border-top:1px solid var(--line);margin-top:var(--space-section);padding-top:var(--space-section-inset)}
 #schedule-import-section,#schedule-manage-review{scroll-margin-top:24px}
 .schedule-task-nav .button{margin:0;text-decoration:none}
+
+/* 統合画面では「管理→シフト管理」の子に作業見出しを置く。単独ページのh1/h2は保つ。
+   生成元の見出し段数はsync-schedule-workspace.py。見た目だけでHTMLの階層を偽装しない。 */
+#schedule-admin-entry > h2 { font-size:var(--type-section); margin-bottom:var(--space-heading); }
+#schedule-import-section > h3,#schedule-manage-review .page-heading h3 { font-size:var(--type-subhead); margin-bottom:var(--space-heading); }
+#schedule-import-section > aside { margin-top:var(--space-section-inset); padding-top:var(--space-content); }
+#schedule-manage-review > section,#schedule-manage-review > details { margin-top:var(--space-section); }
+.schedule-task-nav { gap:8px 12px; margin:16px 0 24px; }

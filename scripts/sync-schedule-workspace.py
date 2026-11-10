@@ -1,4 +1,4 @@
-"""単独ページを正本に、ホームの従業員/管理シフトを別々にを再生成する（標準ライブラリのみ）。
+"""単独ページを正本に、ホームの従業員/管理シフトを別々に再生成する（標準ライブラリのみ）。
 
 責務: schedule/admin-schedule/admin-schedule-bulk.html → index.htmlの2つの明示範囲。
 削除影響: 再生成だけ停止。生成画面を手直しせず、元ページとcontrollerを変更する。
@@ -14,14 +14,15 @@ root = Path(__file__).resolve().parents[1] / 'workforce'
 target = root / 'index.html'
 text = target.read_text(encoding='utf-8')
 
-def main(name):
+def main(name, offset=0):
     source = (root / name).read_text(encoding='utf-8')
     body = source[source.index('<main>')+6:source.index('</main>')]
-    return body.replace('<h1', '<h2').replace('</h1>', '</h2>')
+    # 単独はh1起点、管理への埋込みはcategory h2の下へ2段下げる。id/フォームは変更しない。
+    return re.sub(r'<(/?)h([1-6])(?=[\s>])', lambda m: '<'+m[1]+'h'+str(min(6,int(m[2])+offset)), body)
 
 employee = main('schedule.html')
 employee = employee.replace('<button id="schedule-refresh" type="button" disabled>最新の状態に更新</button>', '<button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button>')
-admin = main('admin-schedule.html')
+admin = main('admin-schedule.html', offset=2)
 # 公開用出力は本人側の共有DTOから一つだけ作る。管理用DOMを印刷へ転用しない。
 admin = re.sub(r'<section class="schedule-export">[\s\S]*?</section>', '', admin)
 admin = re.sub(r'<section id="schedule-report"[\s\S]*?</section>', '', admin)
@@ -33,13 +34,13 @@ admin = admin.replace('name="tlhScheduleFrame"', 'name="tlhScheduleAdminFrame"')
 admin = admin.replace('href="admin-schedule-bulk.html"', 'href="#schedule-import-section"')
 # 管理内だけ月選択を一つにする。管理者の半月選択は承認/締切/公開の対象を選ぶために残す。
 admin = admin.replace('<label>表示する月', '<label hidden>表示する月').replace('id="schedule-admin-refresh" type="button"', 'id="schedule-admin-refresh" type="button" hidden')
-admin = admin.replace('<h2>シフトの取込み・希望の確認</h2>', '<h2>希望の確認・締切・確定公開</h2>')
-bulk = main('admin-schedule-bulk.html')
+admin = admin.replace('<h3>シフトの取込み・希望の確認</h3>', '<h3>希望の確認・締切・確定公開</h3>')
+bulk = main('admin-schedule-bulk.html', offset=2)
 bulk = bulk.replace('<label>対象月', '<label hidden>対象月').replace('id="bulk-load" type="button"','id="bulk-load" type="button" hidden')
 bulk = bulk.replace('href="admin-schedule.html"', 'href="#schedule-manage-review"')
 navigation = '<nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav>'
 shortcuts = '<nav id="schedule-admin-shortcuts" class="schedule-task-nav" aria-label="管理者のシフト作業" hidden><a class="button primary" href="#schedule-import-section">シートを開く・取り込む</a><a class="button secondary" href="#schedule-admin-review">希望を確認する</a><a class="button secondary" href="#schedule-admin-collection">締切を設定する</a><a class="button secondary" href="#schedule-admin-release">確定公開する</a></nav>'
-employee = employee.replace('<h2>月間シフト・希望の提出</h2>', '<h1>月間シフト・希望</h1>')
+employee = employee.replace('<h1>月間シフト・希望の提出</h1>', '<h1>月間シフト・希望</h1>')
 employee = employee.replace('</div></div>', '</div></div>' + navigation + '<p id="schedule-draft-notice" class="footnote" role="status" hidden></p>', 1)
 employee_block = ('<!-- schedule-workspace:start -->\n'
     '<div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>\n'
