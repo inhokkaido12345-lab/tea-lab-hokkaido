@@ -439,13 +439,13 @@
   <script src="/workforce/monthly-work-summary.js?v=20261108-batch1"></script>
   <script src="/workforce/attendance-journal.js?v=20261108-batch1"></script>
   <script src="/workforce/shell.js?v=UI2-20261103"></script>
-  <script src="/workforce/auto-read.js?v=20261110-management1"></script>
+  <script src="/workforce/auto-read.js?v=20261110-read-priority1"></script>
   <script src="/workforce/account-info.js?v=20261105-more1"></script>
   <script src="/workforce/schedule-view.js?v=20261104-periods"></script>
   <script src="/workforce/schedule-report.js?v=20261110-range-month1"></script>
-  <script src="/workforce/schedule.js?v=20261110-range-month1"></script>
+  <script src="/workforce/schedule.js?v=20261110-input-binding1"></script>
   <script src="/workforce/schedule-management-contract.js?v=20261110-range-month1"></script>
-  <script src="/workforce/schedule-management.js?v=20261110-range-month1"></script>
+  <script src="/workforce/schedule-management.js?v=20261110-input-binding1"></script>
   <script src="/workforce/schedule-workspace.js?v=20261110-management1"></script>
   <script src="/workforce/layout.js?v=20261110-management1"></script>
   <script src="/workforce/admin-access.js?v=20261108-batch1"></script>
@@ -517,7 +517,7 @@
     // 別ページから#managerへ戻るときも、最新権限の確認成功後だけ管理タブを開く。
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager-schedule')layoutNavigation.open('manager','schedule');else if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed);loadVisiblePane(homePane);}}});
+      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager-schedule')layoutNavigation.open('manager','schedule');else if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed,true);loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
     // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
     // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。

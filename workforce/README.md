@@ -71,3 +71,13 @@ node --test tests/*.mjs
 不明な保存結果は同じ操作で再確認し、新規送信を重ねません。原打刻・履歴・内部IDを消して復旧しません。token/鍵/個人情報/招待秘密をURL・console・端末Storageへ保存しません。移行後のLINE/PWA・切戻しは[URL移行](URL-MIGRATION.md)、性能の実測と限界は[PERFORMANCE](PERFORMANCE.md)。
 
 [説明整理前の記録](history/20261110-before-guidance-audit-README.md)。
+
+## 未公開：タブ読込みの待機順（2026-11-10）
+
+`auto-read.js`の`once(key, permitted, true)`は背景READ指定。起動後の管理概要/通知取得を省かず、未開始の概要より今開いたタブのREADを先に進めます。実行中の通信を中断せず、連打による重複取得も防ぎます。保存ボタンを自動取得の許可リストへ追加しないでください。
+
+再現検査は`node --test tests/auto-read.test.mjs`。HTML変更後は従来どおり`python scripts/sync-schedule-workspace.py`、`python scripts/build-workforce-design-preview.py`、`python scripts/sync-worktime-url.py`、`python scripts/sync-worktime-url.py --check`。シフトGAS側の要求内再利用も別repoで準備済み。公開後の本人端末の秒数比較は未実施です。
+
+## 未公開：入力シートの識別エラーを分離
+
+月別入力がない場合の識別設定不足と、他店舗などの識別不一致を別の案内にしました。利用者の勤務入力ミスとは区別し、設定担当者に連絡する表示です。GASと固定入力ファイルの識別設定を整えた後に公開確認します。月の作成・既存入力・シフト公開は別操作です。
