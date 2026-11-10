@@ -63,16 +63,11 @@
 .schedule-month-calendar .schedule-weekday,.schedule-month-calendar .schedule-blank{display:block}
 .schedule-deadline-banner{padding:16px;border-left:4px solid var(--teal,#2F5452);background:var(--soft,#E5EBE9);font-weight:600;margin-bottom:20px}
 #schedule-admin-entry{border-top:1px solid var(--line);margin-top:var(--space-section);padding-top:var(--space-section-inset)}
-#schedule-import-section,#schedule-manage-review{scroll-margin-top:24px}
 .schedule-task-nav .button{margin:0;text-decoration:none}
 
 /* 統合画面では「管理→シフト管理」の子に作業見出しを置く。単独ページのh1/h2は保つ。
-   生成元の見出し段数はsync-schedule-workspace.py。見た目だけでHTMLの階層を偽装しない。 */
+   生成元の見出し段数はsync-schedule-workspace.py。分類は管理controllerが担当する。 */
 #schedule-admin-entry > h2 { font-size:var(--type-section); margin-bottom:var(--space-heading); }
-#schedule-import-section { margin-top:var(--space-section); padding-top:var(--space-section-inset); border-top:1px solid var(--line); }
-#schedule-import-section > h3,#schedule-manage-review .page-heading h3 { font-size:var(--type-subhead); margin-bottom:var(--space-heading); }
-#schedule-import-section > aside { margin-top:var(--space-section-inset); padding-top:var(--space-content); }
-#schedule-manage-review > section,#schedule-manage-review > details { margin-top:var(--space-section); }
 .schedule-task-nav { gap:8px 12px; margin:16px 0 24px; }
 
 /* 管理シフトは二分類だけ。色やhiddenは認可を代替しない。動的申請はcontrollerが待機時無効化する。 */
