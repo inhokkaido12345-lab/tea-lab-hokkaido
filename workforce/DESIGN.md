@@ -9,15 +9,15 @@
 切替担当はlayout.jsのcategories/groupsとindex.htmlのmanager-sectionsです。保存/認可/入力/再送情報を変更せず、対象のwrapperだけを表示します。選択ボタンは初期無効、既存の署名付き管理者確認後だけ有効。分類を追加するときは選択名・対象ID・aria-controls・配置テスト・説明を同期してください。登録の共通結果欄はstaff-status-hostで表示だけを切り替え、元のstatus/フォームのidは維持します。
 
 
-## 階層とタイポグラフィ（2026-11-10・ローカル候補）
+## 階層とタイポグラフィ（2026-11-10）
 
-公開前の表示整理です。IBM Plex Sans JPの400/600と既存6色を維持し、画面名28px（狭い画面24px）、作業区分20px、作業見出し17px、本文15px、補足13pxを基準にします。全てを太字にせず、文字サイズ・余白・操作の役割で読み順を作ります。
+表示整理の共通ルールです。IBM Plex Sans JPの400/600と既存6色を維持し、画面名28px（狭い画面24px）、作業区分20px、作業見出し17px、本文15px、補足13pxを基準にします。全てを太字にせず、文字サイズ・余白・操作の役割で読み順を作ります。
 
 別の話題の前は32px、区切り線から内容は24px、見出しの後は12px。入力面だけを白くし、大区分は区切り線で分けます。分類の選択状態は淡い面と下線、更新・印刷・CSVは補助操作、保存・提出・承認は主操作として表現します。停止・取消しの注意色、hidden/disabled、認可は維持します。
 
 改造入口はapp.cssの:rootの`--type-*`・`--space-*`と18節です。字体追加や各画面への直書きより、役割の値から調整してください。見出しのHTML段数は単独ページが正本で、scripts/sync-schedule-workspace.pyが管理への埋込み時だけ2段下げます。CSSだけで階層を装わず、ID・フォーム・返信先は維持します。
 
-再現はrepoルートで `python scripts/sync-schedule-workspace.py` → `python scripts/build-workforce-design-preview.py` → `node --test tests/*.mjs`。生成物を直接編集しません。表示見本には実データ・通信・保存がありません。今回の自動検査は成功していますが、ブラウザの表示確認はURLを安全に判定できず停止したため未完了です。公開前に390px/PC/文字拡大/キーボードで折返しと階層を確認してください。
+再現はrepoルートで `python scripts/sync-schedule-workspace.py` → `python scripts/build-workforce-design-preview.py` → `node --test tests/*.mjs`。生成物を直接編集しません。表示見本には実データ・通信・保存がありません。ローカルURLとファイルURLは接続制限があるため、既存Pages内の[隔離した確認ページ](design/ordered-hierarchy/manager.html)で、320px/390px/1280pxの表示、見出し段数、フォント、ページ全体の横はみ出しを確認しました。稼働前の空状態を使った表示確認であり、実際の社員・保存操作の検証とは区別します。文字拡大や他の端末で調整するときも、折返しとキーボードfocusを確認してください。
 
 ## 現行パレットと管理・その他の統一（2026-11-03）
 
