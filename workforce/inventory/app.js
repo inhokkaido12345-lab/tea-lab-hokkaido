@@ -153,6 +153,8 @@ function renderConsumption(card, item) {
 
 function render(){
  itemsById = new Map(view.items.map(item => [item.id, item]));
+ const asOf=$('as-of');
+ if(asOf)asOf.textContent=view.asOf?'推定時点：'+formatRecordedAt(view.asOf)+' ／最新の記録を読むと更新':'推定時点を確認するには最新の記録を読んでください';
  historyDirty=true;
  const overview=$('overview');
  if(overview){
@@ -260,7 +262,8 @@ $('refresh').onclick=refresh;
 $('add').onclick=()=>{if(view)addLine();};
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>tab(b.dataset.tab);
 for(const b of document.querySelectorAll('[data-filter]'))b.onclick=()=>{filter=b.dataset.filter;for(const x of document.querySelectorAll('[data-filter]'))x.setAttribute('aria-pressed',String(x===b));if(view)render();};
-const now=new Date();$('day').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+// 端末が海外時刻でも、サーバーと同じJSTの日付を入荷の初期値にする。
+$('day').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 refresh();
 
 
