@@ -47,7 +47,8 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   context.window = context; context.top = context;
   for (const match of html.matchAll(/<script\b[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"[^>]*><\/script>/g)) {
     if (match[1].startsWith('https:')) continue;
-    vm.runInNewContext(fs.readFileSync(new URL('../workforce/' + match[1], import.meta.url), 'utf8'), context);
+    const localPath=match[1].startsWith('/')?'..'+match[1]:'../workforce/'+match[1];
+    vm.runInNewContext(fs.readFileSync(new URL(localPath, import.meta.url), 'utf8'), context);
   }
   const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; assert.equal(inline.length, 1);
   vm.runInNewContext(inline[0][1], context);

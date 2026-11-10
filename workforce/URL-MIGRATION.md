@@ -12,7 +12,7 @@
 
 ## 編集する場所と公開する場所
 
-`workforce/`が既存の編集元です。`software/worktime/`のHTMLは生成物なので手編集しません。業務JS/CSS・フォント・アイコンは`/workforce/`の同じ資産を読み込み、別コピーの業務ロジックを作りません。生成HTMLの`base`は資産用で、画面内の移動リンクは新URLへ変換します。backendのAPI名・ID・保存先は変更しません。
+`workforce/`が既存の編集元です。`software/worktime/`のHTMLは生成物なので手編集しません。業務JS/CSS・フォント・アイコンは`/workforce/`の同じ資産を読み込み、別コピーの業務ロジックを作りません。生成HTMLはJS/CSS等の資産だけを旧パスの絶対参照へ変換し、画面間の移動は新URLへ変換します。`base`タグは使わず、#目次は現在ページとqueryを維持します。backendのAPI名・ID・保存先は変更しません。
 
 ```powershell
 python scripts/sync-schedule-workspace.py

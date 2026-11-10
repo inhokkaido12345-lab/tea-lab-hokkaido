@@ -21,15 +21,13 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<base href="/workforce/">
-
   <meta charset="utf-8">
 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <!-- PWA準備：起動名/範囲/静的アイコンだけ。オフライン保存やService Workerは導入しない。PWA.md参照。 -->
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="/workforce/manifest.webmanifest">
   <meta name="theme-color" content="#2F5452">
   <title>TLH Work Time | 勤怠・シフト管理</title>
 
@@ -39,8 +37,8 @@
     GAS HtmlServiceのiframe sandboxを避けるのが今回の重要な設計変更。
   -->
 
-  <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1">
-<link rel="stylesheet" href="schedule.css?v=20261110-management1">
+  <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="/workforce/app.css?v=20261110-hierarchy1">
+<link rel="stylesheet" href="/workforce/schedule.css?v=20261110-management1">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="/software/worktime/"><span class="brand-mark" aria-hidden="true">TLH</span><span>Work Time</span></a><span class="account-label">LINEログイン<span>勤怠・シフト管理</span></span></header>
@@ -425,28 +423,28 @@
     魔改造：script追加/移動は起動テスト・固定UI参照・READMEを同期。認可や保存を自動化しない。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-  <script src="current-workplace.js?v=20261105-store2"></script>
-  <script src="home-read.js?v=20261108-batch1"></script>
-  <script src="demo-invitation.js?v=20261105-store1"></script>
-  <script src="staff-enrollment.js?v=20261110-guidance1"></script>
-  <script src="admin-overview.js?v=20261105-timing1"></script>
-  <script src="staff-maintenance.js?v=20261105-store1"></script>
-  <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261108-batch1"></script>
-  <script src="daily-summary.js?v=20261108-batch1"></script>
-  <script src="monthly-work-summary.js?v=20261108-batch1"></script>
-  <script src="attendance-journal.js?v=20261108-batch1"></script>
-  <script src="shell.js?v=UI2-20261103"></script>
-  <script src="auto-read.js?v=20261110-management1"></script>
-  <script src="account-info.js?v=20261105-more1"></script>
-  <script src="schedule-view.js?v=20261104-periods"></script>
-  <script src="schedule-report.js?v=20261109-authority1"></script>
-  <script src="schedule.js?v=20261110-login1"></script>
-  <script src="schedule-management-contract.js?v=20261110-management1"></script>
-  <script src="schedule-management.js?v=20261110-management1"></script>
-  <script src="schedule-workspace.js?v=20261110-management1"></script>
-  <script src="layout.js?v=20261110-management1"></script>
-  <script src="admin-access.js?v=20261108-batch1"></script>
+  <script src="/workforce/current-workplace.js?v=20261105-store2"></script>
+  <script src="/workforce/home-read.js?v=20261108-batch1"></script>
+  <script src="/workforce/demo-invitation.js?v=20261105-store1"></script>
+  <script src="/workforce/staff-enrollment.js?v=20261110-guidance1"></script>
+  <script src="/workforce/admin-overview.js?v=20261105-timing1"></script>
+  <script src="/workforce/staff-maintenance.js?v=20261105-store1"></script>
+  <script src="/workforce/work-state.js?v=20261105-store1"></script>
+  <script src="/workforce/punch.js?v=20261108-batch1"></script>
+  <script src="/workforce/daily-summary.js?v=20261108-batch1"></script>
+  <script src="/workforce/monthly-work-summary.js?v=20261108-batch1"></script>
+  <script src="/workforce/attendance-journal.js?v=20261108-batch1"></script>
+  <script src="/workforce/shell.js?v=UI2-20261103"></script>
+  <script src="/workforce/auto-read.js?v=20261110-management1"></script>
+  <script src="/workforce/account-info.js?v=20261105-more1"></script>
+  <script src="/workforce/schedule-view.js?v=20261104-periods"></script>
+  <script src="/workforce/schedule-report.js?v=20261109-authority1"></script>
+  <script src="/workforce/schedule.js?v=20261110-login1"></script>
+  <script src="/workforce/schedule-management-contract.js?v=20261110-management1"></script>
+  <script src="/workforce/schedule-management.js?v=20261110-management1"></script>
+  <script src="/workforce/schedule-workspace.js?v=20261110-management1"></script>
+  <script src="/workforce/layout.js?v=20261110-management1"></script>
+  <script src="/workforce/admin-access.js?v=20261108-batch1"></script>
   <script>
     /**
      * TLH Work Time / LINE認証・TLH一般アカウント作成 診断画面 D8。
