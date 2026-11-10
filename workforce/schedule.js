@@ -12,6 +12,7 @@
 (function(global){'use strict';
   const TYPE='TLH_BRIDGE_SCHEDULE',ACTION='bridgeScheduleV1';
   const messages={SCHEDULE_NOT_COLLECTING:'この期間は下書き作成中です。通常の希望受付はまだ開始していません。',SCHEDULE_READY:'最新のシフトを表示しました。',SCHEDULE_SAVED:'保存しました。',SCHEDULE_ALREADY_DONE:'保存済みの操作です。最新状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'変更案を保存しました。本人の同意後に管理者が承認します。',SCHEDULE_INVALID:'日付・時刻・入力内容を確認してください。',SCHEDULE_CHANGED:'確認後に内容が変わりました。更新して確認し直してください。',SCHEDULE_PERMISSION_REQUIRED:'この画面の利用権限がありません。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。',SCHEDULE_NOT_OPEN:'管理者が選択中の期間の希望受付を設定してください。',SCHEDULE_PUBLISHED_LOCKED:'確定済みです。従業員ごとの変更案・変更申請を使ってください。',SCHEDULE_DEADLINE_CLOSED:'通常の希望締切を過ぎています。年休等の申出は別の区分で提出できます。',SCHEDULE_DEADLINE_NOT_REACHED:'希望締切前は確定公開できません。締切設定を確認してください。',SCHEDULE_REQUEST_PENDING:'同じ日・区分の申請が未処理です。先に内容を確認・取消ししてください。',SCHEDULE_OPERATION_REUSED:'操作番号と内容が一致しません。更新して状態を確認してください。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入が未確認です。管理者が分類と根拠を確定してください。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外すことはできません。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務予定が重なっています。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の整合性確認が必要です。手編集せず、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できませんでした。変更は戻されています。同じ操作で再確認できます。',SCHEDULE_CAPACITY:'対象データが処理上限を超えています。管理者へ連絡してください。',SCHEDULE_UNAVAILABLE:'シフトを取得できませんでした。更新して確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて更新してください。'};
+  messages.LINE_VERIFY_REJECTED='LINEログインの有効性を確認できません。下のボタンからログインし直してください。';
   Object.assign(messages,{SCHEDULE_SHEET_SOURCE_REQUIRED:'シフトの作成・訂正は正本スプレッドシートで行ってください。',SCHEDULE_SHEET_CONTENT_REQUIRED:'申請・下書きと正本シートの内容が一致しません。シートを確認して取り込み直してください。',SCHEDULE_SHEET_CHANGED:'確認後に正本シートが変わりました。取り込み直してください。',SCHEDULE_SHEET_AUX_REQUIRED:'用事・休暇詳細・共有イベントの入力タブを用意してください。',SCHEDULE_SHEET_FORMAT_REQUIRED:'正本シートの形式を確認してください。',SCHEDULE_SHEET_ROSTER_REQUIRED:'正本シートに全従業員の行が必要です。',SCHEDULE_SHEET_CONFIGURATION_REQUIRED:'正本シートの接続設定を確認してください。',SCHEDULE_SHEET_INVALID:'正本シートの入力を確認してください。'});
   const code=v=>typeof v==='string'&&/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(v),text=(v,max)=>typeof v==='string'&&v.length<=max&&!/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(v);
   const date=v=>typeof v==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;
@@ -46,12 +47,36 @@
   function related(source,target){for(let i=0;source&&i<6;i++){if(source===target)return true;try{if(source.parent===source)break;source=source.parent;}catch(_e){break;}}return false;}
   /** 両半月を別々に検査し、同じ本人/月/役割/取得時刻の月暦だけ採用する。 */
   function validateMonth(v,month,admin){return !!v&&Object.keys(v).sort().join(',')==='halves,month,version'&&v.version===1&&v.month===month&&v.halves&&Object.keys(v.halves).sort().join(',')==='FIRST,SECOND'&&['FIRST','SECOND'].every(part=>validate(v.halves[part],month,admin,part))&&v.halves.FIRST.employeeCode===v.halves.SECOND.employeeCode&&v.halves.FIRST.inputMode===v.halves.SECOND.inputMode&&v.halves.FIRST.serverNow===v.halves.SECOND.serverNow;}
+  /**
+   * シフトのREADで公式認証が拒否された場合の明示的な復帰。通常取得エラーでは起動しない。
+   * 単独ページと統合画面で一つのbuttonへ一度だけ登録する。SDK再初期化/独自認可URLは不要。
+   * ログインは本人の押下だけ。結果不明の保存中はblockedで遷移を止め、秘密/操作IDを保存しない。
+   * 魔改造: 復帰先はorigin+pathnameだけ。query/hash/tokenをコピーせず、退場後の押下も拒否する。
+   * 削除すると認証切れから復帰できない。署名/別iframe/連打/離脱/保存結果不明の試験を維持する。
+   */
+  function createLoginRecovery(options){
+    let needed=false,navigating=false,stopped=false;
+    const button=options.button;
+    function update(){button.hidden=!needed||stopped;button.disabled=stopped||navigating||!!options.blocked?.();}
+    button.addEventListener('click',()=>{
+      if(!needed||navigating||stopped||options.blocked?.()||global!==global.top)return;
+      navigating=true;update();options.changed?.();
+      try{
+        if(options.liff.isInClient?.()){global.location.assign('https://miniapp.line.me/2011940133-JXUDzLnG');return;}
+        if(options.liff.isLoggedIn())options.liff.logout();
+        options.liff.login({redirectUri:global.location.origin+global.location.pathname});
+      }catch(_e){navigating=false;update();options.failed?.();options.changed?.();}
+    });
+    global.addEventListener('pagehide',()=>{stopped=true;needed=false;update();});update();
+    return Object.freeze({require(){needed=true;button.textContent='LINEでログインし直す';update();options.changed?.();},locked:()=>needed||navigating,update});
+  }
   function init(options){
-    const ids=['scope','availability','month','refresh','status','summary','published-at','calendar','requests','frame','editor','day','employee','leave','note','public-note','reason','kind','periods','appointments','add-period','add-appointment','save','month-form','deadline','event-form','event-day','event-title','event-note','publish','retry'];
+    const ids=['login','scope','availability','month','refresh','status','summary','published-at','calendar','requests','frame','editor','day','employee','leave','note','public-note','reason','kind','periods','appointments','add-period','add-appointment','save','month-form','deadline','event-form','event-day','event-title','event-note','publish','retry'];
     // 同一タブの本人/管理者をIDと返信iframeごと分離。defaultは既存単独ページと互換。
     const byId=id=>document.getElementById(id.replace(/^schedule-/,options.idPrefix||'schedule-'));
     const n=Object.fromEntries(ids.map(k=>[k,byId('schedule-'+k)]));
     const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
+    const login=createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     function canRequest(){
       if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
@@ -61,7 +86,7 @@
     }
     function controls(){
       // disabledは誤操作防止。操作の権限はGASが毎回決める。通信失敗を許可として扱わない。
-      const locked=stopped||!!pending||!!uncertain||!snapshot;
+      const locked=stopped||login.locked()||!!pending||!!uncertain||!snapshot;
       n.editor.disabled=locked;n['month-form'].disabled=locked;n['event-form'].disabled=locked||!admin;n.publish.disabled=locked||!admin||snapshot?.phase==='PUBLISHED'||snapshot?.phase==='NOT_OPEN'||snapshot?.phase==='DRAFT';
       n.save.disabled=locked||!admin&&!canRequest();
       // 管理者の編集は署名済み旧モードだけ。未確認/失敗/退場では隠し、本人申請とは区別する。
@@ -69,9 +94,9 @@
       if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=byId(id);if(node)node.hidden=hideAdminEditor;}const banner=byId('schedule-source-banner');if(banner)banner.hidden=!sheet;}
       n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(snapshot.phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(snapshot.phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':snapshot.phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
       if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。全日の希望休は、承認時に非公開備考へ「希望休」を自動記入します。既存予定があれば「【希望休と競合】」を併記するため、シートで調整してください。勤務変更・年休等は承認前に申請と同じ内容をシートへ記入してください。';
-      n.scope.disabled=stopped||!!pending||!!uncertain;
-      n.month.disabled=stopped||!!pending||!!uncertain;n.refresh.disabled=stopped||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
-      n.status.setAttribute('aria-busy',String(!!pending));
+      n.scope.disabled=stopped||login.locked()||!!pending||!!uncertain;
+      n.month.disabled=stopped||login.locked()||!!pending||!!uncertain;n.refresh.disabled=stopped||login.locked()||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
+      login.update();n.status.setAttribute('aria-busy',String(!!pending));
       reportUi.setEnabled(!locked&&snapshot?.phase==='PUBLISHED');
       options.onNavigationLock?.(stopped||!!pending||!!uncertain);
     }
@@ -178,19 +203,20 @@
     async function send(request){
       // 保存前に内容をJSON文字列へ固定。同じ操作の再確認では編集後の入力や新しいoperationIdを使わない。
       // 「返信がない」は「未保存」とは限らない。未確定結果を自動再送すると二重登録の原因になる。
-      if(pending||stopped)return;
+      if(pending||stopped||login.locked())return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
-      const proof=options.liff.getIDToken();if(typeof proof!=='string'||!proof){clear();n.status.textContent='LINEログインが必要です。';return;}
+      const proof=options.liff.getIDToken();if(typeof proof!=='string'||!proof){if(isRead(request.command))login.require();clear();n.status.textContent='LINEログインが必要です。';return;}
       const r={...request,nonce:random(16),key:random(32)};pending=r;if(isRead(r.command))clear();controls();n.status.textContent='通信中です。';
       const unknown=()=>{if(pending!==r)return;if(!isRead(r.command))uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=isRead(r.command)?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target=options.frameName||'tlhScheduleFrame';form.hidden=true;
       Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
-    async function read(){if(pending||uncertain||stopped)return;const monthly=options.monthly&&n.scope.value!=='MONTH';await send({command:monthly?'monthRead':'read',input:JSON.stringify({month:n.month.value,...(!monthly&&n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
+    async function read(){if(pending||uncertain||stopped||login.locked())return;const monthly=options.monthly&&n.scope.value!=='MONTH';await send({command:monthly?'monthRead':'read',input:JSON.stringify({month:n.month.value,...(!monthly&&n.scope.value?{period:n.scope.value}:{}),audience:options.audience}),operationId:''});}
     global.addEventListener('message',async event=>{
       const r=pending,d=event.data;if(!r||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       if(!d||d.type!==TYPE||d.action!==ACTION||d.command!==r.command||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.data!=='string'||d.data.length>1500000||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac))return;
       let ok=false;try{const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.key),{name:'HMAC',hash:'SHA-256'},false,['verify']);ok=await crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),v=>parseInt(v,16)),enc.encode([TYPE,ACTION,d.command,d.nonce,d.code,d.data].join('\n')));}catch(_e){}if(!ok||pending!==r||stopped)return;
+      if(d.code==='LINE_VERIFY_REJECTED'){if(!isRead(r.command)||d.data!=='')return;finish();clear();login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;return;}
       let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}const expected=JSON.parse(r.input);if(r.command==='monthRead'){if(!validateMonth(value,expected.month,admin))return;monthSnapshots=value.halves;value=monthSnapshots[n.scope.value]||monthSnapshots.FIRST;}else if(!validate(value,expected.month,admin,expected.period))return;}
       if(['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code)&&!value)return;
       if(value){if(!isRead(r.command))uncertain=null;finish();render(value);}else{
@@ -224,11 +250,10 @@
     if(options.monthly&&!n.scope.value)n.scope.value='FIRST';
     controls();return Object.freeze({read,hasUnsavedInput(){return dirtyEditor||!!pending||!!uncertain;}});
   }
-  global.TlhSchedule=Object.freeze({init,validate,validateMonth,validatePlan:validPlan});
+  global.TlhSchedule=Object.freeze({init,validate,validateMonth,validatePlan:validPlan,createLoginRecovery});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
     const login=document.getElementById('schedule-login'),status=document.getElementById('schedule-status');
-    login.addEventListener('click',()=>global.liff.login());
-    try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){login.hidden=false;status.textContent='LINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
+    try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){createLoginRecovery({button:login,liff:global.liff,failed:()=>{status.textContent='LINEログインを開始できませんでした。';}}).require();status.textContent='LINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
       document.getElementById('schedule-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date());
       document.getElementById('schedule-scope').value=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',day:'numeric'}).format(new Date()))<=15?'FIRST':'SECOND';
       const ui=init({gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec',liff:global.liff,audience:document.body.dataset.audience,monthly:true});await ui.read();
