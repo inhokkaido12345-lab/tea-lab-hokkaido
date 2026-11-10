@@ -1,6 +1,6 @@
 """単独ページを正本に、ホームの従業員/管理シフトを別々に再生成する（標準ライブラリのみ）。
 
-責務: schedule/admin-schedule/admin-schedule-bulk.html → index.htmlの2つの明示範囲。
+責務: schedule/admin-schedule.html → index.htmlの2つの明示範囲。
 削除影響: 再生成だけ停止。生成画面を手直しせず、元ページとcontrollerを変更する。
 一般化: ID名前空間で本人/管理者のフォームと返信iframeを分離する静的合成。
 魔改造: prefix変更はschedule-workspace.jsのidPrefix/frameName、試験と同期。
@@ -17,7 +17,7 @@ text = target.read_text(encoding='utf-8')
 def main(name, offset=0):
     source = (root / name).read_text(encoding='utf-8')
     body = source[source.index('<main>')+6:source.index('</main>')]
-    # 単独はh1起点、管理への埋込みはcategory h2の下へ2段下げる。id/フォームは変更しない。
+    # 単独はh1起点、管理への埋込みは単独h1をcategory h2へ1段下げる。id/フォームは変更しない。
     return re.sub(r'<(/?)h([1-6])(?=[\s>])', lambda m: '<'+m[1]+'h'+str(min(6,int(m[2])+offset)), body)
 
 employee = main('schedule.html')
