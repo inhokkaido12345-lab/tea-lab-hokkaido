@@ -13,10 +13,10 @@ export function scheduleUiHarness(audience='employee',options={}){
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-view.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule-report.js',import.meta.url),'utf8'),runtime);
  vm.runInNewContext(fs.readFileSync(new URL('../../workforce/schedule.js',import.meta.url),'utf8'),runtime);
- const api=window.TlhSchedule.init({audience,...options,gasUrl:'https://offline.invalid/exec',liff:{getIDToken:()=> 'fake.jwt.proof'}});
+ const liff={getIDToken:()=> 'fake.jwt.proof'},api=window.TlhSchedule.init({audience,...options,gasUrl:'https://offline.invalid/exec',liff});
  async function reply(request,data,code='SCHEDULE_READY',patch={},source=n('frame').contentWindow){
   const d={type:'TLH_BRIDGE_SCHEDULE',action:'bridgeScheduleV1',command:request.command,nonce:request.nonce,code,data:typeof data==='string'?data:JSON.stringify(data)};d.mac=createHmac('sha256',request.responseKey).update([d.type,d.action,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');await events.message({source,origin:'null',data:{...d,...patch}});
  }
- return{api,n,sent,events,timers,window,reply,click:k=>n(k).events.click(),snapshot:()=>snapshot(audience),module:window.TlhSchedule};
+ return{api,n,sent,events,timers,window,liff,reply,click:k=>n(k).events.click(),snapshot:()=>snapshot(audience),module:window.TlhSchedule};
 }
 export function snapshot(audience='employee'){return{version:1,month:'2026-11',monthRevision:1,phase:'COLLECTING',deadline:'2026-11-20T00:00:00.000Z',serverNow:'2026-11-04T03:00:00.000Z',admin:audience==='admin',employeeCode:audience==='employee'?'SCH001':'',employees:audience==='admin'?[{employeeCode:'SCH001',employeeName:'架空社員'}]:[],plans:[],ownPlans:[],drafts:[],requests:[],events:[],draftEvents:[]};}

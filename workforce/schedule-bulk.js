@@ -12,6 +12,7 @@
 (function(global){'use strict';
   const ACTION='bridgeScheduleV1',TYPE='TLH_BRIDGE_SCHEDULE',PAGE_SIZE=25;
   const messages={SCHEDULE_READY:'この月のシフトを読み込みました。',SCHEDULE_SAVED:'変更をまとめて下書き保存しました。確定公開は半月別の画面で行ってください。',SCHEDULE_ALREADY_DONE:'同じ操作は保存済みです。最新の状態を表示しました。',SCHEDULE_CONSENT_REQUIRED:'下書きと確定後の変更案を保存しました。確定済みの日は本人の同意・承認後に反映されます。',SCHEDULE_INVALID:'日付・勤務区間・休暇・変更理由を確認してください。',SCHEDULE_CHANGED:'他の操作で予定が変わりました。入力はこの画面に残しています。最新状態を読み直して調整してください。',SCHEDULE_PERMISSION_REQUIRED:'管理者権限を確認できません。管理者のLINEでログインしてください。',SCHEDULE_EMPLOYEE_REQUIRED:'有効な従業員登録を確認できません。最新の従業員一覧を読み直してください。',SCHEDULE_REQUEST_PENDING:'変更対象の日に未処理の申請があります。個別画面で確認してください。',SCHEDULE_OPERATION_REUSED:'操作番号と入力が一致しません。保存状態を確認してください。',SCHEDULE_LEAVE_CONFLICT:'全日休暇と勤務・用事が重なっています。',SCHEDULE_REQUIRED_WORK:'会社が指示する用事を勤務対象から外せません。',SCHEDULE_WORK_ASSESSMENT_REQUIRED:'用事の勤務算入の確認が必要です。',SCHEDULE_REVIEW_REQUIRED:'シフト保存先の確認が必要です。入力を残し、管理者へ連絡してください。',SCHEDULE_STORAGE_INVALID:'シフト保存先の構成を確認してください。',SCHEDULE_WRITE_UNAVAILABLE:'保存できず、今回の変更は戻されています。入力を確認して再実行できます。',SCHEDULE_CAPACITY:'処理上限を超えています。一度の変更は500日分までです。',SCHEDULE_UNAVAILABLE:'応答を確認できません。保存操作は同じ操作で結果を再確認してください。',WRITE_REVIEW_REQUIRED:'原簿の整合性確認が必要です。',ENROLLMENT_BUSY:'他の操作が処理中です。時間を置いて再確認してください。'};
+  messages.LINE_VERIFY_REJECTED='LINEログインの有効性を確認できません。下のボタンからログインし直してください。';
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),v=>v.toString(16).padStart(2,'0')).join('');
   Object.assign(messages,{SCHEDULE_SHEET_READY:'入力シートを確認しました。',SCHEDULE_SHEET_CONFIGURATION_REQUIRED:'入力シートの接続設定が必要です。管理者へ連絡してください。',SCHEDULE_SHEET_NOT_FOUND:'この月の入力シートはありません。「入力シートを作成」から用意してください。',SCHEDULE_SHEET_INVALID:'入力シートの形式・店舗・日付を確認してください。既存の入力は上書きしていません。',SCHEDULE_SHEET_REVIEW_REQUIRED:'入力シートの作成結果を確認してください。再作成や上書きは行っていません。'});
   function related(source,target){try{for(let i=0;source&&i<8;i++){if(source===target)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch(_e){}return false;}
@@ -52,6 +53,7 @@
   function init(options){
     const model=global.TlhScheduleBulkModel,n=Object.fromEntries(['month','load','status','phases','head','rows','prev','next','page','detail','selected','appointments','note','public-note','reason','count','save','retry','frame','login','template','file','import-preview','import-summary','import-rows','import-apply','import-cancel','sheet-read','sheet-create','sheet-open','sheet-confirm','sheet-question','sheet-approve','sheet-cancel'].map(id=>[id,document.getElementById('bulk-'+id)]));
     let snapshot=null,pending=null,uncertain=null,stopped=false,page=0,selected=null,needReload=false;
+    const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain,changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     const drafts=new Map(),texts=new Map(),errors=new Map(),cells=new Map();
     let importPreview=null,importing=false,directImport=false,createReview=false,authority=null;
     const sheetMode=()=>snapshot?.halves.FIRST.inputMode==='SHEET';
@@ -63,8 +65,8 @@
     function unsaved(){try{return !!errors.size||!!currentPayload()?.changes.length;}catch(_e){return drafts.size>0;}}
     function currentPayload(){return snapshot&&!sheetMode()?model.payload(snapshot,drafts,n.reason.value):null;}
     function controls(){
-      const locked=stopped||!!pending||!!uncertain||!snapshot||importing||!!importPreview||createReview;
-      n.status.setAttribute('aria-busy',String(!!pending||importing));n.month.disabled=stopped||!!pending||!!uncertain||importing||!!importPreview||createReview;n.load.disabled=n.month.disabled;
+      const locked=stopped||login.locked()||!!pending||!!uncertain||!snapshot||importing||!!importPreview||createReview;
+      login.update();n.status.setAttribute('aria-busy',String(!!pending||importing));n.month.disabled=stopped||login.locked()||!!pending||!!uncertain||importing||!!importPreview||createReview;n.load.disabled=n.month.disabled;
       n['sheet-confirm'].hidden=!createReview;n['sheet-approve'].disabled=stopped||!!pending||!!uncertain||!createReview||!snapshot;n['sheet-cancel'].disabled=stopped||!!pending||!!uncertain;
       n.template.disabled=locked||needReload;n.file.disabled=locked||unsaved()||needReload;
       n['sheet-read'].disabled=n.file.disabled;n['sheet-create'].disabled=n.file.disabled;
@@ -136,9 +138,9 @@
     }
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     async function send(request){
-      if(pending||stopped)return;
+      if(pending||stopped||login.locked())return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
-      let proof;try{proof=options.liff.getIDToken();}catch(_e){}if(typeof proof!=='string'||!proof){n.status.textContent='LINEログインが必要です。';n.login.hidden=false;return;}
+      let proof;try{proof=options.liff.getIDToken();}catch(_e){}if(typeof proof!=='string'||!proof){n.status.textContent='LINEログインが必要です。';if(['batchRead','sheetRead'].includes(request.command))login.require();return;}
       const r={...request,nonce:random(16),responseKey:random(32)};pending=r;controls();n.status.textContent={batchRead:'月全体を読み込んでいます。',sheetRead:'入力シートから直接読み込んでいます。',sheetCreate:'選択月の入力シートを用意しています。'}[request.command]||'変更をまとめて保存しています。';
       function unknown(){if(pending!==r||stopped)return;if(['batchPlan','sheetCreate','sheetImport'].includes(r.command))uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=r.command==='sheetCreate'?'作成結果を確認できません。同じ操作で再確認してください。既存の月は上書きしません。':['batchPlan','sheetImport'].includes(r.command)?'保存結果を確認できません。入力を変更せず「同じ操作で保存結果を再確認」を押してください。':'読込み結果を確認できません。もう一度読み込んでください。';finish();}
       r.timer=setTimeout(unknown,30000);
@@ -147,7 +149,7 @@
       document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     async function load(){
-      if(pending||uncertain||stopped||importing||importPreview||createReview)return;
+      if(pending||uncertain||stopped||login.locked()||importing||importPreview||createReview)return;
       if(unsaved()&&!global.confirm('未保存の入力を破棄し、最新の状態を読み込みます。続けますか？')){if(snapshot)n.month.value=snapshot.month;return;}
       try{model.days(n.month.value);}catch(error){n.status.textContent=error.message;return;}
       clear();await send({command:'batchRead',input:JSON.stringify({month:n.month.value,audience:'admin'}),operationId:''});
@@ -168,7 +170,7 @@
       const r=pending;if(stopped||!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(stopped||pending!==r)return;
       if(!valid){if(['sheetRead','sheetCreate'].includes(r.command)&&event.data?.type===TYPE&&event.data?.nonce===r.nonce)n.status.textContent='入力シートの応答の署名を確認できません。保存は行っていません。';return;}
-      const d=event.data;let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}
+      const d=event.data;if(d.code==='LINE_VERIFY_REJECTED'){if(!['batchRead','sheetRead'].includes(r.command)||d.data!=='')return;finish();clear();login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;return;}let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}
         if(['sheetRead','sheetCreate'].includes(r.command)){
           const problem=d.code!=='SCHEDULE_SHEET_READY'||!value||!['csv,month,sheet,snapshot,version','authority,csv,month,sheet,snapshot,version'].includes(Object.keys(value).sort().join(','))?'D1':value.version!==1||value.month!==JSON.parse(r.input).month?'D2':!model.validate(value.snapshot,value.month)?'D3':typeof value.csv!=='string'||value.csv.length>1000000?'D4':!value.sheet||Object.keys(value.sheet).sort().join(',')!=='created,url'||typeof value.sheet.created!=='boolean'?'D5':typeof value.sheet.url!=='string'||!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit#gid=\d+$/.test(value.sheet.url)?'D6':r.command==='sheetCreate'&&value.csv!==''?'D7':value.authority&&!validAuthority(value.authority,value.snapshot)?'D8':r.command==='sheetRead'&&value.snapshot.halves.FIRST.inputMode==='SHEET'&&!value.authority?'D9':'';
           if(problem){finish();clear();n.status.textContent='入力シートの応答形式を確認できません（確認番号 '+problem+'）。保存は行っていません。';return;}
@@ -246,8 +248,7 @@
   global.TlhScheduleBulk=Object.freeze({init,verify});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
     const login=document.getElementById('bulk-login'),status=document.getElementById('bulk-status');
-    login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
-    try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){login.hidden=false;status.textContent='管理者のLINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
+    try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){global.TlhSchedule.createLoginRecovery({button:login,liff:global.liff,failed:()=>{status.textContent='LINEログインを開始できませんでした。';}}).require();status.textContent='管理者のLINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
       document.getElementById('bulk-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date());
       await init({gasUrl:global.TlhCurrentWorkplace.config.endpoint,liff:global.liff}).load();
     }catch(_e){status.textContent='通信を開始できません。LINEから開き直してください。';status.setAttribute('aria-busy','false');}

@@ -16,10 +16,10 @@ export function scheduleBulkHarness(scope={organizationId:'org_example',workplac
  const window={top:null,confirm(text){questions.push(text);return confirm;},addEventListener(k,fn){events[k]=fn;}};window.top=window;
  const runtime={window,document:{currentScript:null,getElementById:id=>n(id.replace('bulk-','')),createElement:make,body:make()},crypto:webcrypto,Uint8Array,TextEncoder,Date,Intl,setTimeout(fn){timers.set(++seq,fn);return seq;},clearTimeout(id){timers.delete(id);}};
  for(const file of ['schedule-view.js','schedule-report.js','schedule.js','schedule-bulk-model.js','schedule-sheet.js','schedule-bulk.js'])vm.runInNewContext(fs.readFileSync(new URL('../../workforce/'+file,import.meta.url),'utf8'),runtime,{filename:file});
- const api=window.TlhScheduleBulk.init({gasUrl:'https://offline.invalid/exec',scope,liff:{getIDToken:()=> 'fake.jwt.proof'}});
+ const liff={getIDToken:()=> 'fake.jwt.proof'},api=window.TlhScheduleBulk.init({gasUrl:'https://offline.invalid/exec',scope,liff});
  function walk(node){return[node,...node.children.flatMap(walk)];}
  function cell(code,day){const value=walk(n('rows')).find(x=>x.tagName==='textarea'&&x.attrs['aria-label']?.includes('（'+code+'） '+day));if(!value)throw Error('missing cell '+code+' '+day);return value;}
- return{api,n,sent,events,timers,questions,window,model:window.TlhScheduleBulkModel,cell,
+ return{api,n,sent,events,timers,questions,window,liff,model:window.TlhScheduleBulkModel,cell,
   confirm(value){confirm=value;},edit(code,day,value){const c=cell(code,day);c.value=value;c.events.input();},click(id){return n(id).events.click();},
   async reply(request,data=bulkSnapshot(),code='SCHEDULE_READY',patch={},origin='null',source=n('frame').contentWindow){const d={type:'TLH_BRIDGE_SCHEDULE',action:'bridgeScheduleV1',command:request.command,nonce:request.nonce,code,data:data?JSON.stringify(data):''};d.mac=createHmac('sha256',request.responseKey).update([d.type,d.action,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');await events.message({source,origin,data:{...d,...patch}});},
  };
