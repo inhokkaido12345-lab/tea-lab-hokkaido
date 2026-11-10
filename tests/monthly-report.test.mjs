@@ -18,3 +18,17 @@ test('refresh, timeout and departure erase previous report; failed read never yi
 test('print CSS exposes only the ready monthly report and repeats table headers',()=>{
  const css=fs.readFileSync(new URL('../workforce/app.css',import.meta.url),'utf8'),html=fs.readFileSync(new URL('../workforce/admin-timecard-records.html',import.meta.url),'utf8');assert.match(css,/@page \{ size:A4 landscape/);assert.match(css,/#monthly-report:not\(\[hidden\]\)/);assert.match(css,/thead \{ display:table-header-group/);assert.match(html,/月次記録をCSV保存/);assert.match(html,/印刷・PDF保存/);
 });
+
+test('dedicated print stylesheet restores only an authorized monthly detail table, without overriding hidden reports',()=>{
+ const html=fs.readFileSync(new URL('../workforce/admin-timecard-records.html',import.meta.url),'utf8'),css=fs.readFileSync(new URL('../workforce/monthly-report.css',import.meta.url),'utf8');
+ assert.ok(html.indexOf('monthly-report.css?v=')>html.indexOf('app.css?v='));
+ assert.match(css,/body\.monthly-report-page #monthly-report:not\(\[hidden\]\) > \.table-scroll/);assert.match(css,/display:block !important/);
+ assert.doesNotMatch(css,/#monthly-report\[hidden\]|visibility:visible/);
+});
+test('monthly detail keeps all daily clock/break timestamps, empty dates and existing totals',()=>{
+ const h=monthlyReportHarness(),report=sampleReport(),session=report.days[0].sessions[0];
+ session.breaks.push({start:'2026-11-01T02:00:00.000Z',end:'2026-11-01T02:15:00.000Z'});session.breakMs+=900000;session.workedMs-=900000;report.days[0].breakMs+=900000;report.days[0].workedMs-=900000;
+ h.exporter.setReport(report);const text=h.n('report-rows').children.map(tr=>tr.children.map(td=>td.textContent).join(' | ')).join('\n');
+ for(const value of ['2026-11-01 09:00:00.000','2026-11-01 10:00:00.000','2026-11-01 10:30:00.000','2026-11-01 11:00:00.000','2026-11-01 11:15:00.000','2026-11-01 12:00:00.000','2026-11-01 14:00:00.000','2026-11-01 17:00:00.000','2026-11-03 11:00:00.123','2026-11-30'])assert.ok(text.includes(value),value);
+ assert.match(h.n('report-summary').textContent,/実働合計 18:15:00.000/);assert.match(h.n('report-summary').textContent,/休憩合計 0:45:00.000/);assert.match(h.n('report-summary').textContent,/未退勤 1区間/);
+});

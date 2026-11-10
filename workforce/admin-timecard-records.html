@@ -1,8 +1,8 @@
 <!-- 役割別の静的入口。管理/本人は別HTML、処理と保存は共通JS/GAS。data-audienceは認可ではない。
      削除するとこの役割の入口だけ停止。変更時は対のHTML・controller・役割分離テストを同期する。 -->
 <!doctype html>
-<!-- 従業員の月次勤務記録: attendance-journal.js→既存GASの読取専用入口。消しても打刻原簿は残る。
-     予定入力は管理者のShiftPlan台帳。日別記録を法定時間外/給与確定値として扱わない。 -->
+<!-- 管理者の本社提出用月次勤務記録: attendance-journal.js→既存GASのV3読取専用入口。消しても打刻原簿は残る。
+     承認済み訂正を含む全勤務/休憩の実績を出力し、シフト未設定でも使える。給与確定値として扱わない。 -->
 <!-- デザインの読み方: DESIGN.md。app.cssの.secondary-pageでホームと同じ色/入力表現へ。
      このページ専用の調整はbody classで範囲を限定する。id/fieldset disabled/hiddenは処理契約。
      CSSを差し替える時は3ページの参照版と固定hashを同期し、確認/実行の状態を上書きしない。 -->
@@ -12,6 +12,7 @@
 <script src="/workforce/worktime-url.js"></script><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer"><title>従業員の月次勤務記録 | TLH Work Time</title>
   <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1">
+  <link rel="stylesheet" href="monthly-report.css?v=20261110-print-details1">
   <script defer src="current-workplace.js?v=20261105-store2"></script>
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script>
   <script defer src="admin-overview.js?v=20261105-timing1"></script><script defer src="admin-access.js?v=20261108-batch1"></script>
@@ -35,8 +36,8 @@
     <p id="journal-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
     <p>時刻は日本時間です。承認済みの訂正を反映した出退勤の実績を表示します。シフト未設定でも出力できます。</p>
     <p>記録なしは休日の確定ではありません。未退勤の実働は未確定です。給与計算・法定時間外の確定値ではありません。</p>
-    <section class="report-actions card"><h2>本社提出用の月次記録</h2><p>社員と月を選ぶと、取得時点の出退勤・休憩を一覧にします。</p><button id="report-csv" type="button" disabled>月次記録をCSV保存</button><button id="report-print" type="button" disabled>印刷・PDF保存</button><p id="report-status" role="status">記録の取得後に出力できます。</p></section>
-    <section id="monthly-report" class="card" hidden><h2>月次勤務記録</h2><p id="report-title"></p><p id="report-meta"></p><p id="report-summary"></p><p class="footnote">取得時点の記録です。記録なしは休日・勤務なしの確定ではありません。未退勤の実働は未確定です。給与計算・法定時間外の確定値ではありません。</p><div class="table-scroll"><table><thead><tr><th>勤務開始日</th><th>区間</th><th>出勤（日本時間）</th><th>退勤（日本時間）</th><th>休憩開始・終了</th><th>休憩時間</th><th>実働時間</th><th>状態</th></tr></thead><tbody id="report-rows"></tbody></table></div></section>
+    <section class="report-actions card"><h2>本社提出用の月次記録</h2><p>社員と月を選ぶと、日別の全勤務区間・出勤・退勤・休憩開始／終了を一覧にします。印刷・PDFにも明細と実働／休憩の合計を出力します。</p><button id="report-csv" type="button" disabled>月次記録をCSV保存</button><button id="report-print" type="button" disabled>印刷・PDF保存</button><p id="report-status" role="status">記録の取得後に出力できます。</p></section>
+    <section id="monthly-report" class="card" hidden><h2>月次勤務記録・日別打刻明細</h2><p id="report-title"></p><p id="report-meta"></p><p id="report-summary"></p><p class="footnote">取得時点の記録です。記録なしは休日・勤務なしの確定ではありません。未退勤の実働は未確定です。給与計算・法定時間外の確定値ではありません。</p><div class="table-scroll"><table><thead><tr><th>勤務開始日</th><th>区間</th><th>出勤（日本時間）</th><th>退勤（日本時間）</th><th>休憩開始・終了</th><th>休憩時間</th><th>実働時間</th><th>状態</th></tr></thead><tbody id="report-rows"></tbody></table></div></section>
     <div id="journal-cards"></div>
     <div class="table-scroll"><table id="journal-table" hidden>
       <caption id="journal-caption"></caption>

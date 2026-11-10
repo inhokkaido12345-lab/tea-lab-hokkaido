@@ -1,0 +1,37 @@
+/* 本社提出表専用。共通のカード表示用ルールから、検証済み月次明細だけを表示へ戻す。
+ * 呼出元: admin-timecard-records.html。JS/認可/集計/原簿は変更しない。
+ * 削除影響: .secondary-page .table-scroll の非表示が印刷にも及び、合計だけのPDFに戻る。
+ * 一般化: component-scoped override。printはscreenの指定も継承するため、overflowだけでは表は戻らない。
+ * 魔改造: 列/行はmonthly-report.jsとHTML、ページ割は下記とqa/verify-monthly-report-print.mjsを同期。
+ * 個人情報の追加取得/保存/外部送信なし。hiddenの出力許可をCSSで解除しない。
+ * 検証: monthly-report.test.mjsと実ブラウザPDF検査。実社員/実打刻は使わない。
+ */
+body.monthly-report-page #monthly-report:not([hidden]) > .table-scroll {
+  display:block;
+}
+@media print {
+  html:root { background:#fff; }
+  body.monthly-report-page #monthly-report:not([hidden]) > .table-scroll {
+    display:block !important;
+    overflow:visible;
+    margin-top:12px;
+  }
+  body.monthly-report-page > .current-workplace-mark { margin:0 0 8px; padding:6px 10px; font-size:9pt; line-height:1.25; }
+  body.monthly-report-page #monthly-report { background:#fff; }
+  body.monthly-report-page #monthly-report h2 { margin:6px 0; font-size:14pt; }
+  body.monthly-report-page #monthly-report p { margin:4px 0; font-size:9pt; line-height:1.35; }
+  body.monthly-report-page #monthly-report table { table-layout:fixed; line-height:1.3; }
+  body.monthly-report-page #monthly-report th,
+  body.monthly-report-page #monthly-report td { padding:4px; font-size:8.5pt; }
+  #monthly-report th:nth-child(1) { width:10%; }
+  #monthly-report th:nth-child(2) { width:4%; }
+  #monthly-report th:nth-child(3),#monthly-report th:nth-child(4) { width:15%; }
+  #monthly-report th:nth-child(5) { width:24%; }
+  #monthly-report th:nth-child(6),#monthly-report th:nth-child(7) { width:9%; }
+  #monthly-report th:nth-child(8) { width:14%; }
+  #monthly-report td:nth-child(1),#monthly-report td:nth-child(6),#monthly-report td:nth-child(7) { white-space:nowrap; overflow-wrap:normal; }
+  #monthly-report thead { display:table-header-group; }
+  #monthly-report tbody { display:table-row-group; }
+  #monthly-report tr { break-inside:avoid; page-break-inside:avoid; }
+  #monthly-report th { white-space:normal; }
+}
