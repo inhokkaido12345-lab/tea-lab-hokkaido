@@ -6,6 +6,7 @@
  * 魔改造: 下の固定表だけが自動実行の許可リスト。登録/打刻/承認/preview/再送を絶対に足さない。
  * 境界: LINE準備/最新管理者gateは呼出し側とGASが担当。判定の代わりに使わない。Storage/ログなし。
  * 検証: auto-read.test.mjs＋layout/全UI/連結。自動失敗を無限再試行せず、更新は人が操作する。
+ * 背景指定: onceの第3引数trueは概要など。通知取得を省かず、未開始分の順序だけを変える。
  * 起動: ホームはaccess/punch/todayを同じ通信へ。他ページのaccessは既存確認の終了待ちだけ。
  * 改造: startAccessはホームの固定権限READ専用。保存入口へ転用せず、群→overview順とtimeout試験を同期。
  */
@@ -25,7 +26,8 @@
     }
     async function drain(){
       if(running||stopped)return;running=true;
-      try{while(queue.length&&!stopped){const job=queue.shift();
+      try{while(queue.length&&!stopped){// 未開始の背景READより現在表示のREADを優先。実行中は中断せず、共有Lockへの集中を防ぐ。
+        const foreground=queue.findIndex(job=>!job.background),job=queue.splice(foreground<0?0:foreground,1)[0];
         if(job.keys){
           const entries=job.keys.map(key=>({key,button:reads[key][0]?document.getElementById(reads[key][0]):null,status:document.getElementById(reads[key][1])}));
           // Wait for earlier/manual reads, then start fixed READs in the same turn.
@@ -52,7 +54,7 @@
       }}finally{running=false;}
     }
     /** onceはページ滞在中1回。againは確認済みの保存成功/対象変更でだけ使い、保存を再送しない。 */
-    function once(key,permitted=()=>true){if(stopped||!Object.hasOwn(reads,key)||seen.has(key)||!permitted())return;seen.add(key);queue.push({key,permitted});void drain();}
+    function once(key,permitted=()=>true,background=false){if(stopped||!Object.hasOwn(reads,key)||seen.has(key)||!permitted())return;seen.add(key);queue.push({key,permitted,background:background===true});void drain();}
     function again(key,permitted=()=>true){if(queue.some(job=>job.key===key))return;seen.delete(key);once(key,permitted);}
     /** Only home startup / own records combinations. Unknown and write keys reject the whole group. */
     function together(keys,permitted=()=>true,refresh=false){

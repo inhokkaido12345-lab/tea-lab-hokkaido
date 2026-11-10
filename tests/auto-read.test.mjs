@@ -47,3 +47,19 @@ test('bootstrap pages load coordinator before controllers; automatic operations 
  for(const file of ['index.html','account-info.html','timecard-records.html','admin-timecard-records.html','admin-day-change.html']){const t=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');assert.match(t,/auto-read\.js\?v=[^" ]+/);assert.ok(t.indexOf('src="auto-read.js')<t.indexOf('src="'+(file==='index.html'?'layout.js':file==='account-info.html'?'account-info.js':file==='admin-day-change.html'?'day-change.js':'attendance-journal.js')));}
  const source=fs.readFileSync(new URL('../workforce/auto-read.js',import.meta.url),'utf8');assert.doesNotMatch(source,/setInterval|setTimeout|localStorage|sessionStorage|fetch\(|bridgeRecord|change-commit|punch-retry|staff-issue|maintenance-stop/);
 });
+
+
+test('visible shift read overtakes queued background overview without cancelling running startup',async()=>{
+ const h=harness();h.api.together(['punch','today']);await tick();
+ h.api.once('overview',()=>true,true);h.api.once('schedule');await tick();
+ assert.deepEqual(h.sent,['punch-check','journal-check']);h.finish('punch');h.finish('journal');await tick();
+ assert.deepEqual(h.sent,['punch-check','journal-check','schedule-refresh']);
+ h.finish('schedule');await tick();assert.equal(h.sent.at(-1),'admin-overview-check');
+ h.finish('admin-overview');await tick();assert.equal(h.watchers.size,0);
+});
+test('expired visible permission is skipped and the pending notification overview still runs',async()=>{
+ const h=harness();h.api.once('punch');await tick();let visible=true;
+ h.api.once('overview',()=>true,true);h.api.once('schedule',()=>visible);visible=false;h.finish('punch');await tick();
+ assert.deepEqual(h.sent,['punch-check','admin-overview-check']);h.finish('admin-overview');await tick();
+ visible=true;h.api.once('schedule',()=>visible);await tick();assert.equal(h.sent.at(-1),'schedule-refresh');
+});

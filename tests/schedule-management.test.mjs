@@ -46,3 +46,8 @@ test('monthly approval is independent of the publication selector and preserves 
 test('deadline window has explicit dates and a global expected version independent of legacy half selection',async()=>{
  const h=managementHarness(),s=managementSnapshot();for(const half of Object.values(s.halves)){half.deadlineRevision=4;half.requestDeadlines=[];}await h.api.load();await h.reply(h.sent[0],s);h.n('deadline-start').value='2026-12-28';h.n('deadline-end').value='2027-01-08';h.n('deadline').value='2026-12-20T18:00';h.click('deadline-save');assert.match(h.n('question').textContent,/2026-12-28〜2027-01-08/);h.click('approve');assert.equal(h.sent[1].command,'deadlineRange');const input=JSON.parse(h.sent[1].input);assert.equal(input.expectedDeadlineRevision,4);assert.equal(input.startDay,'2026-12-28');assert.equal(input.endDay,'2027-01-08');assert.equal(input.deadline,'2026-12-20T09:00:00.000Z');assert.ok(!Object.hasOwn(input,'period'));assert.ok(!Object.hasOwn(input,'expectedMonthRevision'));
 });
+
+for(const [code,pattern]of [['SCHEDULE_SHEET_BINDING_REQUIRED',/月別シートがない/],['SCHEDULE_SHEET_BINDING_INVALID',/店舗識別設定が一致しません/]])test('input creation reports '+code+' without publication or automatic retry',async()=>{
+ const h=await ready();h.click('sheet-create');h.click('approve');assert.equal(h.sent[1].command,'sheetCreate');
+ await h.reply(h.sent[1],null,code);assert.match(h.n('status').textContent,pattern);assert.equal(h.sent.length,2);
+});
