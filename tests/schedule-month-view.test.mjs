@@ -1,11 +1,32 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {scheduleUiHarness} from './helpers/schedule-harness.mjs';
 function month(h){const halves={};for(const part of ['FIRST','SECOND'])halves[part]={...h.snapshot(),period:part,rangeStart:'2026-11-'+(part==='FIRST'?'01':'16'),rangeEnd:'2026-11-'+(part==='FIRST'?'15':'30')};return{version:1,month:'2026-11',halves};}
 const text=n=>n.textContent+' '+n.children.map(text).join(' ');
-test('one signed monthly read displays every date and a deadline above requests; switching half is local',async()=>{
+const plan=day=>({day,periods:[],appointments:[],leave:{type:'PUBLIC_OFF',unit:'DAY',minutes:null,note:''},note:''});
+const request=day=>({requestId:'request_'+day.slice(-2),employeeCode:'SCH001',employeeName:'架空社員',revision:2,status:'PENDING',kind:'SHIFT_PREFERENCE',payload:{plan:plan(day),reason:'希望'},submittedAt:'2026-11-01T00:00:00.000Z'});
+test('monthly requests save and cancel in the day-owned half and revision; opposite-half requests remain visible after saving',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true}),v=month(h);v.halves.FIRST.monthRevision=3;v.halves.SECOND.monthRevision=7;v.halves.FIRST.requests=[request('2026-11-05')];v.halves.SECOND.requests=[request('2026-11-22')];
+ await h.api.read();await h.reply(h.sent[0],v);assert.match(text(h.n('requests')),/2026-11-05/);assert.match(text(h.n('requests')),/2026-11-22/);
+ h.n('day').value='2026-11-22';h.n('day').events.change();h.n('reason').value='希望';h.click('save');const sent=JSON.parse(h.sent[1].input);assert.equal(sent.period,'SECOND');assert.equal(sent.expectedMonthRevision,7);assert.equal(sent.expectedPlanRevision,0);
+ await h.reply(h.sent[1],v.halves.SECOND,'SCHEDULE_SAVED');assert.match(text(h.n('requests')),/2026-11-05/);
+ const walk=n=>[n,...n.children.flatMap(walk)],cancel=walk(h.n('requests')).filter(n=>n.tagName==='button'&&n.textContent==='この申請を取り消す').at(-1);cancel.events.click();const input=JSON.parse(h.sent[2].input);assert.equal(input.period,'SECOND');assert.equal(input.expectedMonthRevision,7);assert.equal(input.expectedRequestRevision,2);
+});
+test('future-year monthly selection keeps both halves and does not silently open an unconfigured month',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true});h.n('month').value='2027-12';await h.api.read();assert.equal(JSON.parse(h.sent[0].input).month,'2027-12');const v=month(h);v.month='2027-12';for(const [part,s]of Object.entries(v.halves)){s.month=v.month;s.rangeStart=v.month+(part==='FIRST'?'-01':'-16');s.rangeEnd=v.month+(part==='FIRST'?'-15':'-31');s.phase='NOT_OPEN';s.monthRevision=0;s.deadline='';}
+ await h.reply(h.sent[0],v);assert.equal(h.n('day').max,'2027-12-31');assert.equal(h.n('calendar').children.filter(n=>n.tagName==='article').length,31);assert.equal(h.n('save').disabled,true);assert.match(h.n('availability').textContent,/未設定/);
+});
+test('normal monthly view hides period selection but preserves an explicitly available historical month',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();const v=month(h);await h.reply(h.sent[0],v);assert.equal(h.n('legacy-picker').hidden,true);await h.api.read();v.halves.FIRST.legacyAvailable=true;await h.reply(h.sent[1],v);assert.equal(h.n('legacy-picker').hidden,false);h.n('scope').value='MONTH';h.n('scope').events.change();assert.equal(h.sent[2].command,'read');assert.equal(JSON.parse(h.sent[2].input).period,'MONTH');h.events.pagehide();assert.equal(h.n('legacy-picker').hidden,true);
+});
+test('monthly output includes both published halves, marks unpublished days, and never exports private requests',async()=>{
+ const h=scheduleUiHarness('employee',{monthly:true}),v=month(h);v.halves.FIRST.phase='PUBLISHED';v.halves.FIRST.publishedAt='2026-11-03T00:00:00.000Z';v.halves.SECOND.requests=[request('2026-11-22')];v.halves.SECOND.requests[0].payload.reason='PRIVATE_REASON';
+ await h.api.read();await h.reply(h.sent[0],v);assert.equal(h.n('print').disabled,false);h.events.beforeprint();assert.equal(h.n('report-rows').children.length,30);assert.match(text(h.n('report-rows')),/未公開/);assert.doesNotMatch(text(h.n('report-rows')),/PRIVATE_REASON/);
+ await h.api.read();v.halves.SECOND.phase='PUBLISHED';v.halves.SECOND.publishedAt='2026-11-04T00:00:00.000Z';await h.reply(h.sent[1],v);h.events.beforeprint();assert.doesNotMatch(text(h.n('report-rows')),/未公開/);assert.match(h.n('report-meta').textContent,/2026-11-01〜2026-11-30/);
+});
+test('one signed monthly read shows the whole month; request date chooses its deadline without a period selector or extra read',async()=>{
  const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();assert.equal(h.sent[0].command,'monthRead');assert.deepEqual(JSON.parse(h.sent[0].input),{month:'2026-11',audience:'employee'});
  const value=month(h);value.halves.SECOND.deadline='2026-11-25T00:00:00.000Z';await h.reply(h.sent[0],value);
- const days=h.n('calendar').children.filter(n=>n.tagName==='article');assert.equal(days.length,30);assert.match(text(days.at(-1)),/30日/);assert.match(h.n('request-deadline').textContent,/前半.*11.*20/);
- h.n('scope').value='SECOND';h.n('scope').events.change();assert.equal(h.sent.length,1);assert.match(h.n('request-deadline').textContent,/後半.*11.*25/);assert.equal(h.n('day').min,'2026-11-16');assert.match(h.n('calendar').className,/schedule-month-calendar/);
+ const days=h.n('calendar').children.filter(n=>n.tagName==='article');assert.equal(days.length,30);assert.match(text(days.at(-1)),/30日/);assert.match(h.n('request-deadline').textContent,/2026-11-05.*11.*20/);
+ h.n('day').value='2026-11-22';h.n('day').events.change();assert.equal(h.sent.length,1);assert.match(h.n('request-deadline').textContent,/2026-11-22.*11.*25/);assert.equal(h.n('day').min,'2026-11-01');assert.equal(h.n('day').max,'2026-11-30');assert.match(h.n('calendar').className,/schedule-month-calendar/);
 });
 test('monthly reply rejects wrong half/role/identity/month/time and cannot show private administrator data',async()=>{
  for(const change of [v=>v.halves.SECOND.period='FIRST',v=>v.halves.SECOND.admin=true,v=>v.halves.SECOND.employeeCode='OTHER',v=>v.halves.SECOND.month='2026-12',v=>v.halves.SECOND.serverNow='2026-11-05T00:00:00.000Z']){const h=scheduleUiHarness('employee',{monthly:true});await h.api.read();const v=month(h);change(v);await h.reply(h.sent[0],v);assert.equal(h.n('calendar').children.length,0);assert.equal(h.n('editor').disabled,true);}

@@ -15,6 +15,9 @@
   // 空の日を推測で休日にしない。社員ごとの未設定日も、空欄から勤務なしと断定してはならない。
   if(!s||s.phase!=='PUBLISHED'||!/^\d{4}-(0[1-9]|1[0-2])$/.test(s.month)||!s.publishedAt||!Number.isFinite(Date.parse(s.publishedAt))||!Array.isArray(s.plans)||!Array.isArray(s.events))throw Error('SCHEDULE_REPORT_INVALID');
   const range=global.TlhScheduleView.periodRange(s.month,s.period),first=Number(range.start.slice(8)),count=Number(range.end.slice(8)),rows=[];
+  // 月全体の共有出力では、未公開の日を「予定未設定」と混同しない。秘密の下書きは渡さない。
+  if(s.unpublishedDays!==undefined&&!Array.isArray(s.unpublishedDays))throw Error('SCHEDULE_REPORT_INVALID');
+  const unpublished=new Set(s.unpublishedDays||[]);if([...unpublished].some(day=>typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day)||day<range.start||day>range.end)||s.plans.some(p=>unpublished.has(p.day))||s.events.some(e=>unpublished.has(e.day)))throw Error('SCHEDULE_REPORT_INVALID');
   const plansByDay=global.TlhScheduleView.groupByDay(s.plans);
   const eventsByDay=global.TlhScheduleView.groupByDay(s.events);
   for(let i=first;i<=count;i++){
@@ -24,7 +27,7 @@
     .map(e=>e.title+(e.note?'：'+e.note:''))
     .join('\n');
    const plans=(plansByDay.get(day)||[]).slice().sort((a,b)=>a.employeeCode.localeCompare(b.employeeCode));
-   if(!plans.length)rows.push([label,'','','予定未設定','','','','',event]);
+   if(!plans.length)rows.push([label,'','',unpublished.has(day)?'未公開':'予定未設定','','','','',event]);
    // headersと同じ9列。共有DTOの許可項目だけを列挙し、private planは参照しない。
    for(const p of plans){
     rows.push([

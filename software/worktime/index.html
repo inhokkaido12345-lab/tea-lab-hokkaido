@@ -105,8 +105,8 @@
 <div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>
 <div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><p id="schedule-draft-notice" class="footnote" role="status" hidden></p>
 <button id="schedule-login" type="button" hidden>LINEログイン</button>
-<div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label>希望申請・出力の対象期間<select id="schedule-scope" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
-<p class="footnote">カレンダーは1日〜月末の月全体です。半月の選択は希望・変更申請と出力の対象期間です。スマホではカレンダーを横にスクロールできます。</p>
+<div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label id="schedule-legacy-picker" hidden>過去のシフト表示<select id="schedule-scope" disabled><option value="FIRST">現在の月間シフト</option><option value="SECOND" hidden>現在の月間シフト（互換）</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
+<p class="footnote">カレンダー・申請一覧・共有出力は1日〜月末の月全体です。希望の日付から申請先を自動で選びます。スマホではカレンダーを横にスクロールできます。</p>
 <p id="schedule-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="schedule-summary"></p><p id="schedule-published-at" class="schedule-updated" aria-live="polite"></p>
 <section class="schedule-export"><h2>確定シフトの共有・印刷</h2><button id="schedule-print" type="button" disabled>印刷・PDF保存</button> <button id="schedule-csv" type="button" disabled>CSV保存</button><p id="schedule-export-status" role="status">確定シフトの取得後に出力できます。</p><p class="footnote">印刷画面で「PDFに保存」を選べます。保存したファイルをLINE・メールへ添付してください。LINE内で保存できない場合は通常のブラウザで開きます。非公開メモや未確定の希望は出力しません。</p></section>
 <button id="schedule-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button>
@@ -149,16 +149,16 @@
 <a class="menu-item" href="/software/worktime/admin-day-change.html"><span class="menu-symbol" aria-hidden="true">✎</span><span><strong>承認待ちの申請・勤務記録の直接訂正</strong><small>氏名・社員番号・対象日から申請を選ぶ</small></span><span aria-hidden="true">›</span></a></div></div></div><!-- schedule-management:start -->
 <div id="manager-schedule-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><section id="schedule-admin-entry" data-schedule-admin hidden aria-label="管理者用シフト作業"><h2>シフトの管理</h2>
 <div id="schedule-management-root">
-<div class="filters"><label>管理する月<input id="schedule-management-month" type="month" disabled></label><label>対象期間<select id="schedule-management-period" disabled><option value="FIRST">前半：1〜15日</option><option value="SECOND">後半：16日〜月末</option></select></label></div>
+<div class="filters"><label>管理する月<input id="schedule-management-month" type="month" disabled></label></div>
 <div class="schedule-management-tabs" role="tablist" aria-label="シフト管理の作業"><button id="schedule-management-edit-tab" type="button" role="tab" aria-selected="true" aria-controls="schedule-management-edit-panel">シフト編集・公開</button><button id="schedule-management-requests-tab" type="button" role="tab" aria-selected="false" aria-controls="schedule-management-requests-panel">希望休</button></div>
-<p id="schedule-management-phase" class="footnote"></p>
+
 <p id="schedule-management-status" role="status" aria-live="polite" aria-busy="false">管理者の本人確認を待っています。</p><button id="schedule-management-login" type="button" hidden>LINEログイン</button><button id="schedule-management-refresh" type="button" hidden>再読み込み</button>
 <section id="schedule-management-edit-panel" role="tabpanel" aria-labelledby="schedule-management-edit-tab">
 <div class="schedule-sheet-actions"><button id="schedule-management-sheet-create" type="button" disabled>該当月の入力シートを作成</button><a id="schedule-management-sheet-open" class="button secondary" href="#" target="_blank" rel="noopener" hidden>入力シートを開く</a></div>
-<section class="management-section"><h3>下書き公開</h3><p class="footnote">シートで編集後、この操作で変更を読み込み、確認して選択期間を公開します。公開済み勤務の変更は本人同意・承認を経て反映します。</p><button id="schedule-management-publish" type="button" disabled>下書きを公開する</button></section>
+<section class="management-section"><h3>下書き公開</h3><label>公開・変更反映する日付<select id="schedule-management-period" disabled><option value="FIRST">1〜15日</option><option value="SECOND">16日〜月末</option></select></label><p id="schedule-management-phase" class="footnote"></p><p class="footnote">シートで編集後、この操作で変更を読み込み、確認して選択期間を公開します。公開済み勤務の変更は本人同意・承認を経て反映します。</p><button id="schedule-management-publish" type="button" disabled>下書きを公開する</button></section>
 </section>
 <section id="schedule-management-requests-panel" role="tabpanel" aria-labelledby="schedule-management-requests-tab" hidden>
-<section class="management-section"><h3>希望受付の設定</h3><label>この期間の希望締切（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label><button id="schedule-management-deadline-save" type="button" disabled>希望受付・締切を設定</button></section>
+<section class="management-section"><h3>希望受付の設定</h3><p class="footnote">この月の申請をまとめて確認します。締切を分ける場合は、各日付の締切を設定してください。</p><label>1〜15日の希望締切（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label><button id="schedule-management-deadline-save" type="button" disabled>1〜15日の締切を設定</button><label>16日〜月末の希望締切（日本時間）<input id="schedule-management-deadline-second" type="datetime-local" disabled></label><button id="schedule-management-deadline-save-second" type="button" disabled>16日〜月末の締切を設定</button></section>
 <section class="management-section"><h3>希望休承認</h3><div id="schedule-management-requests"></div></section>
 </section>
 <section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
@@ -438,10 +438,10 @@
   <script src="/workforce/auto-read.js?v=20261110-management1"></script>
   <script src="/workforce/account-info.js?v=20261105-more1"></script>
   <script src="/workforce/schedule-view.js?v=20261104-periods"></script>
-  <script src="/workforce/schedule-report.js?v=20261109-authority1"></script>
-  <script src="/workforce/schedule.js?v=20261110-login1"></script>
+  <script src="/workforce/schedule-report.js?v=20261110-month-view1"></script>
+  <script src="/workforce/schedule.js?v=20261110-month-view1"></script>
   <script src="/workforce/schedule-management-contract.js?v=20261110-management1"></script>
-  <script src="/workforce/schedule-management.js?v=20261110-management1"></script>
+  <script src="/workforce/schedule-management.js?v=20261110-month-view1"></script>
   <script src="/workforce/schedule-workspace.js?v=20261110-management1"></script>
   <script src="/workforce/layout.js?v=20261110-management1"></script>
   <script src="/workforce/admin-access.js?v=20261108-batch1"></script>

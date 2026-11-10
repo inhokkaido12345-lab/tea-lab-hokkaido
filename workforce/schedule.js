@@ -78,11 +78,23 @@
     const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
     const login=createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
+    // 閲覧は月全体。保存先の半月キー/期待版は対象日から求め、利用者へ選ばせない。
+    const wholeMonth=()=>!admin&&options.monthly&&!!monthSnapshots&&n.scope.value!=='MONTH';
+    const requestSnapshot=day=>wholeMonth()?monthSnapshots[Number((day||n.day.value).slice(8))>15?'SECOND':'FIRST']:snapshot;
+    function requestNotice(){
+      const banner=admin?null:byId('schedule-request-deadline');if(!banner)return;
+      const s=requestSnapshot();banner.textContent=!s?'希望休の締切を確認しています。':(n.day.value||s.month)+'の希望締切：'+(s.deadline?new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）'+(Date.parse(s.serverNow)>=Date.parse(s.deadline)?'／締切済み':''):'未設定。受付状況は下の案内を確認してください。');
+    }
+    function sharedMonth(){
+      const halves=['FIRST','SECOND'].map(k=>monthSnapshots[k]),published=halves.filter(s=>s.phase==='PUBLISHED');
+      const unpublishedDays=[];for(const s of halves.filter(s=>s.phase!=='PUBLISHED')){const r=global.TlhScheduleView.periodRange(s.month,s.period);for(let i=Number(r.start.slice(8));i<=Number(r.end.slice(8));i++)unpublishedDays.push(s.month+'-'+String(i).padStart(2,'0'));}
+      return{phase:published.length?'PUBLISHED':'NOT_OPEN',month:snapshot.month,period:'MONTH',publishedAt:published.map(s=>s.publishedAt).sort().at(-1)||'',plans:published.flatMap(s=>s.plans),events:published.flatMap(s=>s.events),unpublishedDays};
+    }
     function canRequest(){
-      if(!snapshot||snapshot.phase==='NOT_OPEN')return false;
-      if(snapshot.phase==='PUBLISHED')return true;
+      const s=requestSnapshot();if(!s||s.phase==='NOT_OPEN')return false;
+      if(s.phase==='PUBLISHED')return true;
       if(n.kind.value!=='SHIFT_PREFERENCE'||n.leave.value==='PAID')return true;
-      return snapshot.phase==='COLLECTING'&&Date.parse(snapshot.serverNow)<Date.parse(snapshot.deadline);
+      return s.phase==='COLLECTING'&&Date.parse(s.serverNow)<Date.parse(s.deadline);
     }
     function controls(){
       // disabledは誤操作防止。操作の権限はGASが毎回決める。通信失敗を許可として扱わない。
@@ -92,12 +104,14 @@
       // 管理者の編集は署名済み旧モードだけ。未確認/失敗/退場では隠し、本人申請とは区別する。
       const sheet=admin&&snapshot?.inputMode==='SHEET',hideAdminEditor=admin&&(!snapshot||sheet);n.editor.hidden=hideAdminEditor;n['event-form'].hidden=!admin||!snapshot||sheet;n.editor.disabled=n.editor.disabled||sheet;n['event-form'].disabled=n['event-form'].disabled||sheet;n.save.disabled=n.save.disabled||sheet;
       if(admin){for(const id of ['schedule-compose','schedule-event-section','schedule-compose-nav']){const node=byId(id);if(node)node.hidden=hideAdminEditor;}const banner=byId('schedule-source-banner');if(banner)banner.hidden=!sheet;}
-      n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(snapshot.phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(snapshot.phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':snapshot.phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
+      n.availability.textContent=locked?'受付状態を確認中、または操作できない状態です。上の通信結果を確認してください。':admin?'下書きの作成・公開・確定後の変更案を操作できます。':canRequest()?(requestSnapshot().phase==='PUBLISHED'?'確定後の変更申請を送信できます。':'希望・申出を送信できます。'):(requestSnapshot().phase==='NOT_OPEN'?'この期間の希望受付は未設定です。管理者が期間と締切を設定してください。':requestSnapshot().phase==='DRAFT'?'この期間は下書き中で、通常の希望受付を開始していません。':'通常の希望受付は締切済みです。年休等の申出は別の区分で提出できます。');
       if(sheet)n.availability.textContent='シフト・備考・用事・共有イベントは正本シートで編集し、取込み画面で反映します。全日の希望休は、承認時に非公開備考へ「希望休」を自動記入します。既存予定があれば「【希望休と競合】」を併記するため、シートで調整してください。勤務変更・年休等は承認前に申請と同じ内容をシートへ記入してください。';
       n.scope.disabled=stopped||login.locked()||!!pending||!!uncertain;
+      // 過去の月全体保存が存在する場合だけ互換入口を出す。通常の月暦へ半月フィルターを戻さない。
+      const legacyPicker=byId('schedule-legacy-picker');if(legacyPicker)legacyPicker.hidden=!snapshot||!(snapshot.legacyAvailable||n.scope.value==='MONTH');
       n.month.disabled=stopped||login.locked()||!!pending||!!uncertain;n.refresh.disabled=stopped||login.locked()||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       login.update();n.status.setAttribute('aria-busy',String(!!pending));
-      reportUi.setEnabled(!locked&&snapshot?.phase==='PUBLISHED');
+      reportUi.setEnabled(!locked&&(wholeMonth()?['FIRST','SECOND'].some(k=>monthSnapshots[k].phase==='PUBLISHED'):snapshot?.phase==='PUBLISHED'));requestNotice();
       options.onNavigationLock?.(stopped||!!pending||!!uncertain);
     }
     function clear(){dirtyEditor=false;snapshot=null;monthSnapshots=null;const banner=admin?null:byId('schedule-request-deadline');if(banner)banner.textContent='希望休の締切を確認しています。';reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
@@ -116,13 +130,13 @@
     }
     function fill(p){periods.length=0;appointments.length=0;n.periods.replaceChildren();n.appointments.replaceChildren();n.leave.value=p?.leave.type||(admin?'NONE':'PUBLIC_OFF');n.note.value=p?.note||'';n['public-note'].value=p?.publicNote||'';(p?.periods||[]).forEach(period);(p?.appointments||[]).forEach(appointment);}
     function selected(){return snapshot?.drafts.find(p=>p.employeeCode===n.employee.value&&p.day===n.day.value);}
-    function loadEditor(){if(!snapshot||pending||uncertain)return;fill(admin?selected()?.plan:snapshot.ownPlans.find(p=>p.day===n.day.value)?.plan);}
+    function loadEditor(){if(!snapshot||pending||uncertain)return;fill(admin?selected()?.plan:requestSnapshot().ownPlans.find(p=>p.day===n.day.value)?.plan);controls();}
     function inputPlan(){return{periods:periods.map(r=>({start:r.start.value,end:r.end.value,endNextDay:r.next.value==='true',breakMinutes:Number(r.rest.value)})),appointments:appointments.map(r=>({title:r.title.value,location:r.location.value,start:r.start.value,end:r.end.value,endNextDay:r.next.value==='true',countsAsWork:r.counts.value==='true',requiredByEmployer:r.required.value==='unknown'?null:r.required.value==='true',classificationReason:r.classification.value})),leave:{type:n.leave.value,unit:'DAY',minutes:null,note:''},note:n.note.value,...(n['public-note'].value?{publicNote:n['public-note'].value}:{})};}
     // 魔改造: 入力欄追加はfill（読込/消去）・inputPlan（送信）・validPlan（応答検査）を一組で変える。
     // 公開欄ならGASの許可項目と出力列も更新する。入力に足しただけで全員公開しない。
     function planText(p){return(p.periods.map(q=>q.start+'–'+q.end+(q.endNextDay?'（翌日）':'')+' / 休憩'+q.breakMinutes+'分').join('、')||({NONE:'勤務区間なし',PUBLIC_OFF:'公休・休み',PAID:'有給',OTHER:'その他休暇'}[p.leave.type]))+(p.appointments.length?' / 用事: '+p.appointments.map(a=>a.title+' '+a.start+'–'+a.end+(a.countsAsWork?'（勤務に含む）':'（算入外）')).join('、'):'')+(p.publicNote?' / 全員公開: '+p.publicNote:'')+(p.note?' / 非公開メモ: '+p.note:'');}
-    function base(){return{month:n.month.value,...(n.scope.value?{period:n.scope.value}:{}),audience:options.audience,expectedMonthRevision:snapshot.monthRevision};}
-    function requestBase(command,r){return{...base(),requestId:r.requestId,expectedRequestRevision:r.revision};}
+    function base(source=requestSnapshot()){return{month:n.month.value,...(source?.period?{period:source.period}:n.scope.value?{period:n.scope.value}:{}),audience:options.audience,expectedMonthRevision:source.monthRevision};}
+    function requestBase(command,r){return{...base(requestSnapshot(r.payload.plan.day)),requestId:r.requestId,expectedRequestRevision:r.revision};}
     function write(command,input,question){if(stopped||pending||uncertain||!snapshot||!global.confirm(question))return;void send({command,input:JSON.stringify(input),operationId:random(16)});}
     function button(parent,label,command,fields,question){const b=el('button',label,parent);b.type='button';b.addEventListener('click',()=>{if(pending||uncertain||stopped)return;try{write(command,fields(),question);}catch(error){if(error.message!=='CANCELLED')n.status.textContent='入力内容を確認してください。';}});return b;}
     function render(s){
@@ -130,11 +144,11 @@
       // 出力担当へ渡すのは共有plans/eventsだけ。ownPlans/drafts/requestsは渡さない。
       if(monthSnapshots&&s.month===n.month.value&&Object.hasOwn(monthSnapshots,s.period))monthSnapshots[s.period]=s;
       dirtyEditor=false;snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
-      reportUi.setShared({phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
+      reportUi.setShared(wholeMonth()?sharedMonth():{phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
       // 全員が見ている公開版の更新日。下書き/希望の保存では更新せず、署名済みサーバー時刻をJST表示。
       n['published-at'].textContent=s.publishedAt?'確定シフト 最終更新：'+new Date(s.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（日本時間）':'この月のシフトはまだ確定公開されていません。';
       if(monthSnapshots&&s.period!=='MONTH')n['published-at'].textContent=['FIRST','SECOND'].map((part,i)=>{const current=monthSnapshots[part];return(i?'後半':'前半')+'：'+(current.publishedAt?'最終更新 '+new Date(current.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'未公開');}).join(' ｜ ');
-      const range=global.TlhScheduleView.periodRange(s.month,s.period);
+      const range=global.TlhScheduleView.periodRange(s.month,wholeMonth()?'MONTH':s.period);
       n.day.min=range.start;n.day.max=range.end;n['event-day'].min=range.start;n['event-day'].max=range.end;
       if(!date(n.day.value)||n.day.value<range.start||n.day.value>range.end)n.day.value=range.start;
       byId('schedule-legacy-option').hidden=!s.legacyAvailable;
@@ -145,8 +159,7 @@
       if(admin)n.publish.textContent=(s.period==='FIRST'?'前半（1〜15日）':s.period==='SECOND'?'後半（16日〜月末）':'月全体')+'の下書きを確定公開';
       n.deadline.value=s.deadline?new Date(Date.parse(s.deadline)+32400000).toISOString().slice(0,16):'';
       if(!options.lazyCalendar||byId('schedule-overview')?.open)renderCalendar(s);
-      const deadlineBanner=admin?null:byId('schedule-request-deadline');if(deadlineBanner)deadlineBanner.textContent=periodLabel+'の希望休締切：'+(s.deadline?new Date(s.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）'+(Date.parse(s.serverNow)>=Date.parse(s.deadline)?'／締切済み':''):'未設定。管理者が期間と締切を設定するまで通常の希望は提出できません。');
-      renderRequests(s);
+      if(wholeMonth()){n.summary.textContent=s.month+' 月間シフト';for(const part of ['FIRST','SECOND'])renderRequests(monthSnapshots[part],true);if(!['FIRST','SECOND'].some(k=>monthSnapshots[k].requests.length))el('p','この月の申請はありません。',n.requests);}else renderRequests(s);
       loadEditor();
       controls();
     }
@@ -186,7 +199,7 @@
     }
 
     /** 申請/同意/承認の操作を表示。ボタン押下時の版検査と保存は従来のwrite/GASへ任せる。 */
-    function renderRequests(s){
+    function renderRequests(s,suppressEmpty=false){
       for(const r of s.requests){const card=el('article',undefined,n.requests);card.className='record-item';el('h3',r.employeeName+'（'+r.employeeCode+'） / '+r.payload.plan.day,card);el('p',({SHIFT_PREFERENCE:'希望',ANNUAL_LEAVE:'年休の申出',STATUTORY_LEAVE:'制度上の申出',ADMIN_CHANGE:'管理者からの変更案'}[r.kind])+' / '+({PENDING:'管理者確認待ち',AWAITING_CONSENT:'本人同意待ち',APPROVED:'承認済み',REJECTED:'見送り・同意なし',CANCELLED:'取消済み'}[r.status]),card);el('p',planText(r.payload.plan),card);el('p','理由：'+r.payload.reason,card);if(r.payload.decisionReason)el('p','判断理由：'+r.payload.decisionReason,card);if(r.payload.sheetPreference)el('p',preferenceNotice(r.payload.sheetPreference),card);
         if(admin&&r.status==='PENDING'){
           const reasonLabel=el('label','判断理由',card),reasonField=el('textarea',undefined,reasonLabel);reasonField.maxLength=500;reasonField.rows=2;
@@ -198,7 +211,7 @@
         if(!admin&&r.status==='PENDING'&&r.kind!=='ADMIN_CHANGE')button(card,'この申請を取り消す','cancel',()=>requestBase('cancel',r),'この未処理申請を取り消しますか？確定予定は変更しません。');
         if(!admin&&r.status==='AWAITING_CONSENT')for(const accept of [true,false])button(card,accept?'この変更案に同意する':'同意しない','consent',()=>({...requestBase('consent',r),accept}),planText(r.payload.plan)+'\n'+(accept?'この変更内容に同意しますか？管理者の承認後に反映します。':'同意しないと回答しますか？'));
       }
-      if(!s.requests.length)el('p','この期間の申請はありません。',n.requests);
+      if(!suppressEmpty&&!s.requests.length)el('p','この期間の申請はありません。',n.requests);
     }
     async function send(request){
       // 保存前に内容をJSON文字列へ固定。同じ操作の再確認では編集後の入力や新しいoperationIdを使わない。
@@ -240,7 +253,7 @@
       if(plan.periods.some(p=>!time(p.start)||!time(p.end)||!Number.isInteger(p.breakMinutes)||p.breakMinutes<0)){n.status.textContent='勤務区間の出退勤時刻と予定休憩を確認してください。';return;}
       if(plan.leave.type!=='NONE'&&(plan.periods.length||plan.appointments.some(p=>p.countsAsWork))){n.status.textContent='全日の休暇と勤務を同時に指定できません。勤務区間と用事の算入を確認してください。';return;}
       if(admin){input.employeeCode=n.employee.value;input.expectedPlanRevision=snapshot.phase==='PUBLISHED'?snapshot.monthRevision:selected()?.revision||0;write('plan',input,'対象：'+n.employee.value+' / '+input.day+'\n'+(snapshot.phase==='PUBLISHED'?'変更案を本人へ送り、同意を確認します。':'この日の予定を下書き保存します。')+'\n続けますか？');}
-      else{input.kind=n.kind.value;input.expectedPlanRevision=snapshot.phase==='PUBLISHED'?snapshot.monthRevision:0;write('request',input,input.day+' の希望・申出を提出します。提出だけでは予定は確定しません。続けますか？');}
+      else{input.kind=n.kind.value;input.expectedPlanRevision=requestSnapshot().phase==='PUBLISHED'?requestSnapshot().monthRevision:0;write('request',input,input.day+' の希望・申出を提出します。提出だけでは予定は確定しません。続けますか？');}
     });
     byId('schedule-month-save').addEventListener('click',()=>{if(!snapshot)return;let deadline;try{deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='締切日時を入力してください。';return;}write('month',{...base(),deadline},'選択中の期間の希望受付と締切を設定しますか？');});
     byId('schedule-event-save').addEventListener('click',()=>{if(!snapshot)return;write('event',{...base(),day:n['event-day'].value,title:n['event-title'].value,note:n['event-note'].value,expectedEventRevision:snapshot.draftEvents.find(e=>e.day===n['event-day'].value)?.revision||0},'営業上のイベントを下書き保存しますか？個人の用事は予定の用事欄へ入力してください。');});
@@ -255,7 +268,7 @@
     const login=document.getElementById('schedule-login'),status=document.getElementById('schedule-status');
     try{global.TlhAutoRead.init();await global.liff.init({liffId:'2011940133-JXUDzLnG'});if(!global.liff.isLoggedIn()){createLoginRecovery({button:login,liff:global.liff,failed:()=>{status.textContent='LINEログインを開始できませんでした。';}}).require();status.textContent='LINEログインが必要です。';status.setAttribute('aria-busy','false');return;}
       document.getElementById('schedule-month').value=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit'}).format(new Date());
-      document.getElementById('schedule-scope').value=Number(new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',day:'numeric'}).format(new Date()))<=15?'FIRST':'SECOND';
+      document.getElementById('schedule-scope').value='FIRST';
       const ui=init({gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec',liff:global.liff,audience:document.body.dataset.audience,monthly:true});await ui.read();
     }catch(_e){status.textContent='接続を開始できません。LINEから開き直してください。';status.setAttribute('aria-busy','false');}
   });
