@@ -28,7 +28,7 @@ test('在庫PWAに独自の端末保存・オフライン送信・未認証の�
 
 test('計測は単発で閉じ、次袋を自動開始しない',()=>{
  const app=read('app.js');
- assert.match(app,/計測を始める/);assert.match(app,/RECORD_MEASUREMENT/);assert.match(app,/UPDATE_MEASUREMENT/);assert.match(app,/measurementAmountField/);
+ assert.match(app,/この品目の計測開始を記録する/);assert.match(app,/RECORD_MEASUREMENT/);assert.match(app,/UPDATE_MEASUREMENT/);assert.match(app,/measurementAmountField/);
  assert.match(app,/FINISH_SAMPLE/);assert.match(app,/CANCEL_SAMPLE/);
  assert.doesNotMatch(app,/使い切って次を開封/);
 });

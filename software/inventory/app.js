@@ -125,7 +125,7 @@ function renderConsumption(card, item) {
     explanation.append(el('p', '計測 '+forecast.sampleCount+'件 ／平均 '+measurementQuantity(forecast.averageRate)+
       '/日 ／7日換算 '+measurementQuantity(forecast.averageRate*7)));
     explanation.append(el('p', '直近/平均の速度 '+forecast.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定します。'));
-    explanation.append(el('p', '最終計測 '+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
+    explanation.append(el('p', '最後に使用量を確認した日時：'+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
   }
   explanation.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
     el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
@@ -173,7 +173,7 @@ function sendMeasurement(makeCommand){try{send(makeCommand());}catch(error){mess
 /** 1つの計測を途中確認→使い切りへ更新する。棚卸の実在庫とは別の観測。 */
 function renderSampleActions(card,item){
   const forecast=item.forecast;
-  if(forecast.lastMeasuredAt)card.append(el('p','最終計測 '+formatRecordedAt(forecast.lastMeasuredAt),'muted'));
+  if(forecast.lastMeasuredAt)card.append(el('p','最後に使用量を確認した日時：'+formatRecordedAt(forecast.lastMeasuredAt),'muted'));
   if (forecast.open) {
     card.append(el('p', '計測中：'+quantities(forecast.open.amount)+' ／開始 '+formatRecordedAt(forecast.open.openedAt)));
     const finish = el('button', '使い切った：計測を終了', 'primary');
@@ -185,26 +185,26 @@ function renderSampleActions(card,item){
   }
   const measurement=forecast.measurement;
   if(measurement){
-    card.append(el('p','計測中：'+formatRecordedAt(measurement.startedAt)));
-    if(measurement.initialAmount!==null)card.append(el('p','開始時の量 '+measurementQuantity(measurement.initialAmount)));
-    if(measurement.measuredUntil)card.append(el('p','前回確認 '+formatRecordedAt(measurement.measuredUntil)+' ／累計投入 '+measurementQuantity(measurement.usedAmount),'muted'));
+    card.append(el('p','計測開始：'+formatRecordedAt(measurement.startedAt)));
+    if(measurement.initialAmount!==null)card.append(el('p','計測対象の開始時の量：'+measurementQuantity(measurement.initialAmount)));
+    if(measurement.measuredUntil)card.append(el('p','前回の確認：'+formatRecordedAt(measurement.measuredUntil)+' ／開始から使った量：'+measurementQuantity(measurement.usedAmount),'muted'));
     const kind=el('select','');kind.setAttribute('aria-label','投入量と残り量の選択');
     kind.append(new Option('開始から使った量を入力','used'));
     if(measurement.initialAmount!==null)kind.append(new Option('計測対象の今の残り量を入力','remaining'));
     card.append(kind);
-    const amount=measurementAmountField(card,item,'確認した量');
-    const end=measurementTimeField(card,'確認・使い切り日時（日本時間、空欄なら今）');
+    const amount=measurementAmountField(card,item,'上で選んだ「使った量」または「残り量」');
+    const end=measurementTimeField(card,'その量を確認した日時（日本時間・空欄＝今）');
     card.append(el('p','「使った量」は開始からの累計です。残量は計測対象の袋・容器の残りで、店の総在庫とは別です。','muted'));
     const command=finished=>{
       const value=amount.read(),endedAt=end.read();
       return {type:'UPDATE_MEASUREMENT',itemId:item.id,measurementId:measurement.id,expectedRevision:measurement.revision,
         finished,[kind.value]:value,...(endedAt?{endedAt}:{})};
     };
-    const partial=el('button','途中の量を記録');partial.onclick=()=>sendMeasurement(()=>command(false));
-    const finish=el('button','この計測を終了','primary');finish.onclick=()=>sendMeasurement(()=>command(true));
+    const partial=el('button','使用量を保存して計測を続ける');partial.onclick=()=>sendMeasurement(()=>command(false));
+    const finish=el('button','使用量を保存して計測を終了する','primary');finish.onclick=()=>sendMeasurement(()=>command(true));
     card.append(partial,finish);
     if(measurement.initialAmount!==null){
-      const empty=el('button','使い切った（全量で終了）');
+      const empty=el('button','開始時の量をすべて使い切ったとして終了する');
       empty.onclick=()=>sendMeasurement(()=>{const endedAt=end.read();return {type:'UPDATE_MEASUREMENT',itemId:item.id,
         measurementId:measurement.id,expectedRevision:measurement.revision,used:{value:measurement.initialAmount,unit:'g'},finished:true,...(endedAt?{endedAt}:{})};});
       card.append(empty);
@@ -212,23 +212,24 @@ function renderSampleActions(card,item){
     const cancel=el('button','この計測を取り消す');cancel.onclick=()=>send({type:'CANCEL_MEASUREMENT',itemId:item.id,measurementId:measurement.id,expectedRevision:measurement.revision});
     card.append(cancel);
   } else {
-    card.append(el('h4','これからの期間を測る'));
-    const begin=measurementTimeField(card,'開始日時（日本時間、空欄なら今）');
-    const initial=measurementAmountField(card,item,'計測する最初の量（任意）');
-    card.append(el('p','残量差で測る袋・容器なら最初の量を入力します。期間中の袋数や投入量を数える場合は空欄で始められます。残量で測る対象には継ぎ足さないでください。','muted'));
-    const start=el('button','計測を始める','primary');
+    card.append(el('h4','使用量の計測を開始する'));
+    card.append(el('p','開始ボタンは開始日時を記録するだけです。後でこの画面を開き、使った量か残り量を入力して終了します。毎回の開封記録は不要です。','muted'));
+    const begin=measurementTimeField(card,'いつからの使用量を測りますか？（日本時間・空欄＝今）');
+    const initial=measurementAmountField(card,item,'測る袋・容器に最初に入っている量（任意）');
+    card.append(el('p','例：20kgの袋を使い切る日数を測るなら、20とkgを入力します。後で残量を入力すると、使った量を自動計算できます。期間中に使った袋数やg数を自分で数える場合は空欄にします。残量で測る袋・容器には途中で継ぎ足さないでください。','muted'));
+    const start=el('button','この品目の計測開始を記録する','primary');
     start.onclick=()=>sendMeasurement(()=>{const startedAt=begin.read(),value=initial.read(true);return {
       type:'START_MEASUREMENT',itemId:item.id,...(startedAt?{startedAt}:{}),...(value?{initial:value}:{})};});
     card.append(start);
   }
-  const past=el('details','');past.append(el('summary','終わった期間の消費を入力'));
+  const past=el('details','');past.append(el('summary','過去の使用量を記録する（開始・終了日時が分かる場合）'));
   let mounted=false;
   past.ontoggle=()=>{
     if(!past.open||mounted)return;mounted=true;
-    const begin=measurementTimeField(past,'期間の開始（日本時間）',true),end=measurementTimeField(past,'期間の終了（日本時間）',true);
-    const used=measurementAmountField(past,item,'期間中に使った量');
+    const begin=measurementTimeField(past,'使用量を数え始めた日時（日本時間）',true),end=measurementTimeField(past,'使用量を数え終えた日時（日本時間）',true);
+    const used=measurementAmountField(past,item,'上の開始日時から終了日時までに使った合計量');
     past.append(el('p','1週間の袋数、gで量った投入量、長期間で使い切った1袋を同じ記録で扱います。袋数0は使いかけ分の消費ゼロを意味しません。','muted'));
-    const save=el('button','この期間の消費を保存','primary');
+    const save=el('button','この期間の使用量を記録して消費速度を計算する','primary');
     save.onclick=()=>sendMeasurement(()=>({type:'RECORD_MEASUREMENT',itemId:item.id,startedAt:begin.read(),endedAt:end.read(),used:used.read()}));
     past.append(save);lock(busy);
   };
@@ -259,7 +260,7 @@ function showStockAction(name){
   for(const [key,node] of stockWorkspaces)node.hidden=key!==name;
   if(name==='overview'||!view||stockWorkspaces.has(name))return;
   const titles={sampling:'消費を測る',counting:'在庫を数える'};
-  const help={sampling:'期間と投入量で測ります。袋・個数、g・kg、途中の残量確認に対応。後からまとめて入力でき、繁忙中の操作は必須ではありません。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。'};
+  const help={sampling:'選んだ原料を、どれだけの期間で何g・何袋使ったか記録します。記録した使用量から1日あたりの消費速度を計算し、在庫切れ予測に使います。ここでの記録は総在庫の数え直しではありません。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。'};
   const workspace=el('div','','stock-workspace');workspace.append(el('h3',titles[name]),el('p',help[name],'muted'));
   stockWorkspaces.set(name,workspace);host.append(workspace);
   if(!view.permissions.includes('inventory.receive')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
