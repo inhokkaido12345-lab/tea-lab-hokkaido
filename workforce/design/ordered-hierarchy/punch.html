@@ -1,0 +1,19 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; form-action 'none'; base-uri 'none'"><title>打刻の表示見本 | TLH Work Time</title><link rel="stylesheet" href="../../fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule-bulk.css?v=20261109-sheet1"></head><body class="home-page"><div class="app"><main><p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。 <a href="punch.html">打刻</a> / <a href="records.html">記録</a> / <a href="schedule.html">従業員シフト</a> / <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p><div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card">
+      <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a class="button secondary" href="#preview-notice" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
+
+      <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
+      <button id="punch-check" class="bridge-button" type="button" disabled>勤務状態を更新 ↻</button>
+      <button id="punch-login" class="bridge-button" type="button" hidden disabled>LINEでログインし直す</button>
+      <div class="demo-actions">
+        <button id="punch-in" class="bridge-button" type="button" hidden disabled>出勤する →</button>
+        <button id="punch-out" class="bridge-button" type="button" hidden disabled>退勤する</button>
+        <button id="punch-break-start" class="bridge-button" type="button" hidden disabled>休憩を開始する</button>
+        <button id="punch-break-end" class="bridge-button" type="button" hidden disabled>休憩を終了する</button>
+      </div>
+      <button id="punch-retry" class="bridge-button" type="button" hidden disabled>同じ打刻を再送する</button>
+    </section><div class="day-side"><section id="home-journal-section" class="card home-journal" aria-labelledby="home-journal-title"><div class="section-heading"><h2 id="home-journal-title">本日の予定と打刻</h2><button id="journal-check" type="button" disabled>記録を更新</button></div>
+<p id="journal-status" class="subtle" role="status" aria-live="polite">ログイン後、登録済みの予定・出退勤を順に読み込みます。</p><p class="footnote">取得時点の記録です。打刻成功後は自動更新し、手動でも更新できます。</p>
+<div hidden><input id="journal-month" type="month" disabled><select id="journal-mode" disabled><option value="self">自分</option></select><div id="journal-target" hidden><input id="journal-employee" autocomplete="off" disabled></div></div>
+<div id="journal-cards"></div><div class="home-table" hidden><table id="journal-table" hidden><caption id="journal-caption"></caption><tbody id="journal-rows"></tbody></table></div>
+</section><p class="help-line"><a class="button secondary full" href="#preview-notice">自分の打刻を訂正申請</a></p></div></div></div>
+</main></div></body></html>

@@ -1,0 +1,1674 @@
+/* 現役UI2の表示専用。4画面と日別/訂正ページを同じ色・余白へ統一。
+ * 責務: CSSは見た目だけ。認可/通信/保存やcontrollerのhidden/disabledを変更しない。
+ * 削除影響: 各ページの見た目が崩れるが、保存済み原簿は残る。
+ * 改造: :rootの色、.punch-gridの配置、.bottom-navの画面移動。HTML/DOM参照と回帰を確認。
+ * 検証: 全UI/連結テスト→HTTPS公開画面→LINE本人。架空見本の値を本番へ置かない。
+ */
+/* 01. 意味で名付けた共通値（design tokens）
+ * 色番号を各部品へ直接書く代わりに、本文/補足/操作/危険などの役割を名前にする。
+ * 例: 主操作の色を変えるなら--tealとhover用--teal-darkを一組で変更する。
+ * 共通値の変更はホーム・日別・訂正に波及する。部品に直書きした値までは変わらない。
+ * 色だけで状態を区別せず、ラベル/枠/disabledも残す。詳しい手順はDESIGN.md。
+ */
+:root {
+  /* 本文。操作色とは分け、長文の読みやすさを守る。 */
+  --ink:#252829;
+  /* 補足。薄くしすぎると小さな説明が読めなくなる。 */
+  --muted:#495C63;
+  /* 主操作とリンク。変更時は白文字との見え方も確認。 */
+  --teal:#2F5452;
+  /* 主操作のhover。主色と一緒に調整する。 */
+  --teal-dark:#254542;
+  /* 選択中や補足の淡い面。主色の文字との組合せで使う。 */
+  --soft:#E5EBE8;
+  /* カード/ヘッダーの面。背景canvasとの差が区切りになる。 */
+  --paper:#FFFDFA;
+  /* 画面全体の背景。白いカードを浮かせる土台。 */
+  --canvas:#F3EFE7;
+  /* カードや入力の境界。影だけに区切りを頼らない。 */
+  --line:#CCD3CE;
+  /* 注意/予定超過など。色だけでなく文言も併用。 */
+  --amber:#8E3F35;
+  /* 利用停止などの強い注意。主操作の色へ安易に流用しない。 */
+  --danger:#8E3F35;
+  /* 添付パレットの灰緑。小さい本文には薄いため、目印や境界の補助に使う。 */
+  --mist:#7C908E;
+  /* 共通カードの角丸。ボタン/入力の直書き値までは変わらない。 */
+  --radius:12px;
+  /* 文字の役割。字体は増やさず、本文/小見出し/区分/画面名の差で所属を伝える。
+     魔改造: 画面名だけ大きくするなら--type-page。数字の強調は--type-stat/clockを使う。 */
+  --type-caption:12px;
+  --type-small:13px;
+  --type-body:15px;
+  --type-subhead:17px;
+  --type-section:20px;
+  --type-page:28px;
+  --type-stat:28px;
+  --type-clock:64px;
+  --weight-strong:600;
+  /* 内側は12/16/24px、別の話題は32px。固定高さで本文を切らず、拡大しても折り返す。 */
+  --space-inline:8px;
+  --space-heading:12px;
+  --space-content:16px;
+  --space-section:32px;
+  --space-section-inset:24px;
+  --radius-control:8px;
+  font-family:"IBM Plex Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:var(--canvas);
+  line-height:1.6;
+  font-synthesis:none
+}
+/* 02. 全体の土台・読みやすさ
+ * border-box: paddingや枠を指定幅の内側へ含め、小さな画面の幅計算を単純にする。
+ * hiddenは業務controllerが決める表示条件。!importantを外したり常時表示にしない。
+ * focus-visibleはキーボードで現在位置を示す枠。outlineを消す場合は代替表示が必要。
+ * IBM Plex Sans JPはfonts/の同一サイト配布。swapで本文を先に表示、失敗時は端末標準へ。
+ */
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0
+}
+button,input,select {
+  font:inherit
+}
+button {
+  cursor:pointer
+}
+button,a,input,select,summary {
+  -webkit-tap-highlight-color:transparent
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible {
+  outline:3px solid #b77d28;
+  outline-offset:4px
+}
+button:disabled {
+  cursor:not-allowed;
+  opacity:.55
+}
+[hidden] {
+  display:none!important
+}
+h1,h2,h3,h4,h5,h6,p {
+  margin:0
+}
+h1 {
+  font-size:var(--type-page);
+  line-height:1.4;
+  letter-spacing:.015em
+}
+h2 {
+  font-size:var(--type-section);
+  line-height:1.5
+}
+h3 {
+  font-size:var(--type-subhead);
+  line-height:1.5
+}
+h4,h5,h6 {
+  font-size:var(--type-body);
+  line-height:1.6
+}
+a {
+  color:var(--teal)
+}
+/* 03. 見本から残っている補助ルール
+ * preview-tools/width-toolsは現役HTMLでは使わない。実アプリのメニューではない。
+ * .phoneも見本幅用。現役画面のスマホ調整は末尾のmax-width:799pxを先に見る。
+ * 未使用に見える名前も、削除前にHTML/JS/prototypesの参照を検索する。
+ */
+.preview-tools {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:22px;
+  flex-wrap:wrap;
+  padding:14px 24px;
+  background:#263d3d;
+  color:#fff;
+  font-size:12px
+}
+.preview-tools>div:first-child {
+  display:grid;
+  gap:1px
+}
+.preview-tools strong {
+  font-size:14px
+}
+.preview-tools span {
+  color:#cedbd6
+}
+.preview-tools label {
+  display:flex;
+  align-items:center;
+  gap:8px
+}
+.preview-tools select {
+  background:#fff;
+  color:var(--ink);
+  border:0;
+  border-radius:6px;
+  padding:6px 10px;
+  min-height:36px
+}
+.width-tools {
+  display:flex;
+  gap:4px
+}
+.width-tools button {
+  background:transparent;
+  border:1px solid #7d9690;
+  color:#fff;
+  border-radius:6px;
+  padding:6px 10px;
+  min-height:36px
+}
+.width-tools button[aria-pressed=true] {
+  background:#fff;
+  color:var(--ink)
+}
+/* 04. 画面の器・ブランド
+ * max-widthとauto marginでPCの行が長くなりすぎるのを防ぐ。幅は末尾で1040pxへ上書き。
+ * white/背景色/境界線の差でまとまりを示し、影だけに情報の区切りを頼らない。
+ * 角丸を変えるときはapp/card/button/inputの役割ごとの大きさを見比べる。
+ */
+.app {
+  max-width:1080px;
+  margin:28px auto;
+  background:var(--canvas);
+  border:1px solid #d3ddd6;
+  border-radius:22px;
+  overflow:clip;
+  position:relative;
+  box-shadow:0 14px 36px #223b3310
+}
+.app.phone {
+  max-width:420px
+}
+.app-header {
+  height:80px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:var(--paper);
+  border-bottom:1px solid var(--line);
+  padding:0 22px
+}
+.brand {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  color:var(--ink);
+  font-weight:600;
+  font-size:17px
+}
+.brand-mark {
+  display:grid;
+  place-items:center;
+  width:36px;
+  height:36px;
+  border:1px solid #b8cec2;
+  border-radius:10px;
+  color:var(--teal);
+  font-size:12px;
+  letter-spacing:.02em
+}
+.account-label {
+  font-size:12px;
+  text-align:right;
+  font-weight:600
+}
+.account-label span {
+  display:block;
+  color:var(--muted);
+  font-size:10px;
+  font-weight:400
+}
+/* 05. 見出し・余白・補足の階層
+ * page-headingは画面の目的、section-headingはカード内の話題、subtleは補足。
+ * 主操作までの距離を短くし、説明文を同じ大きさ/太さで並べない。
+ * paddingは内側、marginは外側の間隔。固定高さで文字を切らず、拡大時の折返しを確認。
+ */
+main {
+  padding:28px 30px 30px;
+  min-height:650px
+}
+.phone main {
+  padding:25px 20px 28px;
+  min-height:660px
+}
+.page-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:24px
+}
+.eyebrow {
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:7px
+}
+.text-button,.inline-link {
+  padding:5px 0;
+  min-height:38px;
+  background:none;
+  border:0;
+  color:var(--teal);
+  font-size:12px;
+  font-weight:600;
+  white-space:nowrap
+}
+.inline-link {
+  text-decoration:underline;
+  font-size:inherit
+}
+.page-heading .text-button {
+  align-self:flex-end
+}
+.subtle {
+  font-size:13px;
+  color:var(--muted)
+}
+.small-tag {
+  font-size:10px;
+  padding:3px 8px;
+  border:1px solid var(--line);
+  border-radius:5px;
+  color:var(--muted);
+  white-space:nowrap
+}
+.section-heading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px
+}
+.separator {
+  margin:0 5px;
+  color:#b1bdb6
+}
+/* 06. 打刻を中心にする配置・操作の強弱
+ * Gridは領域全体を列に分ける道具。PCは打刻/本日の情報の2列、狭い幅は末尾で1列。
+ * primary=主操作、secondary=補助操作。危険な操作は色だけでなく確認手順も必要。
+ * clockは表示用。大きくしても保存時刻や実働の計算には使わない。
+ * 実打刻ボタンは末尾の#punch-section規則が担当。見本用.button.largeと混同しない。
+ */
+.punch-grid {
+  display:grid;
+  grid-template-columns:1.08fr 1fr;
+  align-items:start;
+  gap:22px
+}
+.phone .punch-grid {
+  grid-template-columns:1fr;
+  gap:17px
+}
+.punch-card {
+  padding:24px;
+  background:white;
+  border:1px solid #d8e4dc;
+  border-radius:var(--radius);
+  text-align:center
+}
+.status-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center
+}
+.status-row .subtle {
+  font-size:11px
+}
+.status-chip {
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+  border-radius:20px;
+  padding:4px 10px;
+  background:var(--soft);
+  color:var(--teal);
+  font-size:12px;
+  font-weight:600
+}
+.status-chip::before {
+  content:"";
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:currentColor
+}
+.status-chip[data-tone=amber] {
+  color:var(--amber);
+  background:#faf2e5
+}
+.status-chip[data-tone=red] {
+  color:var(--danger);
+  background:#faefec
+}
+.clock {
+  font-size:var(--type-clock);
+  line-height:1.15;
+  font-weight:600;
+  letter-spacing:-.055em;
+  margin:26px 0 2px;
+  font-variant-numeric:tabular-nums
+}
+.clock span {
+  font-weight:400
+}
+.clock-caption {
+  font-size:11px;
+  color:var(--muted)
+}
+.state-hint {
+  font-size:14px;
+  margin:23px 0 18px;
+  min-height:23px
+}
+.punch-actions {
+  display:grid;
+  gap:10px
+}
+.button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  min-height:48px;
+  border-radius:10px;
+  border:1px solid transparent;
+  padding:11px 18px;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none
+}
+.button.primary {
+  background:var(--teal);
+  color:white
+}
+.button.primary:hover {
+  background:var(--teal-dark)
+}
+.button.secondary {
+  color:var(--teal);
+  border-color:#c8d9ce;
+  background:#fff
+}
+.button.large {
+  min-height:64px;
+  font-size:20px;
+  justify-content:space-between;
+  padding:16px 22px
+}
+.button.full {
+  width:100%;
+  margin-top:16px
+}
+.notice {
+  font-size:12px;
+  color:var(--teal);
+  margin-top:12px
+}
+.notice:empty {
+  display:none
+}
+.card {
+  padding:20px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  margin-bottom:16px
+}
+.day-side>.card:last-child {
+  margin-bottom:0
+}
+.plan-time {
+  font-size:25px;
+  letter-spacing:.01em;
+  font-weight:600;
+  margin:10px 0 3px;
+  font-variant-numeric:tabular-nums
+}
+.plan-time span {
+  font-weight:400;
+  color:#a4b5ac;
+  margin:0 7px
+}
+.help-line {
+  text-align:center;
+  margin-top:15px;
+  color:var(--muted);
+  font-size:12px
+}
+/* 07. 記録の読み方・情報のまとまり
+ * カードは一日の事実をまとめ、日付→状態→実時刻→予定の順に読む。
+ * tabular-numsは数字の幅をそろえて比較しやすくする。日時の意味や単位はJS側の契約。
+ * 未打刻/未確定/予定なし/0時間を同じ薄い文字や空欄にまとめない。
+ */
+.timeline {
+  list-style:none;
+  margin:14px 0 0;
+  padding:0
+}
+.timeline li {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  font-size:13px;
+  padding:8px 0;
+  position:relative
+}
+.timeline li span {
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+.timeline li span:before {
+  content:"";
+  width:7px;
+  height:7px;
+  background:#b7c8be;
+  border-radius:50%
+}
+.timeline li:last-child span:before {
+  background:var(--teal)
+}
+.timeline time {
+  font-weight:600;
+  font-variant-numeric:tabular-nums
+}
+.empty-note {
+  font-size:13px;
+  color:var(--muted);
+  padding:22px 0 7px
+}
+.footnote {
+  font-size:11px;
+  color:var(--muted);
+  margin-top:14px
+}
+.month-control {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px
+}
+.month-control h2 {
+  font-size:20px
+}
+.icon-button {
+  width:42px;
+  height:42px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-size:25px;
+  color:var(--ink)
+}
+.metric-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 0;
+  margin-top:16px;
+  background:#fff
+}
+.metric-grid>div {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  border-right:1px solid var(--line)
+}
+.metric-grid>div:last-child {
+  border:0
+}
+.metric-grid>div>span {
+  font-size:11px;
+  color:var(--muted)
+}
+
+.metric-grid strong {
+  font-size:26px;
+  line-height:1.5;
+  font-weight:600
+}
+.metric-grid strong span {
+  font-size:11px;
+  margin-left:3px;
+  font-weight:400
+}
+.record-heading {
+  margin:25px 0 12px
+}
+.record-list {
+  display:grid;
+  gap:12px
+}
+.record-item {
+  padding:17px 18px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff
+}
+.record-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px
+}
+.record-head strong {
+  font-size:15px
+}
+.record-status {
+  font-size:10px;
+  color:var(--teal);
+  background:var(--soft);
+  border-radius:4px;
+  padding:3px 7px
+}
+.record-times {
+  font-size:20px;
+  letter-spacing:.01em;
+  font-weight:600
+}
+.record-detail {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  font-size:12px;
+  color:var(--muted);
+  margin-top:8px
+}
+.record-plan {
+  font-size:11px;
+  color:var(--muted);
+  padding-top:9px;
+  margin-top:10px;
+  border-top:1px solid #edf0ed
+}
+.record-excess {
+  color:var(--amber)
+}
+/* 08. 入力と管理メニュー（基礎部品）
+ * ラベルをplaceholderだけに任せない。入力後にも項目名を読める配置を維持する。
+ * min-width:0は横並びの子要素が長文で親幅を押し広げる事故を防ぐ。
+ * タップ領域の基礎は48px。文字が増えた場合は高さを伸ばし、切り捨てない。
+ * 属性変更/停止/承認の意味はCSSでは決めない。表示の強調と実際の認可は別責務。
+ */
+form {
+  margin-top:16px
+}
+label {
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  margin-bottom:6px
+}
+input,select {
+  max-width:100%;
+  width:100%;
+  min-height:46px;
+  color:var(--ink);
+  border:1px solid #c6d2cb;
+  background:white;
+  padding:10px 12px;
+  border-radius:8px;
+  min-width:0
+}
+input:disabled {
+  background:#f3f5f3
+}
+.input-action {
+  display:flex;
+  gap:8px
+}
+.input-action input {
+  flex:1
+}
+.input-action button {
+  white-space:nowrap
+}
+.menu-group {
+  margin:25px 0 0
+}
+.group-label {
+  /* h2は補足文ではなく話題の見出し。カード内h2と同じ強さにする。 */
+  font-size:16px;
+  color:var(--ink);
+  font-weight:600;
+  margin:0 0 10px 2px
+}
+.menu-item {
+  display:flex;
+  align-items:center;
+  text-align:left;
+  gap:13px;
+  width:100%;
+  padding:18px 16px;
+  background:#fff;
+  border:1px solid var(--line);
+  color:var(--ink);
+  min-height:85px
+}
+.menu-item+ .menu-item {
+  border-top:0
+}
+.menu-item:nth-child(2) {
+  border-radius:12px 12px 0 0
+}
+.menu-item:last-child {
+  border-radius:0 0 12px 12px
+}
+/* 1件だけのメニューは上下とも丸める。複数件の末尾指定だけが勝つのを防ぐ。 */
+.menu-item:nth-child(2):last-child {
+  border-radius:12px
+}
+.menu-item>span:nth-child(2) {
+  flex:1;
+  min-width:0
+}
+.menu-item strong {
+  display:block;
+  font-size:14px;
+  font-weight:600
+}
+.menu-item small {
+  display:block;
+  font-size:11px;
+  color:var(--muted);
+  margin-top:3px
+}
+.menu-item>span:last-child {
+  color:#8c9c93;
+  font-size:23px
+}
+.menu-symbol {
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:38px;
+  font-size:22px;
+  color:var(--teal)
+}
+.account-card {
+  display:flex;
+  gap:14px;
+  align-items:center
+}
+.avatar {
+  display:grid;
+  place-items:center;
+  background:var(--soft);
+  color:var(--teal);
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  font-size:15px
+}
+summary {
+  cursor:pointer;
+  font-size:14px;
+  font-weight:600;
+  min-height:30px
+}
+details[open] summary {
+  margin-bottom:15px
+}
+/* 09. 移動先を同じ場所へ置く
+ * 見本由来のsticky指定は後方の実画面規則でfixedへ上書きする。
+ * 実画面はaria-selectedをlayout.jsが更新。aria-currentは見本用なので参照を混同しない。
+ * safe-areaは端末の操作領域との重なりを避ける。nav高さとmain末尾の余白は一組で変更。
+ */
+.bottom-nav {
+  display:flex;
+  position:sticky;
+  bottom:0;
+  background:#fffffff5;
+  border-top:1px solid var(--line);
+  padding:7px 8px max(7px,env(safe-area-inset-bottom));
+  z-index:5;
+  backdrop-filter:blur(10px)
+}
+.bottom-nav button {
+  display:flex;
+  flex:1;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  flex-direction:column;
+  border:0;
+  background:none;
+  color:#788980;
+  min-height:54px;
+  font-size:11px;
+  font-weight:600;
+  border-radius:9px
+}
+.bottom-nav button>span {
+  font-size:24px;
+  line-height:25px;
+  font-weight:400
+}
+.bottom-nav button[aria-current=page] {
+  color:var(--teal);
+  background:var(--soft)
+}
+.app-footer {
+  text-align:center;
+  font-size:10px;
+  color:#7d8f83;
+  letter-spacing:.03em;
+  padding:12px;
+  background:#fff
+}
+.app-footer span {
+  margin-left:10px;
+  color:#99a69e
+}
+/* 10. 見本由来のdialog部品
+ * 現役の打刻同意はpunch.jsのconfirm、訂正は専用ページの確認手順が担当。
+ * ここを変えてもブラウザ標準confirmのデザインは変わらない。
+ * 独自dialogへ置換する場合は見た目の変更を超えるため、フォーカス/取消/二重保存も検査する。
+ */
+dialog {
+  width:min(420px,calc(100% - 28px));
+  max-height:85dvh;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:26px;
+  color:var(--ink);
+  box-shadow:0 20px 80px #122d2b26;
+  overflow:auto
+}
+dialog::backdrop {
+  background:#10282766;
+  backdrop-filter:blur(2px)
+}
+.dialog-heading {
+  position:relative;
+  margin-bottom:18px
+}
+.dialog-heading h2 {
+  font-size:20px;
+  padding-right:18px
+}
+.dialog-actions {
+  display:flex;
+  gap:10px;
+  margin-top:25px
+}
+.dialog-actions button {
+  flex:1
+}
+.close-button {
+  position:absolute;
+  right:-8px;
+  top:-10px;
+  border:0;
+  background:none;
+  color:var(--muted);
+  font-size:26px;
+  width:38px;
+  height:38px
+}
+.form-fields {
+  display:grid;
+  gap:15px
+}
+.form-fields label {
+  margin:0
+}
+.form-fields input {
+  margin-top:6px
+}
+#task-preview {
+  margin-top:24px;
+  border-top:1px solid var(--line);
+  padding-top:18px
+}
+.review-values {
+  font-size:12px
+}
+.review-values dt {
+  color:var(--muted);
+  margin-top:10px
+}
+.review-values dd {
+  margin:1px 0 0;
+  overflow-wrap:anywhere
+}
+/* 11. 幅に応じた基礎調整（responsive layout）
+ * media queryは端末名でなく利用可能な幅に反応する。ウィンドウを狭めたPCにも適用。
+ * 800/620pxの見本由来規則を保持し、その後に現役の800/799px規則を重ねている。
+ * 同じ対象を変えるときは最後の指定も検索する。整理だけのつもりで順序を変えない。
+ */
+@media(min-width:800px) {
+  .app:not(.phone) main {
+    min-height:630px
+  }
+  .app:not(.phone) .screen {
+    max-width:880px;
+    margin:auto
+  }
+  .app:not(.phone) .bottom-nav {
+    padding-inline:120px
+  }
+  .app:not(.phone) .bottom-nav button {
+    flex-direction:row;
+    gap:10px;
+    font-size:13px
+  }
+  .app:not(.phone) .record-list {
+    grid-template-columns:repeat(2,1fr)
+  }
+  .app:not(.phone) .metric-grid {
+    max-width:500px
+  }
+}
+@media(max-width:620px) {
+  .preview-tools {
+    gap:12px;
+    padding:12px 14px;
+    justify-content:space-between
+  }
+  .preview-tools>div:first-child {
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    gap:8px
+  }
+  .preview-tools span {
+    font-size:10px
+  }
+  .app,.app.phone {
+    margin:0 auto;
+    max-width:100%;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+    overflow:clip
+  }
+  .app-header {
+    height:73px;
+    padding-inline:20px
+  }
+  main,.phone main {
+    padding:24px 18px 24px;
+    min-height:calc(100dvh - 200px)
+  }
+  .punch-grid {
+    grid-template-columns:1fr;
+    gap:17px
+  }
+  .page-heading {
+    margin-bottom:22px
+  }
+  h1 {
+    font-size:var(--type-page)
+  }
+  .punch-card {
+    padding:22px
+  }
+  .bottom-nav {
+    position:sticky
+  }
+  .app-footer {
+    display:none
+  }
+}
+/* 12. 動きは位置関係の補助だけ
+ * OSで動きを減らす設定の利用者には、この短い切替アニメーションを付けない。
+ * データ更新/保存成功をアニメーションだけで伝えず、状態文を必ず残す。
+ */
+@media(prefers-reduced-motion:no-preference) {
+  button {
+    transition:background-color .12s,color .12s
+  }
+  .screen {
+    animation:appear .15s ease-out
+  }
+  @keyframes appear {
+    from {
+      opacity:.5;
+      transform:translateY(3px)
+    }
+    to {
+      opacity:1;
+      transform:translateY(0)
+    }
+  }
+}
+/* 本番controllerの状態を最優先する。hidden/disabledをCSSで打ち消さない。 */
+.app {
+  max-width:1040px
+}
+.home-page main {
+  padding-bottom:110px
+}
+.bottom-nav {
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:min(1040px,100%);
+  border-inline:1px solid var(--line);
+  padding-inline:12px
+}
+.bottom-nav button[aria-selected="true"] {
+  color:var(--teal);
+  background:var(--soft)
+}
+/* 13. 現役フォーム・既存controllerへの接続
+ * ここからは実画面用の上書き。後勝ちだけでなくIDの詳細度も効くため、対象IDで検索する。
+ * CSS classは見た目のフック、idは既存JSの取得先にもなる。見た目の都合でidを改名しない。
+ * .staff-sectionをカード化しても、hidden中の管理フォームを開く責務は持たない。
+ */
+.staff-section,.demo-section,.diagnostics {
+  background:white;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:22px;
+  margin-bottom:18px
+}
+.staff-section h2,.staff-section h3 {
+  margin-bottom:14px
+}
+.staff-section h3 {
+  margin-top:22px
+}
+#staff-section {
+  background:none;
+  border:0;
+  padding:0;
+  margin:0
+}
+/* 管理は箱の積み重ねをやめ、上の区切り線→余白→見出し→内容で統一する。
+ * 外側staff-sectionは「その他」と共用。管理対象のclassだけに指定し、親は囲まない。
+ * 見出し上28px/前区間との間32px、見出し下12pxで所属が分かるようにする。
+ * 削除影響: 旧カード/メニューの面に戻る。hidden/disabledや権限には触れない。
+ * 拡張: 管理の新セクションにmanagement-sectionを付ける。guideの見本も同じCSS。
+ */
+.home-page .management-section,.admin-guide-page .management-section {
+  background:none;
+  border:0;
+  border-top:1px solid #bac9c0;
+  border-radius:0;
+  box-shadow:none;
+  padding:28px 0 0;
+  margin:32px 0 0
+}
+.management-section h2,.management-section .group-label {
+  margin:0 0 12px;
+  font-size:18px;
+  color:var(--ink);
+  font-weight:600
+}
+.home-page .management-section .menu-item:nth-child(n) {
+  border:0;
+  border-radius:0;
+  background:none;
+  padding:12px 0
+}
+#manager-registration-panel p,#maintenance-section p {
+  margin-block:10px 14px
+}
+#staff-status:empty {
+  display:none
+}
+#staff-status:not(:empty) {
+  padding:16px;
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:12px;
+  margin-block:16px
+}
+button.bridge-button,button:not(.bottom-nav button):not(.text-button):not(.icon-button) {
+  min-height:48px;
+  max-width:100%;
+  padding:11px 16px;
+  border:1px solid transparent;
+  border-radius:var(--radius-control);
+  color:white;
+  background:var(--teal);
+  font-size:14px;
+  font-weight:600;
+  white-space:normal;
+  overflow-wrap:anywhere
+}
+button:disabled {
+  opacity:.5;
+  cursor:not-allowed
+}
+button.bridge-button:disabled {
+  background:#859b90
+}
+.punch-card h1 {
+  font-size:var(--type-page);
+  margin-top:18px
+}
+.punch-card .detail {
+  margin:14px 0;
+  font-size:17px;
+  font-weight:600
+}
+.punch-card .clock {
+  margin-top:15px
+}
+#punch-check {
+  width:100%;
+  background:#fff;
+  color:var(--teal);
+  border:1px solid #c8d9ce
+}
+#punch-section .demo-actions {
+  display:grid;
+  gap:10px;
+  margin-top:12px
+}
+#punch-section .demo-actions button {
+  width:100%;
+  min-height:62px;
+  font-size:19px;
+  justify-content:space-between
+}
+#punch-out {
+  background:white;
+  color:var(--teal);
+  border:1px solid #c8d9ce
+}
+.detail {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  color:var(--muted);
+  font-size:13px
+}
+.demo-actions {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+#maintenance-stop {
+  background:var(--danger)
+}
+label {
+  display:block
+}
+input,select,textarea {
+  font:inherit;
+  max-width:100%;
+  width:100%;
+  border:1px solid #c6d2cb;
+  border-radius:8px;
+  padding:11px 12px;
+  background:white;
+  color:var(--ink);
+  margin:6px 0 16px
+}
+textarea {
+  min-height:90px;
+  resize:vertical;
+  overflow-wrap:anywhere
+}
+fieldset {
+  border:1px solid var(--line);
+  border-radius:12px;
+  min-width:0;
+  padding:16px;
+  margin:16px 0
+}
+form {
+  margin-block:16px
+}
+pre {
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  font-family:inherit;
+  font-size:14px;
+  padding:18px;
+  background:var(--soft);
+  border-radius:12px
+}
+.daily-summary-values {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  font-size:14px
+}
+.daily-summary-values dd {
+  margin:0;
+  text-align:right
+}
+.enrollment-details summary {
+  font-size:16px
+}
+.diagnostics summary {
+  font-size:14px
+}
+.diagnostics .card {
+  margin-top:14px
+}
+.session-notice {
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  font-size:14px
+}
+.home-journal {
+  padding:20px
+}
+.home-journal .section-heading button {
+  min-height:38px;
+  padding:6px 10px;
+  font-size:12px
+}
+.home-journal #journal-status {
+  margin-top:12px
+}
+.home-journal .record-item {
+  padding:0;
+  border:0;
+  margin-top:14px
+}
+.home-journal .metric-grid {
+  display:none
+}
+/* 14. 日別・訂正ページを同じアプリの言葉へそろえる
+ * app.cssを読む3ページの共通表現。recovery/sandboxは別CSSなので自動では変わらない。
+ * 本文の幅は専用ページ980px、ホーム1040px。長い理由/社員番号の折返しを確認する。
+ * tableは従来DOM契約を残し、表示は署名確認後のカードへ。隠れたtableを消す場合はJSも確認。
+ */
+.secondary-page {
+  background:var(--canvas)
+}
+.secondary-page header {
+  max-width:100%;
+  margin:0;
+  background:white;
+  min-height:76px;
+  border-bottom:1px solid var(--line);
+  padding:18px max(20px,calc((100vw - 980px)/2));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px
+}
+.secondary-page header strong {
+  font-size:18px
+}
+.secondary-page header a {
+  font-size:13px
+}
+.secondary-page main {
+  max-width:980px;
+  margin:0 auto;
+  padding-bottom:38px
+}
+.secondary-page h1 {
+  margin-bottom:18px
+}
+.secondary-page main>p {
+  margin:12px 0;
+  font-size:13px;
+  color:var(--muted)
+}
+.secondary-page main>p a {
+  font-weight:600
+}
+.secondary-page .filters {
+  background:white;
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  margin-block:20px
+}
+.secondary-page #change-status,.secondary-page #journal-status {
+  padding:12px 16px;
+  border-radius:10px;
+  background:var(--soft);
+  overflow-wrap:anywhere
+}
+.table-scroll {
+  overflow-x:auto
+}
+.table-scroll table {
+  border-collapse:collapse;
+  width:100%;
+  white-space:nowrap;
+  background:white;
+  font-size:13px
+}
+.table-scroll th,.table-scroll td {
+  padding:12px;
+  border-bottom:1px solid var(--line);
+  text-align:left
+}
+.table-scroll caption {
+  text-align:left;
+  color:var(--muted);
+  padding-block:12px
+}
+.table-scroll th {
+  background:var(--soft)
+}
+#journal-cards {
+  margin-top:18px;
+  display:grid;
+  gap:12px
+}
+.journal-cards-heading {
+  font-size:14px;
+  color:var(--muted);
+  margin-top:12px
+}
+.record-list {
+  margin-top:14px
+}
+.record-plan {
+  white-space:pre-line
+}
+.record-detail {
+  flex-wrap:wrap
+}
+#change-inputs {
+  background:white
+}
+#change-commit:disabled {
+  background:#82968b
+}
+.secondary-page #change-commit {
+  margin-block:12px
+}
+.secondary-page .table-scroll {
+  margin-top:20px
+}
+@media(min-width:800px) {
+  .secondary-page .filters {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 20px
+  }
+  .secondary-page .filters button {
+    align-self:end;
+    margin-bottom:16px
+  }
+  .secondary-page .table-scroll {
+    display:none
+  }
+}
+/* 15. 現役スマホ幅の最終調整
+ * 1列化・ヘッダー余白・navとの重なり回避をまとめる。PC側min-width:800pxと境界をそろえる。
+ * main末尾108pxは固定navの下へ最後の入力/ボタンが潜らないための余白。
+ * 日本語の長いボタン、200%の文字拡大、入力中のキーボード表示も確認してから公開する。
+ */
+@media(max-width:799px) {
+  .app {
+    margin:0 auto;
+    border:0;
+    border-radius:0
+  }
+  .home-page main {
+    padding:24px 18px 108px;
+    min-height:calc(100dvh - 76px)
+  }
+  .punch-grid {
+    grid-template-columns:1fr;
+    gap:16px
+  }
+  .secondary-page .table-scroll {
+    display:none
+  }
+  .secondary-page main {
+    padding:24px 18px 35px
+  }
+  .secondary-page header {
+    padding:18px
+  }
+  .metric-grid strong {
+    font-size:22px
+  }
+  .secondary-page h1 {
+    font-size:24px
+  }
+  .bottom-nav {
+    border-inline:0
+  }
+  .app-footer {
+    display:none
+  }
+}
+/* 16. 合計表示の最終サイズは末尾にもある
+ * この後方の18px指定が同じ詳細度の先行指定を上書きする。
+ * スマホだけ合計を変えたいときは、さらに後方に幅条件付きの意図的な上書きを置く。
+ * white-space:nowrapを外す場合は「時間」「分」がどこで折れるか実値で確認する。
+ */
+.metric-grid strong {
+  font-size:18px;
+  white-space:nowrap
+}
+.record-times {
+  overflow-wrap:anywhere
+}
+.record-head {
+  flex-wrap:wrap
+}
+
+/* 起動時に確認できるまで管理ナビは操作不可。色だけでなくnative disabledをlayoutが設定する。
+ * 全ボタンを暗転させずナビだけに限定。保存ボタンの許可条件は既存controllerのまま。 */
+.bottom-nav button:disabled {
+  opacity:.38;
+  cursor:not-allowed;
+  filter:grayscale(1);
+}
+
+/* 勤務の区間: 中抜けは区間の間、休憩は各区間内に表示。集計と個別時刻を混同しない。 */
+.session-list { margin:16px 0 0; padding-left:20px; font-size:13px; }
+.session-list li { padding:10px 0; border-top:1px solid var(--line); }
+.extra-session { margin-top:18px; padding:18px 0; border-top:1px solid var(--line); }
+.extra-session h3 { margin-bottom:14px; }
+.record-item h3 { overflow-wrap:anywhere; }
+
+/* 通信中の最小表示。実pendingのaria-busyだけで開始/停止し、文字から推測しない。
+ * 削除しても通信/権限/保存は不変。速度は.9s、サイズは1em。動きを減らす設定を尊重。
+ * app/recovery/sandboxの既存CSSへ同じ規則を置き、新しいCSS取得を増やさない。 */
+[aria-busy="true"]::after {
+  content:""; display:inline-block; width:1em; height:1em; margin-inline-start:.5em;
+  vertical-align:-.15em; border:2px solid currentColor; border-inline-end-color:transparent;
+  border-radius:50%; animation:tlh-network-wait .9s linear infinite;
+}
+@keyframes tlh-network-wait { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { [aria-busy="true"]::after { animation:none; } }
+
+/* 通知は件数＋文言。未知/0件では隠し、非管理者へ会社情報を出さない。位置/色はここで調整。
+ * 削除すると通知の強調だけ消える。件数の取得/認可はadmin-overview.js/GASが担当。 */
+.approval-badge { display:inline-block; border-radius:999px; padding:2px 7px; background:var(--danger); color:#fff; font-size:11px; font-weight:600; line-height:1.5; vertical-align:middle; }
+.admin-overview { margin:0 0 20px; }
+.bottom-nav .approval-badge { position:absolute; top:2px; right:3px; font-size:10px; font-weight:600; line-height:1.5; }
+.bottom-nav [role="tab"] { position:relative; }
+
+/* 18. パレット版の現役画面。管理/その他は同じ情報階層を共有する。
+ * 責務: 色/文字/余白/入力面だけ。同じ役割の見出し/操作は同じ見た目。番号は順番や認可ではない。
+ * 概念: 見出しと内容の近接、補足の段階的開示、主操作/補助/危険の意味による配色。
+ * 変更: :rootは全共有ページ、management-section/service-sectionは管理/その他だけ。
+ * 削除影響: 旧配色/余白へ戻るが原簿は残る。HTMLのid/hidden/disabledは維持する。
+ * 境界: CSSに社員情報/認証情報を置かない。DESIGN.mdと生成する表示見本を同期する。
+ * 検証: 全UI/連結に加え390px・PC・文字拡大で折返し、キーボードfocusを確認する。
+ */
+body {
+  font-size:var(--type-body);
+  line-height:1.75;
+  font-variant-numeric:tabular-nums
+}
+h1,h2,h3,h4,h5,h6,strong,b,summary,.brand {
+  font-weight:var(--weight-strong)
+}
+button,input,select,textarea {
+  font-family:inherit
+}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible {
+  outline-color:var(--teal)
+}
+.app,.app-header,.secondary-page header,.bottom-nav {
+  box-shadow:none;
+  border-color:var(--line)
+}
+.app-header,.secondary-page header,.bottom-nav {
+  background:var(--paper)
+}
+.page-heading h1 {
+  font-size:var(--type-page);
+  letter-spacing:.01em
+}
+.home-page .management-section,.home-page .service-section {
+  background:none;
+  border:0;
+  border-top:1px solid var(--line);
+  border-radius:0;
+  padding:var(--space-section-inset) 0 0;
+  margin:var(--space-section) 0 0
+}
+.home-page .management-section h2,.home-page .service-section h2 {
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  font-size:var(--type-section);
+  font-weight:600;
+  margin:0 0 12px
+}
+.tool-step {
+  display:inline-grid;
+  place-items:center;
+  min-width:24px;
+  background:none;
+  color:var(--muted);
+  border-radius:0;
+  font-size:12px;
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.03em
+}
+.tool-intro {
+  max-width:68ch;
+  color:var(--muted);
+  margin:0 0 18px;
+  font-size:var(--type-body)
+}
+.guide-link {
+  display:inline-flex;
+  padding:9px 14px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--paper);
+  font-size:var(--type-small);
+  font-weight:600
+}
+.tool-help {
+  border-inline-start:2px solid var(--mist);
+  padding:6px 14px;
+  margin:14px 0 20px;
+  color:var(--muted)
+}
+.tool-help summary {
+  font-size:var(--type-small);
+  color:var(--teal)
+}
+.tool-help p,.tool-help ol {
+  font-size:var(--type-small);
+  margin:10px 0
+}
+.tool-help ol {
+  padding-inline-start:22px
+}
+.home-page .staff-fields {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  padding:20px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:10px;
+  margin-block:20px
+}
+.home-page .staff-fields label {
+  margin:0;
+  font-size:var(--type-small)
+}
+.home-page .staff-fields input,.home-page .staff-fields select {
+  margin:6px 0 0;
+  background:#fff;
+  border-color:var(--mist)
+}
+.home-page .management-section form,.home-page .service-section form {
+  max-width:760px
+}
+.home-page .management-section .menu-item:nth-child(n) {
+  padding:16px;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:10px;
+  min-height:76px;
+  margin-top:14px
+}
+.menu-item strong {
+  font-size:15px;
+  font-weight:600
+}
+.menu-item small {
+  font-size:var(--type-small);
+  color:var(--muted)
+}
+.menu-symbol {
+  color:var(--teal)
+}
+.home-page .management-section .button.full,.home-page .service-section .button.full {
+  width:auto;
+  max-width:100%;
+  margin-top:4px
+}
+.home-page #staff-check,.home-page #staff-reset,.home-page #staff-revoke,.home-page #maintenance-reset,.home-page #admin-overview-check {
+  background:transparent;
+  color:var(--teal);
+  border:1px solid var(--mist)
+}
+.home-page #staff-revoke {
+  color:var(--danger);
+  border-color:var(--danger)
+}
+.home-page #maintenance-stop {
+  margin-top:20px
+}
+.home-page .enrollment-details>summary,.home-page .diagnostics>summary,#manager-test-panel>details>summary {
+  font-size:var(--type-subhead);
+  color:var(--ink);
+  padding:8px 0;
+  font-weight:600
+}
+.home-page .enrollment-details,.home-page .diagnostics {
+  background:none;
+  border:0;
+  border-top:1px solid var(--line);
+  border-radius:0;
+  padding:24px 0 4px;
+  margin:28px 0 0
+}
+.home-page .diagnostics .card,.home-page .diagnostics .staff-section,.home-page .diagnostics .demo-section,#manager-test-panel .demo-section {
+  padding:18px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--paper)
+}
+.home-page .diagnostics p,.home-page .enrollment-details p {
+  margin-block:12px
+}
+.home-page .diagnostics .detail,.home-page .enrollment-details .detail {
+  color:var(--muted)
+}
+.session-notice,.secondary-page .filters,fieldset {
+  background:var(--paper);
+  border-color:var(--line)
+}
+.footnote {
+  font-size:var(--type-small);
+  line-height:1.7
+}
+/* 同じまとまりの見出しは内容へ近づけ、別のまとまりとの余白を大きくする。
+   h1=画面 / h2=作業区分 / h3=その区分の作業 / h4=手順内の補足。HTMLの階層と連動する。 */
+.page-heading {
+  align-items:flex-start;
+  margin-bottom:var(--space-section-inset)
+}
+.page-heading .subtle { margin-top:var(--space-inline); max-width:68ch; }
+.eyebrow { font-size:var(--type-caption); letter-spacing:.06em; margin-bottom:var(--space-inline); }
+.management-section > h3,.management-section > h4 { margin-bottom:var(--space-heading); color:var(--ink); }
+.management-section > p + h3,.management-section > p + h4 { margin-top:var(--space-section-inset); }
+.tool-intro,.footnote,.subtle { overflow-wrap:anywhere; }
+label,legend { font-size:var(--type-small); font-weight:var(--weight-strong); }
+input,select,textarea { font-size:var(--type-body); font-weight:400; border-radius:var(--radius-control); }
+.secondary-page main > h1 { margin-bottom:var(--space-section-inset); }
+.secondary-page main > p { font-size:var(--type-body); max-width:72ch; }
+.punch-card .detail { font-size:var(--type-subhead); }
+.footnote { max-width:76ch; }
+
+/* 更新/移動/出力は補助操作。保存・提出・承認など、その区分の主操作と強さを分ける。
+   色は操作の許可を表さない。disabled/hidden/確認画面を解除しない。 */
+#punch-check,#journal-check,#daily-summary-check,#monthly-work-check,#admin-overview-check,
+#schedule-workspace-refresh,#schedule-management-refresh,#schedule-refresh,#schedule-admin-refresh,
+#schedule-print,#schedule-csv,#schedule-admin-print,#schedule-admin-csv,#bulk-load,#bulk-sheet-create {
+  color:var(--teal);
+  background:var(--paper);
+  border:1px solid var(--line);
+  font-size:var(--type-small);
+  font-weight:var(--weight-strong);
+  border-radius:var(--radius-control)
+}
+.schedule-task-nav { align-items:center; }
+.guide-link { text-decoration:none; }
+
+@media(max-width:599px) {
+  .home-page .staff-fields {
+    grid-template-columns:1fr;
+    padding:16px
+  }
+  .home-page .management-section .button.full,.home-page .service-section .button.full {
+    width:100%
+  }
+  .home-page .management-section .demo-actions {
+    display:grid;
+    grid-template-columns:1fr
+  }
+  :root {
+    --type-page:24px;
+    --type-clock:56px
+  }
+}
+
+/* 管理の業務選択。色とaria-pressedで選択を示す。hidden/disabledの解除はCSSで行わない。
+ * 追加時はlayout.jsのcategories/groups、HTMLのaria-controls、配置テストと使い方を同期。 */
+.manager-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:24px 0 32px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+#manager-sections button { min-width:0; padding:12px 8px; font:inherit; font-weight:600; background:transparent; color:var(--muted); border:1px solid transparent; border-bottom:3px solid transparent; border-radius:8px 8px 0 0; }
+#manager-sections button[aria-pressed="true"] { background:var(--soft); color:var(--teal); border-bottom-color:var(--teal); }
+#manager-sections button:focus-visible { outline:3px solid var(--muted); outline-offset:3px; }
+#manager-sections .approval-badge { vertical-align:middle; }
+@media(max-width:450px) { .manager-sections { gap:6px; }#manager-sections button { font-size:13px; padding:12px 4px; } }
+
+/* 本社提出用。画面の確認と印刷だけを担当し、元の打刻や受付設定を変更しない。
+ * 削除すると印刷に操作欄が混ざる。列を変える時はmonthly-report.js/theadと同期する。 */
+#monthly-report { margin:20px 0; }
+#monthly-report p { margin:8px 0; }
+#monthly-report td { white-space:pre-line; vertical-align:top; }
+@media print {
+  @page { size:A4 landscape; margin:12mm; }
+  body.monthly-report-page { background:#fff; color:#000; }
+  .monthly-report-page>header,.monthly-report-page main>* { display:none!important; }
+  .monthly-report-page #monthly-report:not([hidden]) { display:block!important; border:0; box-shadow:none; padding:0; }
+  .monthly-report-page main { max-width:none; width:auto; margin:0; padding:0; }
+  .monthly-report-page #monthly-report .table-scroll { overflow:visible; }
+  .monthly-report-page #monthly-report table { min-width:0!important; width:100%; font-size:9pt; border-collapse:collapse; }
+  .monthly-report-page #monthly-report th,.monthly-report-page #monthly-report td { padding:5px; border:1px solid #bbb; overflow-wrap:anywhere; }
+  #monthly-report thead { display:table-header-group; }
+  #monthly-report tr { break-inside:avoid; }
+}
+
+/* 今の店舗の目印：全業務画面で共有。削除で店舗名だけが消える。認可/hidden/disabledは変更しない。
+   魔改造：配色/余白はここ、店舗名はcurrent-workplace.js。固定IDと表示名を混同しない。 */
+.current-workplace-mark {
+  max-width:980px;
+  margin:12px auto;
+  padding:12px 20px;
+  border-left:4px solid var(--teal);
+  background:var(--soft,#f3efe7);
+  color:var(--ink,#252829);
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  overflow-wrap:anywhere;
+}
+.current-workplace-mark strong { font-size:16px; font-weight:600; }
+.current-workplace-mark span { font-size:12px; }
+.current-workplace-mark p { margin:4px 0 0; color:#8e3f35; }
