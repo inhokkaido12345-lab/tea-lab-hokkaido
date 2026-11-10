@@ -1,0 +1,47 @@
+<!-- 役割別の静的入口。管理/本人は別HTML、処理と保存は共通JS/GAS。data-audienceは認可ではない。
+     削除するとこの役割の入口だけ停止。変更時は対のHTML・controller・役割分離テストを同期する。 -->
+<!doctype html>
+<!-- 日別タイムカード: attendance-journal.js→既存GASの読取専用入口。消しても打刻原簿は残る。
+     予定入力は管理者のShiftPlan台帳。日別記録を法定時間外/給与確定値として扱わない。 -->
+<!-- デザインの読み方: DESIGN.md。app.cssの.secondary-pageでホームと同じ色/入力表現へ。
+     このページ専用の調整はbody classで範囲を限定する。id/fieldset disabled/hiddenは処理契約。
+     CSSを差し替える時は3ページの参照版と固定hashを同期し、確認/実行の状態を上書きしない。 -->
+<html lang="ja">
+<head>
+<base href="/workforce/">
+
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer"><title>日別タイムカード | TLH Work Time</title>
+  <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1">
+  <script defer src="current-workplace.js?v=20261105-store2"></script>
+<script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script>
+
+  <script defer src="attendance-journal.js?v=20261108-batch1" data-bootstrap="true"></script>
+</head>
+<body class="secondary-page" data-audience="employee">
+  <header><strong>TLH Work Time</strong><a href="/software/worktime/">打刻画面へ戻る</a></header>
+<aside class="current-workplace-mark" data-current-workplace aria-label="このタイムカードの店舗"><strong>The TEA ココノススキノ店</strong><span>オールレンタカー株式会社</span></aside>
+  <main>
+    <h1>日別タイムカード</h1>
+    <p class="session-notice">このページの予定比較は従来の設定によるものです。新しく作成したシフト・複数勤務の予定は<a href="/software/worktime/schedule.html">シフト画面</a>で確認してください。実際の打刻と本社提出用の実績は引き続き記録されます。</p>
+    <p><a href="/software/worktime/day-change.html">自分の打刻の訂正申請</a></p>
+    <button id="journal-login" type="button" hidden>LINEログイン</button>
+    <div class="filters"><label for="journal-month">表示する月</label><input id="journal-month" type="month" required>
+    <label for="journal-mode">表示する人</label>
+    <select id="journal-mode"><option value="self">自分</option></select>
+    <div id="journal-target" hidden><label for="journal-employee">社員番号</label><input id="journal-employee" maxlength="32" autocomplete="off" spellcheck="false"></div>
+    <button id="journal-check" type="button" disabled>日別記録を更新</button></div>
+    <p id="journal-status" aria-busy="true" role="status" aria-live="polite">LINE本人確認を待っています。</p>
+    <p>時刻は日本時間です。予定超過は「実働 − シフトの予定実働」の正の差で、給与用の法定時間外判定ではありません。</p>
+    <p>「予定なし」「未打刻」「勤務中」は0時間と区別します。予定は管理者が登録したシフトを使用します。</p>
+    <div id="journal-cards"></div>
+    <div class="table-scroll"><table id="journal-table" hidden>
+      <caption id="journal-caption"></caption>
+      <thead><tr><th>日付</th><th>状態</th><th>出勤</th><th>退勤</th><th>休憩</th><th>実働</th><th>予定開始</th><th>予定終了</th><th>予定休憩</th><th>予定超過</th></tr></thead>
+      <tbody id="journal-rows"></tbody>
+    </table></div>
+    <iframe id="journal-frame" name="tlhJournalFrame" title="日別記録の応答" hidden></iframe>
+</main>
+</body>
+</html>

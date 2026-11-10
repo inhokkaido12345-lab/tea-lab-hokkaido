@@ -1,3 +1,5 @@
+URL移行は`worktime-url.test.mjs`で旧入口・認証query非転送・店舗拒否・全公開HTMLの資産・PWA同一id・在庫認証を検査。layout.testは新公開HTMLから起動します。生成同期は`python scripts/sync-worktime-url.py --check`。
+
 # TLH Work Time画面の模擬テスト
 
 画面307件の検査が成功。シート公開一連操作の署名/確認/再送/権限境界を追加検査。半月管理画面の初期非表示と本人申請維持も検査します。確定件数は[整理記録](../workforce/CLEANUP-20261109.md)。古い件数は当時の記録です。

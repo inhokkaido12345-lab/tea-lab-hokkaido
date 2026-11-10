@@ -1,5 +1,5 @@
 /**
- * 共通LIFF Endpoint内の認証窓口。opener切断後も要求固有BroadcastChannelで元PWAと再接続する。
+ * 新Work TimeのLIFF Endpoint内の認証窓口。旧URLは要求の目印だけ保持して互換転送。opener切断後も要求固有BroadcastChannelで元PWAと再接続する。
  * SDK初期化→公式ログイン→READY→nonce付き要求→結果→受領確認の順。
  * 削除で本人確認不可。WorkTimeの打刻や業務データは変更しない。
  * 概念: redirect-safe rendezvous / origin isolation / challenge correlation。
@@ -9,11 +9,11 @@
  */
 (async function(global){
  'use strict';
- const origin='https://tealabhokkaido.com',path='/workforce/inventory/auth/';
+ const origin='https://tealabhokkaido.com',path='/software/worktime/inventory/auth/';
  const status=document.getElementById('auth-status');
  const nonce=new URLSearchParams(global.location.search||'').get('request');
  let ready=false,done=false,stopped=false,channel=null,returnTimer=null;
- if(global.location.origin!==origin||global.location.pathname!==path||!/^[a-f0-9]{32}$/.test(nonce||'')){
+ if(global.location.origin!==origin||![path,path+'index.html'].includes(global.location.pathname)||!/^[a-f0-9]{32}$/.test(nonce||'')){
   status.textContent='元の在庫画面を再読み込みし、「LINEでログイン」から開いてください。';return;
  }
  try{if(global.BroadcastChannel)channel=new global.BroadcastChannel('tlh-inventory-login-'+nonce);}catch{}

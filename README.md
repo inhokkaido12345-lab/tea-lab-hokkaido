@@ -1,3 +1,5 @@
+利用者向けの勤怠アプリは **https://tealabhokkaido.com/software/worktime/** です。[URL・LINE・PWAの移行と再生成](workforce/URL-MIGRATION.md)。コードの編集元は`workforce/`のままです。
+
 # TLH Work Timeと公式サイト
 
 従業員向けアプリは[最新状態](workforce/CURRENT-STATUS.md)、[利用・保守手順](workforce/README.md)、[説明書索引](workforce/DOCUMENTS.md)へ。運営画面は公開済み・専用台帳未設定です。

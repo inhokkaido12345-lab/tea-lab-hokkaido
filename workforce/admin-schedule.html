@@ -2,7 +2,8 @@
 <!-- 管理の正本UI。勤務/メモ/用事の編集はシートだけ。CSVやセル編集のフォームを置かない。
      削除影響: 管理入口だけ停止。申請/打刻の原簿は保持。公開のREAD/確認/固定IDはcontrollerへ。
      魔改造: 元HTML→sync-schedule-workspace.pyでホームへ合成。生成領域を直接編集しない。 -->
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<html lang="ja"><head><meta charset="utf-8">
+<script src="/workforce/worktime-url.js"></script><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
 <title>シフトの管理 | TLH Work Time</title>
 <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule.css?v=20261110-management1">
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="current-workplace.js?v=20261105-store2"></script><script defer src="auto-read.js?v=20261110-management1"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261109-authority1"></script><script defer src="schedule.js?v=20261110-login1"></script><script defer src="schedule-management-contract.js?v=20261110-management1"></script><script defer src="schedule-management.js?v=20261110-management1" data-bootstrap="true"></script>
