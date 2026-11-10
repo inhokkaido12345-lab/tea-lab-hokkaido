@@ -16,8 +16,17 @@
 <div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
 <div id="overview" class="overview" aria-label="在庫の概況"></div>
 <p id="as-of" class="muted" aria-live="polite"></p>
+<div class="stock-actions" aria-label="在庫管理の作業">
+<button data-stock-action="overview" aria-pressed="true" aria-controls="stock-overview">在庫・発注</button>
+<button data-stock-action="sampling" aria-pressed="false" aria-controls="stock-workspaces">消費速度計測</button>
+<button data-stock-action="counting" aria-pressed="false" aria-controls="stock-workspaces">棚卸（実数）</button>
+<button data-stock-action="lead" aria-pressed="false" aria-controls="stock-workspaces">納期・安全余裕</button>
+</div>
+<div id="stock-overview">
 <div class="filters" aria-label="在庫の絞り込み"><button data-filter="all" aria-pressed="true">すべて</button><button data-filter="low" aria-pressed="false">要発注</button><button data-filter="ordered" aria-pressed="false">発注済み</button></div>
 <div id="cards"></div>
+</div>
+<div id="stock-workspaces" hidden></div>
 </section>
 <section id="receiving" hidden>
 <p class="eyebrow">02 / RECEIVING</p><h2>届いたものを登録</h2>
