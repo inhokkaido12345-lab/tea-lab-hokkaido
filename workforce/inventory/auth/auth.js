@@ -11,7 +11,7 @@
  'use strict';
  const origin='https://tealabhokkaido.com',status=document.getElementById('auth-status');
  let ready=false,done=false;
- if(global.location.origin!==origin||global.location.pathname!=='/software/worktime/inventory/auth/'||!global.opener){
+ if(global.location.origin!==origin||!['/software/worktime/inventory/auth/','/software/worktime/inventory/auth/index.html'].includes(global.location.pathname)||!global.opener){
   status.textContent='在庫アプリの「LINEでログイン」から開いてください。';return;
  }
  global.addEventListener('message',event=>{

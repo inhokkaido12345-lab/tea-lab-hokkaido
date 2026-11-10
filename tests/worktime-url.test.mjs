@@ -58,8 +58,27 @@ test('PWAは旧manifest URLとidを引継ぎ、起動と範囲はWork Timeだけ
 test('旧在庫popupはopenerを維持して新Endpoint内の窓口へ移り、tokenは従来どおり相関照合して返信',()=>{
   const html=read('software/worktime/inventory/auth/index.html'),script=read('workforce/inventory/auth/auth.js');
   assert.match(html,/<base href="\/workforce\/inventory\/auth\/">/);
-  assert.match(script,/pathname!=='\/software\/worktime\/inventory\/auth\/'/);
+  assert.match(script,/'\/software\/worktime\/inventory\/auth\/'/);
   assert.match(script,/redirectUri:origin\+'\/software\/worktime\/inventory\/auth\/'/);
   assert.match(script,/event\.source!==global\.opener/);assert.match(script,/event\.origin!==origin/);
   assert.doesNotMatch(script,/localStorage\.|sessionStorage\.|console\./);
+});
+
+test('新在庫認証窓口は両URLで初期化し、同じopenerの正しい要求にだけ1回返信する',async()=>{
+  for(const pathname of ['/software/worktime/inventory/auth/','/software/worktime/inventory/auth/index.html']){
+    const messages=[],events={},status={textContent:''};
+    const opener={postMessage:(data,origin)=>messages.push({data,origin})};
+    const window={location:{origin:'https://tealabhokkaido.com',pathname},opener,
+      addEventListener:(name,fn)=>events[name]=fn,
+      liff:{init:async()=>{},isLoggedIn:()=>true,getIDToken:()=>'fake.jwt.proof'}};
+    vm.runInNewContext(read('workforce/inventory/auth/auth.js'),{window,document:{getElementById:()=>status}});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(messages[0].data.type,'TLH_INVENTORY_LOGIN_READY');
+    const data={type:'TLH_INVENTORY_LOGIN_REQUEST',nonce:'a'.repeat(32)};
+    events.message({data,origin:'https://example.com',source:opener});
+    events.message({data,origin:window.location.origin,source:{}});assert.equal(messages.length,1);
+    events.message({data,origin:window.location.origin,source:opener});
+    assert.equal(messages.length,2);assert.equal(messages[1].data.nonce,data.nonce);assert.equal(messages[1].data.idToken,'fake.jwt.proof');
+    events.message({data,origin:window.location.origin,source:opener});assert.equal(messages.length,2);
+  }
 });
