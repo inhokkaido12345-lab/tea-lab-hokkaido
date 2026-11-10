@@ -8,9 +8,9 @@
 <link rel="stylesheet" href="style.css"><script src="config.js" defer></script><script src="employee-login.js?v=login-return-2" defer></script><script src="employee-transport.js" defer></script><script src="app.js" defer></script>
 <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
-<header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>The TEA ココノススキノ店 ／ 在庫・発注管理</p><a href="/workforce/">TLH Work Timeへ</a></header>
+<header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/workforce/">TLH Work Timeへ</a></header>
 <main>
-<aside>TLHアカウントに紐づく有効な従業員だけが利用できます。品目・袋容量は初期設定です。使用前に確認し、棚卸実数または初回入荷を登録してください。<details><summary>ホーム画面への追加</summary><p>iPhoneはSafariの共有→ホーム画面に追加。AndroidはChromeのメニュー→ホーム画面に追加／アプリをインストール。オンライン接続が必要です。</p></details></aside><button id="line-login" hidden>LINEでログイン</button><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
+<aside>TLHアカウントでログインし、参加している店舗を選んで利用します。品目・袋容量は初期設定です。使用前に確認し、棚卸実数または初回入荷を登録してください。<details><summary>ホーム画面への追加</summary><p>iPhoneはSafariの共有→ホーム画面に追加。AndroidはChromeのメニュー→ホーム画面に追加／アプリをインストール。オンライン接続が必要です。</p></details></aside><div id="inventory-stores" class="store-context"></div><button id="line-login" hidden>LINEでログイン</button><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
 <div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
 <section id="stock">
 <div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
@@ -37,8 +37,9 @@
 <button type="submit" class="primary wide">入荷をまとめて保存</button></form>
 </section>
 <section id="history" hidden><p class="eyebrow">03 / HISTORY</p><h2>記録の履歴</h2><div id="logs"></div></section>
+<section id="catalog" hidden><p class="eyebrow">04 / CATALOG</p><h2>仕入品情報</h2><p class="muted">製造元・仕入先・保管方法と包装規格を登録します。価格情報は扱いません。</p><div id="catalog-content"></div></section>
 <div id="recovery" hidden><p>通信結果を確認できません。同じ操作IDで再確認します。新しい登録はしないでください。</p><button id="retry">同じ操作を再確認</button></div>
 <footer>TLH Inventory <span>数える日と、推定する日。</span></footer>
 </main>
-<nav aria-label="画面"><button data-tab="stock" aria-current="page">在庫</button><button data-tab="receiving">入荷</button><button data-tab="history">履歴</button></nav>
+<nav aria-label="画面"><button data-tab="stock" aria-current="page">在庫</button><button data-tab="receiving">入荷</button><button data-tab="history">履歴</button><button data-tab="catalog">仕入品情報</button></nav>
 </body></html>

@@ -114,3 +114,9 @@ footer span { float: right; }
   #refresh { max-width: 130px; }
   .forecast-dates strong { font-size: 17px; }
 }
+
+.catalog-unit,.catalog-party { border: 1px solid var(--line); padding: 12px; margin: 12px 0; border-radius: 8px; }
+textarea { box-sizing: border-box; width: 100%; min-height: 80px; padding: 10px; font: inherit; border: 1px solid var(--line); border-radius: 6px; background: white; }
+nav button { min-width: 0; }
+
+.store-context { max-width: 1000px; margin: 12px auto; padding: 16px; border: 1px solid var(--line); border-radius: 8px; overflow-wrap: anywhere; }

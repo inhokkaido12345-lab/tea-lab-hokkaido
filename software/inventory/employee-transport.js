@@ -104,7 +104,7 @@
     await ready;
     if (stopped) throw Error('PAGE_CLOSED');
     if (navigator.onLine === false) throw Error('OFFLINE');
-    if (!['READ','COMMAND'].includes(command) || pending) throw Error('BUSY');
+    if (!['ACCOUNT','TENANT','READ','COMMAND'].includes(command) || pending) throw Error('BUSY');
     const idToken = global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff.getIDToken();
     if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {showLogin(); throw Error('AUTH_REQUIRED');}
     return new Promise((resolve, reject) => {
@@ -123,10 +123,75 @@
   }
 
   global.addEventListener('pagehide', () => {
-    stopped = true;finish('PAGE_CLOSED');login.hidden = true;
+    stopped = true;finish('PAGE_CLOSED');login.hidden = true;storeContext=null;selectedStore=null;clearStoreView();contextHost()?.replaceChildren();
     for (const id of ['cards','logs','lines']) document.getElementById(id).replaceChildren();
     document.getElementById('status').textContent = '';
   });
   global.addEventListener('pageshow', event => {if (event.persisted) global.location.reload();});
-  global.TlhInventory = Object.freeze({request});
+  // 店舗選択はページ内だけに保持。選択したID自体は権限の証拠にならない。
+  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false;
+  const contextHost=()=>document.getElementById('inventory-stores');
+  const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
+  const status=text=>{document.getElementById('status').textContent=text;};
+  function clearStoreView(){
+    for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview'])document.getElementById(id)?.replaceChildren();
+  }
+  function renderStores(){
+    const host=contextHost();if(!host||!storeContext)return;host.replaceChildren();
+    const label=node('label','利用する店舗'),select=node('select');select.appendChild(new Option('店舗を選択してください',''));
+    for(const store of storeContext.stores)select.appendChild(new Option(store.name,store.id));select.value=selectedStore||'';label.appendChild(select);host.appendChild(label);
+    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('店舗を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;clearStoreView();document.getElementById('refresh').click();};
+    const details=node('details'),summary=node('summary','店舗を作成・招待コードで参加');details.appendChild(summary);host.appendChild(details);
+    const name=node('input');name.placeholder='新しく作る店舗の名前';name.maxLength=100;details.appendChild(name);
+    const create=node('button','新しい店舗を作成');create.onclick=()=>{if(!name.value.trim()){status('店舗名を入力してください。');return;}contextAction({action:'CREATE',storeId:'store-'+crypto.randomUUID(),name:name.value});};details.appendChild(create);
+    const code=node('input');code.placeholder='管理者から受け取った招待コード';code.maxLength=48;details.appendChild(code);
+    const join=node('button','招待された店舗に参加');join.onclick=()=>contextAction({action:'JOIN',code:code.value.trim()});details.appendChild(join);
+    const owner=storeContext.stores.find(s=>s.id===selectedStore)?.role==='OWNER';
+    if(owner){
+      const manage=node('details');manage.appendChild(node('summary','この店舗のメンバー・招待'));host.appendChild(manage);
+      const help=node('p','招待コードは7日間・1人1回限りです。参加させる人にだけ共有してください。WorkTimeの所属は変更しません。');manage.appendChild(help);
+      const invite=node('button','メンバー招待コードを作る');invite.onclick=()=>{
+        const value=random(24);contextAction({action:'INVITE',storeId:selectedStore,code:value},value);
+      };manage.appendChild(invite);
+      const read=node('button','メンバーと有効な招待を確認');read.onclick=async()=>{
+        if(contextBusy)return;contextBusy=true;
+        try{const reply=await request('ACCOUNT',{storeId:selectedStore});if(!reply.ok)throw Error();storeContext=reply.value;renderStores();}
+        catch{status('メンバー情報を確認できませんでした。');}finally{contextBusy=false;}
+      };manage.appendChild(read);
+      for(const member of storeContext.members||[]){
+        const row=node('p',member.name+' ／'+(member.role==='OWNER'?'管理者':'メンバー'));manage.appendChild(row);
+        if(member.role!=='OWNER'){const remove=node('button','このメンバーの参加を解除');remove.onclick=()=>{if(global.confirm('この店舗の在庫情報へアクセスできなくなります。参加を解除しますか？'))contextAction({action:'REMOVE',storeId:selectedStore,userId:member.userId});};manage.appendChild(remove);}
+      }
+      for(const invite of storeContext.invitations||[]){const revoke=node('button','招待を無効にする（期限 '+invite.expiresAt.slice(0,10)+'）');revoke.onclick=()=>contextAction({action:'REVOKE',storeId:selectedStore,inviteId:invite.id});manage.appendChild(revoke);}
+    }
+  }
+  async function contextAction(input,invitationCode){
+    if(contextBusy||uncertainTenant)return;contextBusy=true;status('店舗情報を保存しています…');
+    const command={...input,operationId:crypto.randomUUID()};
+    try{
+      const reply=await request('TENANT',command);
+      if(!reply.ok){status(reply.code==='INVALID_INVITATION'?'招待コードが無効・使用済み・期限切れです。':reply.code==='FORBIDDEN'?'この操作を行う権限がありません。':'店舗情報を保存できませんでした。');return;}
+      storeContext=reply.value;selectedStore=reply.value.storeId||selectedStore;renderStores();
+      if(invitationCode){
+        const output=node('p','招待コード（この画面を閉じると再表示できません）：'+invitationCode);contextHost()?.appendChild(output);
+        status('招待を作成しました。コードを招待する人に共有してください。');
+      }else{clearStoreView();document.getElementById('refresh').click();}
+    }catch{
+      uncertainTenant=true;
+      status('店舗操作の結果を確認できません。同じ操作を確認するまで、作成や参加を繰り返さないでください。');
+      const retry=node('button','同じ店舗操作の結果を確認');
+      retry.onclick=async()=>{try{const reply=await request('TENANT',command);if(!reply.ok){status('操作を確認できませんでした。');return;}uncertainTenant=false;storeContext=reply.value;selectedStore=reply.value.storeId||selectedStore;renderStores();if(invitationCode)contextHost()?.appendChild(node('p','招待コード：'+invitationCode));else{clearStoreView();document.getElementById('refresh').click();}}catch{status('接続を確認して、同じ操作をもう一度確認してください。');}};
+      contextHost()?.appendChild(retry);
+    }finally{contextBusy=false;}
+  }
+  async function readView(){
+    if(!storeContext){const reply=await request('ACCOUNT');if(!reply.ok)return reply;storeContext=reply.value;
+      selectedStore=storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();}
+    if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
+    const result=await request('READ',{storeId:selectedStore});
+    if(result.code==='FORBIDDEN'){storeContext=null;selectedStore=null;clearStoreView();}
+    return result;
+  }
+
+  global.TlhInventory = Object.freeze({request,readView});
 })(window);
