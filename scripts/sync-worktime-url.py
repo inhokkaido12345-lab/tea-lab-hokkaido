@@ -25,25 +25,25 @@ def pages():
 def generated(source):
     relative = source.relative_to(SOURCE)
     text = source.read_text(encoding='utf-8')
-    # baseは資産だけ旧パスへ。アプリ内リンクは下で新公開URLへ変換する。
+    # 資産だけ旧パスの絶対URLへ。baseタグは#目次まで旧ホームへ向けるので使用しない。
     # manifestも元のURLを維持し、既存PWAのアプリ識別子を引き継ぐ。
     base = '/workforce/' + (relative.parent.as_posix() + '/' if relative.parent.as_posix() != '.' else '')
     text = text.replace(TAG, '')
     routes = {p.relative_to(SOURCE).as_posix() for p in pages()}
-    def link(match):
-        value = match[1]
+    def reference(match):
+        attribute, value = match[1], match[2]
         resolved = urlsplit(urljoin(ORIGIN + base, value))
-        if value.startswith('#') or resolved.netloc != 'tealabhokkaido.com':
+        if not value or value.startswith('#') or resolved.netloc != 'tealabhokkaido.com':
             return match[0]
         if resolved.path.startswith('/workforce/'):
             suffix = resolved.path[len('/workforce/'):]
             key = suffix + 'index.html' if suffix.endswith('/') or not suffix else suffix
-            if key in routes:
+            if attribute == 'href' and key in routes:
                 return 'href="' + CANONICAL + suffix + ('?' + resolved.query if resolved.query else '') + ('#' + resolved.fragment if resolved.fragment else '') + '"'
+            # JS/CSS/画像/文書の参照だけ固定する。#リンクは元のままなので現在URLのqueryも保持する。
+            return attribute + '="' + resolved.path + ('?' + resolved.query if resolved.query else '') + ('#' + resolved.fragment if resolved.fragment else '') + '"'
         return match[0]
-    text = re.sub(r'href="([^"]+)"', link, text)
-    # リンク変換の後にbaseを挿入する。base自身を新URLへ変換すると共有資産が404になる。
-    text = re.sub(r'<head>', '<head>\n<base href="' + base + '">\n', text, count=1)
+    text = re.sub(r'\b(href|src)="([^"]*)"', reference, text)
     # 旧一括編集のmeta refreshも新管理画面へ。資産用baseへ戻らない。
     text = text.replace('content="0;url=admin-schedule.html"', 'content="0;url=/software/worktime/admin-schedule.html"')
     return text

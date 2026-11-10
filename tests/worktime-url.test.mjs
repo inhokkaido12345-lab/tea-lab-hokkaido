@@ -34,12 +34,12 @@ test('公開ページは同じ業務controllerを参照し、現役の全ロー�
   const files=fs.readdirSync(new URL('workforce/',root)).filter(name=>name.endsWith('.html'));
   for(const name of files){
     const html=read('software/worktime/'+name),source=read('workforce/'+name);
-    assert.match(html,/<base href="\/workforce\/">/);assert.doesNotMatch(html,/worktime-url\.js/);
-    const src=text=>[...text.matchAll(/<script[^>]*src="([^"]+)"/g)].map(m=>m[1]).filter(v=>!v.endsWith('/worktime-url.js'));
+    assert.doesNotMatch(html,/<base\b|worktime-url\.js/);
+    const src=text=>[...text.matchAll(/<script[^>]*src="([^"]+)"/g)].map(m=>m[1].replace(/^\/workforce\//,'')).filter(v=>!v.endsWith('worktime-url.js'));
     assert.deepEqual(src(html),src(source));
     for(const match of html.matchAll(/(?:href|src)="([^"]+)"/g)){
       if(!match[1]||match[1].startsWith('#'))continue;
-      const url=new URL(match[1],'https://tealabhokkaido.com/workforce/');
+      const url=new URL(match[1],'https://tealabhokkaido.com/software/worktime/'+name);
       if(url.origin!=='https://tealabhokkaido.com'||url.pathname==='/')continue;
       const path=new URL('.'+url.pathname,root);
       assert.ok(fs.existsSync(path),name+' missing '+url.pathname);
@@ -50,18 +50,28 @@ test('公開ページは同じ業務controllerを参照し、現役の全ロー�
 test('PWAは旧manifest URLとidを引継ぎ、起動と範囲はWork Timeだけ、在庫scopeへ広げない',()=>{
   const m=JSON.parse(read('workforce/manifest.webmanifest'));
   assert.equal(m.id,'/workforce/');assert.equal(m.start_url,'/software/worktime/');assert.equal(m.scope,m.start_url);
-  assert.match(read('software/worktime/index.html'),/<base href="\/workforce\/">/);
-  assert.match(read('software/worktime/index.html'),/<link rel="manifest" href="manifest.webmanifest">/);
+  assert.doesNotMatch(read('software/worktime/index.html'),/<base\b/);
+  assert.match(read('software/worktime/index.html'),/<link rel="manifest" href="\/workforce\/manifest.webmanifest">/);
   assert.ok(!'/software/inventory/'.startsWith(m.scope));
 });
 
 test('旧在庫popupはopenerを維持して新Endpoint内の窓口へ移り、tokenは従来どおり相関照合して返信',()=>{
   const html=read('software/worktime/inventory/auth/index.html'),script=read('workforce/inventory/auth/auth.js');
-  assert.match(html,/<base href="\/workforce\/inventory\/auth\/">/);
+  assert.match(html,/src="\/workforce\/inventory\/auth\/auth\.js\?/);
   assert.match(script,/'\/software\/worktime\/inventory\/auth\/'/);
   assert.match(script,/redirectUri:origin\+path\+'\?request='\+nonce/);
   assert.match(script,/event\.source!==global\.opener/);assert.match(script,/event\.origin!==origin/);
   assert.doesNotMatch(script,/localStorage\.|sessionStorage\.|console\./);
+});
+
+test('ヘルプとシフトのページ内目次は現在ページ・queryを維持し、旧ホームへ飛ばない',()=>{
+  for(const name of ['employee-help.html','index.html','admin-guide.html']){
+    const html=read('software/worktime/'+name),current='https://tealabhokkaido.com/software/worktime/'+name+'?organizationId=org_a&workplaceId=wp_a';
+    assert.doesNotMatch(html,/<base\b/);
+    const links=[...html.matchAll(/href="(#[^"]+)"/g)];
+    assert.ok(links.length>0,name);
+    for(const match of links){const target=new URL(match[1],current);assert.equal(target.pathname,new URL(current).pathname);assert.equal(target.search,new URL(current).search);assert.ok(html.includes('id="'+target.hash.slice(1)+'"'),name+':'+target.hash);}
+  }
 });
 
 test('新在庫認証窓口は両URLで初期化し、同じopenerの正しい要求にだけ1回返信する',async()=>{
