@@ -152,13 +152,16 @@
 <p id="schedule-management-status" role="status" aria-live="polite" aria-busy="false">管理者の本人確認を待っています。</p><button id="schedule-management-login" type="button" hidden>LINEログイン</button><button id="schedule-management-refresh" type="button" hidden>再読み込み</button>
 <section id="schedule-management-edit-panel" role="tabpanel" aria-labelledby="schedule-management-edit-tab">
 <div class="schedule-sheet-actions"><button id="schedule-management-sheet-create" type="button" disabled>該当月の入力シートを作成</button><a id="schedule-management-sheet-open" class="button secondary" href="#" target="_blank" rel="noopener" hidden>入力シートを開く</a></div>
+<!-- 作成確認は作成ボタン直下へ。公開・希望休の確認とは表示位置だけを分け、同じ保存確認を共用する。 -->
+<div id="schedule-management-sheet-confirm-slot"></div>
 <section class="management-section"><h3>シフトの公開・変更反映</h3><input id="schedule-management-period" type="hidden" value="FIRST"><p id="schedule-management-phase" class="footnote"></p><p class="footnote">シートに記入した月全体を確認して公開します。希望休の受付期間や締切とは独立しています。空欄は未設定で、公休にはなりません。公開済み勤務の変更は本人同意・承認を経て反映します。</p><button id="schedule-management-publish" type="button" disabled>下書きを公開する</button></section>
 </section>
 <section id="schedule-management-requests-panel" role="tabpanel" aria-labelledby="schedule-management-requests-tab" hidden>
 <section class="management-section"><h3>希望休の締切を設定</h3><p class="footnote">ここからここまでの希望を、指定日時に締め切ります。締切未設定の日は申請できます。重なる日には後から設定した締切を適用し、既に届いた申請は残します。シフトの作成・公開範囲は制限しません。</p><div class="filters"><label>希望の開始日<input id="schedule-management-deadline-start" type="date" disabled></label><label>希望の終了日<input id="schedule-management-deadline-end" type="date" disabled></label><label>この期間の希望を締め切る日時（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label></div><button id="schedule-management-deadline-save" type="button" disabled>この期間の締切を設定</button><div id="schedule-management-deadline-rules"></div></section>
 <section class="management-section"><h3>希望休承認</h3><div id="schedule-management-requests"></div></section>
 </section>
-<section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
+<div id="schedule-management-default-confirm-slot"><section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
+</div>
 <button id="schedule-management-retry" type="button" hidden disabled>同じ操作で結果を再確認</button>
 <iframe id="schedule-management-frame" name="tlhScheduleManagementFrame" title="管理シフトの署名付き応答" hidden></iframe>
 </div>
@@ -438,7 +441,7 @@
   <script src="schedule-report.js?v=20261110-range-month1"></script>
   <script src="schedule.js?v=20261110-input-binding1"></script>
   <script src="schedule-management-contract.js?v=20261110-range-month1"></script>
-  <script src="schedule-management.js?v=20261110-input-binding1"></script>
+  <script src="schedule-management.js?v=20261110-confirm-position1"></script>
   <script src="schedule-workspace.js?v=20261110-lazy-init1"></script>
   <script src="layout.js?v=20261110-management1"></script>
   <script src="admin-access.js?v=20261108-batch1"></script>

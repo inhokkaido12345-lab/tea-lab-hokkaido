@@ -29,7 +29,7 @@
   }
   /** DOMと既存LIFFを接続しloadを返す。初期化では保存しない。欠落したIDはビルド/検査で直す。 */
   function init(options){
-    const ids=['month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
+    const ids=['sheet-confirm-slot','default-confirm-slot','month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
@@ -95,7 +95,8 @@
     function clear(){snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
-    function review(job,question,reason=false){confirmation={...job,reason};n.question.textContent=question;n.reason.value='';controls();}
+    // 確認欄は1個を移動するだけ。イベント・固定ID・再送状態を複製/作り直さない。
+    function review(job,question,reason=false){n[job.command==='sheetCreate'?'sheet-confirm-slot':'default-confirm-slot'].appendChild(n.confirm);confirmation={...job,reason};n.question.textContent=question;n.reason.value='';controls();}
     // JSON本文/操作IDは保存前に固定。再確認でも同一内容、nonceと署名鍵だけ新しくする。
     async function send(command,input,operationId=READS.has(command)?'':random(16)){
       if(stopped||pending||login.locked())return;
