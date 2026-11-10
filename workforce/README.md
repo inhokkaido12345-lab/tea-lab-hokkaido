@@ -4,7 +4,9 @@
 
 [現在地](CURRENT-STATUS.md) → [従業員ヘルプ](employee-help.html)／[管理者ガイド](admin-guide.html) → [シフト運用](SCHEDULE.md) → [説明書索引](DOCUMENTS.md) の順に読んでください。過去の改修メモは[整理前の記録](history/20261109-README.md)へ分離しました。
 
-認証復帰修正はGAS v77・UI PR #53で公開済みです。[現在地](CURRENT-STATUS.md)に配信照合と残件を記録しました。デザイン整理は別のローカル候補で未公開です。
+認証復帰修正はGAS v77・UI PR #53で公開済みです。[現在地](CURRENT-STATUS.md)に配信照合と残件を記録しました。
+
+表示整理：見出し・本文・余白・主操作と補助操作を共通化しています。[デザインと改造入口](DESIGN.md)と[操作できない表示見本](design/manager.html)を参照。実HTML由来の隔離した確認ページでスマホ/PCの表示を確認済みです。公開状態は[現在地](CURRENT-STATUS.md)を参照。
 
 ## 1. 現在使う機能
 

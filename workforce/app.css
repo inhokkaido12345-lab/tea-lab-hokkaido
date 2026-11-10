@@ -34,7 +34,24 @@
   /* 添付パレットの灰緑。小さい本文には薄いため、目印や境界の補助に使う。 */
   --mist:#7C908E;
   /* 共通カードの角丸。ボタン/入力の直書き値までは変わらない。 */
-  --radius:16px;
+  --radius:12px;
+  /* 文字の役割。字体は増やさず、本文/小見出し/区分/画面名の差で所属を伝える。
+     魔改造: 画面名だけ大きくするなら--type-page。時刻の強調は--type-clockを使う。 */
+  --type-caption:12px;
+  --type-small:13px;
+  --type-body:15px;
+  --type-subhead:17px;
+  --type-section:20px;
+  --type-page:28px;
+  --type-clock:64px;
+  --weight-strong:600;
+  /* 内側は12/16/24px、別の話題は32px。固定高さで本文を切らず、拡大しても折り返す。 */
+  --space-inline:8px;
+  --space-heading:12px;
+  --space-content:16px;
+  --space-section:32px;
+  --space-section-inset:24px;
+  --radius-control:8px;
   font-family:"IBM Plex Sans JP",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   color:var(--ink);
   background:var(--canvas);
@@ -73,20 +90,25 @@ button:disabled {
 [hidden] {
   display:none!important
 }
-h1,h2,h3,p {
+h1,h2,h3,h4,h5,h6,p {
   margin:0
 }
 h1 {
-  font-size:25px;
+  font-size:var(--type-page);
   line-height:1.4;
   letter-spacing:.015em
 }
 h2 {
-  font-size:16px;
+  font-size:var(--type-section);
   line-height:1.5
 }
 h3 {
-  font-size:15px
+  font-size:var(--type-subhead);
+  line-height:1.5
+}
+h4,h5,h6 {
+  font-size:var(--type-body);
+  line-height:1.6
 }
 a {
   color:var(--teal)
@@ -180,7 +202,7 @@ a {
   gap:10px;
   text-decoration:none;
   color:var(--ink);
-  font-weight:750;
+  font-weight:600;
   font-size:17px
 }
 .brand-mark {
@@ -237,7 +259,7 @@ main {
   border:0;
   color:var(--teal);
   font-size:12px;
-  font-weight:650;
+  font-weight:600;
   white-space:nowrap
 }
 .inline-link {
@@ -309,7 +331,7 @@ main {
   background:var(--soft);
   color:var(--teal);
   font-size:12px;
-  font-weight:700
+  font-weight:600
 }
 .status-chip::before {
   content:"";
@@ -327,9 +349,9 @@ main {
   background:#faefec
 }
 .clock {
-  font-size:67px;
+  font-size:var(--type-clock);
   line-height:1.15;
-  font-weight:650;
+  font-weight:600;
   letter-spacing:-.055em;
   margin:26px 0 2px;
   font-variant-numeric:tabular-nums
@@ -360,7 +382,7 @@ main {
   border:1px solid transparent;
   padding:11px 18px;
   font-size:14px;
-  font-weight:650;
+  font-weight:600;
   text-decoration:none
 }
 .button.primary {
@@ -512,7 +534,7 @@ main {
 .metric-grid strong {
   font-size:26px;
   line-height:1.5;
-  font-weight:650
+  font-weight:600
 }
 .metric-grid strong span {
   font-size:11px;
@@ -618,7 +640,7 @@ input:disabled {
   /* h2は補足文ではなく話題の見出し。カード内h2と同じ強さにする。 */
   font-size:16px;
   color:var(--ink);
-  font-weight:700;
+  font-weight:600;
   margin:0 0 10px 2px
 }
 .menu-item {
@@ -653,7 +675,7 @@ input:disabled {
 .menu-item strong {
   display:block;
   font-size:14px;
-  font-weight:650
+  font-weight:600
 }
 .menu-item small {
   display:block;
@@ -691,7 +713,7 @@ input:disabled {
 summary {
   cursor:pointer;
   font-size:14px;
-  font-weight:650;
+  font-weight:600;
   min-height:30px
 }
 details[open] summary {
@@ -887,7 +909,7 @@ dialog::backdrop {
     margin-bottom:22px
   }
   h1 {
-    font-size:23px
+    font-size:var(--type-page)
   }
   .punch-card {
     padding:22px
@@ -984,7 +1006,7 @@ dialog::backdrop {
   margin:0 0 12px;
   font-size:18px;
   color:var(--ink);
-  font-weight:700
+  font-weight:600
 }
 .home-page .management-section .menu-item:nth-child(n) {
   border:0;
@@ -1010,7 +1032,7 @@ button.bridge-button,button:not(.bottom-nav button):not(.text-button):not(.icon-
   max-width:100%;
   padding:11px 16px;
   border:1px solid transparent;
-  border-radius:10px;
+  border-radius:var(--radius-control);
   color:white;
   background:var(--teal);
   font-size:14px;
@@ -1026,13 +1048,13 @@ button.bridge-button:disabled {
   background:#859b90
 }
 .punch-card h1 {
-  font-size:19px;
+  font-size:var(--type-page);
   margin-top:18px
 }
 .punch-card .detail {
   margin:14px 0;
   font-size:17px;
-  font-weight:650
+  font-weight:600
 }
 .punch-card .clock {
   margin-top:15px
@@ -1364,25 +1386,26 @@ pre {
 
 /* 通知は件数＋文言。未知/0件では隠し、非管理者へ会社情報を出さない。位置/色はここで調整。
  * 削除すると通知の強調だけ消える。件数の取得/認可はadmin-overview.js/GASが担当。 */
-.approval-badge { display:inline-block; border-radius:999px; padding:2px 7px; background:var(--danger); color:#fff; font-size:11px; font-weight:700; line-height:1.5; vertical-align:middle; }
+.approval-badge { display:inline-block; border-radius:999px; padding:2px 7px; background:var(--danger); color:#fff; font-size:11px; font-weight:600; line-height:1.5; vertical-align:middle; }
 .admin-overview { margin:0 0 20px; }
-.bottom-nav .approval-badge { position:absolute; top:2px; right:3px; font-size:10px; font-weight:700; line-height:1.5; }
+.bottom-nav .approval-badge { position:absolute; top:2px; right:3px; font-size:10px; font-weight:600; line-height:1.5; }
 .bottom-nav [role="tab"] { position:relative; }
 
 /* 18. パレット版の現役画面。管理/その他は同じ情報階層を共有する。
- * 責務: 色/文字/余白/入力面だけ。番号は見出しの目印で、操作の順番や認可ではない。
+ * 責務: 色/文字/余白/入力面だけ。同じ役割の見出し/操作は同じ見た目。番号は順番や認可ではない。
  * 概念: 見出しと内容の近接、補足の段階的開示、主操作/補助/危険の意味による配色。
  * 変更: :rootは全共有ページ、management-section/service-sectionは管理/その他だけ。
  * 削除影響: 旧配色/余白へ戻るが原簿は残る。HTMLのid/hidden/disabledは維持する。
- * 境界: CSSに社員情報/認証情報を置かない。DESIGN.mdと手動の表示見本を同期する。
+ * 境界: CSSに社員情報/認証情報を置かない。DESIGN.mdと生成する表示見本を同期する。
  * 検証: 全UI/連結に加え390px・PC・文字拡大で折返し、キーボードfocusを確認する。
  */
 body {
-  font-size:14px;
-  line-height:1.8
+  font-size:var(--type-body);
+  line-height:1.75;
+  font-variant-numeric:tabular-nums
 }
-h1,h2,h3,strong,b,summary,.brand {
-  font-weight:600
+h1,h2,h3,h4,h5,h6,strong,b,summary,.brand {
+  font-weight:var(--weight-strong)
 }
 button,input,select,textarea {
   font-family:inherit
@@ -1398,43 +1421,42 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   background:var(--paper)
 }
 .page-heading h1 {
-  font-size:28px;
-  letter-spacing:.02em
+  font-size:var(--type-page);
+  letter-spacing:.01em
 }
 .home-page .management-section,.home-page .service-section {
   background:none;
   border:0;
   border-top:1px solid var(--line);
   border-radius:0;
-  padding:28px 0 4px;
-  margin:28px 0 0
+  padding:var(--space-section-inset) 0 0;
+  margin:var(--space-section) 0 0
 }
 .home-page .management-section h2,.home-page .service-section h2 {
   display:flex;
   align-items:center;
   flex-wrap:wrap;
   gap:10px;
-  font-size:19px;
+  font-size:var(--type-section);
   font-weight:600;
   margin:0 0 12px
 }
 .tool-step {
   display:inline-grid;
   place-items:center;
-  min-width:32px;
-  height:28px;
-  background:var(--teal);
-  color:var(--paper);
-  border-radius:5px;
+  min-width:24px;
+  background:none;
+  color:var(--muted);
+  border-radius:0;
   font-size:12px;
   font-variant-numeric:tabular-nums;
   letter-spacing:.03em
 }
 .tool-intro {
-  max-width:58ch;
+  max-width:68ch;
   color:var(--muted);
   margin:0 0 18px;
-  font-size:14px
+  font-size:var(--type-body)
 }
 .guide-link {
   display:inline-flex;
@@ -1442,7 +1464,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   border:1px solid var(--line);
   border-radius:8px;
   background:var(--paper);
-  font-size:13px;
+  font-size:var(--type-small);
   font-weight:600
 }
 .tool-help {
@@ -1452,11 +1474,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   color:var(--muted)
 }
 .tool-help summary {
-  font-size:13px;
+  font-size:var(--type-small);
   color:var(--teal)
 }
 .tool-help p,.tool-help ol {
-  font-size:13px;
+  font-size:var(--type-small);
   margin:10px 0
 }
 .tool-help ol {
@@ -1474,7 +1496,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .home-page .staff-fields label {
   margin:0;
-  font-size:13px
+  font-size:var(--type-small)
 }
 .home-page .staff-fields input,.home-page .staff-fields select {
   margin:6px 0 0;
@@ -1497,7 +1519,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   font-weight:600
 }
 .menu-item small {
-  font-size:13px;
+  font-size:var(--type-small);
   color:var(--muted)
 }
 .menu-symbol {
@@ -1521,7 +1543,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   margin-top:20px
 }
 .home-page .enrollment-details>summary,.home-page .diagnostics>summary,#manager-test-panel>details>summary {
-  font-size:17px;
+  font-size:var(--type-subhead);
   color:var(--ink);
   padding:8px 0;
   font-weight:600
@@ -1551,9 +1573,42 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   border-color:var(--line)
 }
 .footnote {
-  font-size:13px;
-  line-height:1.8
+  font-size:var(--type-small);
+  line-height:1.7
 }
+/* 同じまとまりの見出しは内容へ近づけ、別のまとまりとの余白を大きくする。
+   h1=画面 / h2=作業区分 / h3=その区分の作業 / h4=手順内の補足。HTMLの階層と連動する。 */
+.page-heading {
+  align-items:flex-start;
+  margin-bottom:var(--space-section-inset)
+}
+.page-heading .subtle { margin-top:var(--space-inline); max-width:68ch; }
+.eyebrow { font-size:var(--type-caption); letter-spacing:.06em; margin-bottom:var(--space-inline); }
+.management-section > h3,.management-section > h4 { margin-bottom:var(--space-heading); color:var(--ink); }
+.management-section > p + h3,.management-section > p + h4 { margin-top:var(--space-section-inset); }
+.tool-intro,.footnote,.subtle { overflow-wrap:anywhere; }
+label,legend { font-size:var(--type-small); font-weight:var(--weight-strong); }
+input,select,textarea { font-size:var(--type-body); font-weight:400; border-radius:var(--radius-control); }
+.secondary-page main > h1 { margin-bottom:var(--space-section-inset); }
+.secondary-page main > p { font-size:var(--type-body); max-width:72ch; }
+.punch-card .detail { font-size:var(--type-subhead); }
+.footnote { max-width:76ch; }
+
+/* 更新/移動/出力は補助操作。保存・提出・承認など、その区分の主操作と強さを分ける。
+   色は操作の許可を表さない。disabled/hidden/確認画面を解除しない。 */
+#account-info-check,#punch-check,#journal-check,#daily-summary-check,#monthly-work-check,#admin-overview-check,
+#schedule-workspace-refresh,#schedule-management-refresh,#schedule-refresh,#schedule-admin-refresh,
+#schedule-print,#schedule-csv,#schedule-admin-print,#schedule-admin-csv,#bulk-load,#bulk-sheet-create {
+  color:var(--teal);
+  background:var(--paper);
+  border:1px solid var(--line);
+  font-size:var(--type-small);
+  font-weight:var(--weight-strong);
+  border-radius:var(--radius-control)
+}
+.schedule-task-nav { align-items:center; }
+.guide-link { text-decoration:none; }
+
 @media(max-width:599px) {
   .home-page .staff-fields {
     grid-template-columns:1fr;
@@ -1566,16 +1621,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
     display:grid;
     grid-template-columns:1fr
   }
-  .page-heading h1 {
-    font-size:26px
+  :root {
+    --type-page:24px;
+    --type-clock:56px
   }
 }
 
 /* 管理の業務選択。色とaria-pressedで選択を示す。hidden/disabledの解除はCSSで行わない。
  * 追加時はlayout.jsのcategories/groups、HTMLのaria-controls、配置テストと使い方を同期。 */
-.manager-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:24px 0; }
-#manager-sections button { min-width:0; padding:12px 8px; font:inherit; font-weight:600; background:var(--paper); color:var(--teal); border:1px solid var(--line); border-radius:8px; }
-#manager-sections button[aria-pressed="true"] { background:var(--teal); color:var(--paper); border-color:var(--teal); }
+.manager-sections { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:24px 0 32px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+#manager-sections button { min-width:0; padding:12px 8px; font:inherit; font-weight:600; background:transparent; color:var(--muted); border:1px solid transparent; border-bottom:3px solid transparent; border-radius:8px 8px 0 0; }
+#manager-sections button[aria-pressed="true"] { background:var(--soft); color:var(--teal); border-bottom-color:var(--teal); }
 #manager-sections button:focus-visible { outline:3px solid var(--muted); outline-offset:3px; }
 #manager-sections .approval-badge { vertical-align:middle; }
 @media(max-width:450px) { .manager-sections { gap:6px; }#manager-sections button { font-size:13px; padding:12px 4px; } }

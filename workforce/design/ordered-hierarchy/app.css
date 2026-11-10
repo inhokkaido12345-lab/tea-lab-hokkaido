@@ -36,14 +36,13 @@
   /* 共通カードの角丸。ボタン/入力の直書き値までは変わらない。 */
   --radius:12px;
   /* 文字の役割。字体は増やさず、本文/小見出し/区分/画面名の差で所属を伝える。
-     魔改造: 画面名だけ大きくするなら--type-page。数字の強調は--type-stat/clockを使う。 */
+     魔改造: 画面名だけ大きくするなら--type-page。時刻の強調は--type-clockを使う。 */
   --type-caption:12px;
   --type-small:13px;
   --type-body:15px;
   --type-subhead:17px;
   --type-section:20px;
   --type-page:28px;
-  --type-stat:28px;
   --type-clock:64px;
   --weight-strong:600;
   /* 内側は12/16/24px、別の話題は32px。固定高さで本文を切らず、拡大しても折り返す。 */
@@ -1597,7 +1596,7 @@ input,select,textarea { font-size:var(--type-body); font-weight:400; border-radi
 
 /* 更新/移動/出力は補助操作。保存・提出・承認など、その区分の主操作と強さを分ける。
    色は操作の許可を表さない。disabled/hidden/確認画面を解除しない。 */
-#punch-check,#journal-check,#daily-summary-check,#monthly-work-check,#admin-overview-check,
+#account-info-check,#punch-check,#journal-check,#daily-summary-check,#monthly-work-check,#admin-overview-check,
 #schedule-workspace-refresh,#schedule-management-refresh,#schedule-refresh,#schedule-admin-refresh,
 #schedule-print,#schedule-csv,#schedule-admin-print,#schedule-admin-csv,#bulk-load,#bulk-sheet-create {
   color:var(--teal);

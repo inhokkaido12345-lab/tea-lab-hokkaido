@@ -1,4 +1,4 @@
-"""管理/その他の見た目だけを実HTMLから再現する（Python標準ライブラリのみ）。
+"""従業員/管理/その他の見た目だけを実HTMLから再現する（Python標準ライブラリのみ）。
 
 責務: 現役index.htmlの対象paneとapp.cssを使う、認証不要の表示見本を生成する。
 呼出し: Pythonでこのファイルを実行→workforce/design/*.html。稼働コードは読み込まない。
@@ -14,6 +14,9 @@ import re
 root = Path(__file__).resolve().parents[1] / 'workforce'
 source = (root / 'index.html').read_text(encoding='utf-8')
 parts = {
+    'punch': source[source.index('<div id="employee-work-panel"'):source.index('<!-- 記録の画面')],
+    'records': source[source.index('<div id="records-work-panel"'):source.index('<!-- schedule-workspace:start -->')],
+    'schedule': source[source.index('<!-- schedule-workspace:start -->'):source.index('<!-- schedule-workspace:end -->')],
     'manager': source[source.index('<div id="manager-tools-panel"'):source.index('<section id="staff-section"')]
         + source[source.index('<div id="manager-registration-panel"'):source.index('<!-- claim/発行')]
         + source[source.index('<div id="manager-maintenance-panel"'):source.index('<div id="manager-test-panel"')],
@@ -27,7 +30,7 @@ dest = root / 'design'
 dest.mkdir(exist_ok=True)
 for name, body in parts.items():
     body = re.sub(r'<(?:iframe|script)\b[\s\S]*?</(?:iframe|script)>', '', body)
-    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:manager-tools-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
+    body = re.sub(r'(<(?:div|section)\b[^>]*\bid="(?:employee-work-panel|records-work-panel|punch-section|home-journal-section|daily-summary-section|monthly-work-section|manager-tools-panel|schedule-work-panel|schedule-admin-entry|labor-policy-section|maintenance-section|staff-admin|more-tools-panel)"[^>]*?)\s+hidden', r'\1', body)
     if name.startswith('manager'):
         selected={'manager':'attendance','manager-employees':'employees','manager-schedule':'schedule'}[name]
         groups={'manager-attendance-panel':'attendance','manager-registration-panel':'employees','manager-maintenance-panel':'employees','manager-schedule-panel':'schedule','schedule-admin-entry':'schedule','schedule-admin-shortcuts':'schedule'}
@@ -44,7 +47,7 @@ for name, body in parts.items():
     body = re.sub(r'href="[^"]*"', 'href="#preview-notice"', body)
     assert not re.search(r'<script|<iframe|action=|\bon\w+=', body)
     body = '\n'.join(line.rstrip() for line in body.split('\n'))
-    title = {'manager':'出退勤の管理','manager-employees':'従業員の管理','manager-schedule':'シフトの管理','more':'その他'}[name]
+    title = {'punch':'打刻','records':'記録','schedule':'従業員シフト','manager':'出退勤の管理','manager-employees':'従業員の管理','manager-schedule':'シフトの管理','more':'その他'}[name]
     (dest / (name + '.html')).write_text(
         '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -52,11 +55,11 @@ for name, body in parts.items():
         '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'self\'; font-src \'self\'; form-action \'none\'; base-uri \'none\'">'
         '<title>' + title + 'の表示見本 | TLH Work Time</title>'
         '<link rel="stylesheet" href="../fonts/ibm-plex-sans-jp.css?v=1">'
-        '<link rel="stylesheet" href="../app.css?v=20261104-manager-sections">'
-        '<link rel="stylesheet" href="../schedule.css?v=20261109-workspace1">'
+        '<link rel="stylesheet" href="../app.css?v=20261110-hierarchy1">'
+        '<link rel="stylesheet" href="../schedule.css?v=20261110-hierarchy1">'
         '<link rel="stylesheet" href="../schedule-bulk.css?v=20261109-sheet1"></head>'
         '<body class="home-page"><div class="app"><main>'
         '<p id="preview-notice" class="session-notice">表示見本：ログイン・通信・保存なし。操作は無効です。'
-        ' <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p>'
+        ' <a href="punch.html">打刻</a> / <a href="records.html">記録</a> / <a href="schedule.html">従業員シフト</a> / <a href="manager.html">出退勤</a> / <a href="manager-employees.html">従業員</a> / <a href="manager-schedule.html">シフト管理</a> / <a href="more.html">その他</a></p>'
         + body + '</main></div></body></html>\n', encoding='utf-8', newline='\n')
-print('Generated four inert presentation previews from current HTML/CSS')
+print('Generated seven inert presentation previews from current HTML/CSS')
