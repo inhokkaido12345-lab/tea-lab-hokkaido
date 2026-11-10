@@ -34,7 +34,7 @@ test('published source import still requires a reason and event-only changes can
 // 実際の不具合: 署名済みモードが届く前のHTML/初期化で旧メモ編集を見せてしまった。
 test('manual guidance stays hidden before authentication, on failed reads and after departure; only verified legacy mode reveals it',async()=>{
  const html=fs.readFileSync(new URL('../workforce/admin-schedule-bulk.html',import.meta.url),'utf8');
- for(const id of ['manual','csv-tools','save','count'])assert.match(html,new RegExp('<[^>]+id="bulk-'+id+'"[^>]* hidden'));
+ assert.doesNotMatch(html,/bulk-manual|bulk-csv-tools|bulk-file|bulk-save/);
  assert.doesNotMatch(html,/セルを選ぶと、その日のメモを編集できます/);
  const{h,s}=fixture();for(const id of ['manual','csv-tools','save','count'])assert.equal(h.n(id).hidden,true);
  await h.api.load();await h.reply(h.sent[0],null,'SCHEDULE_PERMISSION_REQUIRED');assert.equal(h.n('manual').hidden,true);
@@ -56,5 +56,5 @@ test('admin plan and event editors remain hidden until verified legacy mode; emp
  admin.events.pagehide();assert.equal(admin.n('editor').hidden,true);
  const legacy=scheduleUiHarness('admin');await legacy.api.read();await legacy.reply(legacy.sent[0],legacy.snapshot());assert.equal(legacy.n('editor').hidden,false);
  const employee=scheduleUiHarness();await employee.api.read();await employee.reply(employee.sent[0],employee.snapshot());assert.equal(employee.n('editor').hidden,false);
- const html=fs.readFileSync(new URL('../workforce/admin-schedule.html',import.meta.url),'utf8');for(const id of ['compose','compose-nav','event-section'])assert.match(html,new RegExp('<[^>]+id="schedule-'+id+'"[^>]* hidden'));
+ const html=fs.readFileSync(new URL('../workforce/admin-schedule.html',import.meta.url),'utf8');assert.doesNotMatch(html,/schedule-compose|schedule-compose-nav|schedule-event-section/);
 });

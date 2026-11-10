@@ -23,7 +23,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: /\bdisabled\b/.test(attrs), value: '', textContent: '', events: {}, contentWindow:{},
       dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
       addEventListener(type, fn) { this.events[type] = fn; },
-      setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();},children:[],replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}, focus() { focused = id; } };
+      setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();},children:[],replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}, querySelectorAll(){return [];},removeAttribute(name){delete this.attributes[name];},focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
   }
   const node = id => { assert.ok(nodes.has(id), 'missing actual DOM id: ' + id); return nodes.get(id); };
@@ -213,7 +213,7 @@ test('employee shift and management shift remain separate even for an authorized
  const employee=html.slice(html.indexOf('<!-- schedule-workspace:start -->'),html.indexOf('<!-- schedule-workspace:end -->'));
  const manager=html.slice(html.indexOf('<!-- schedule-management:start -->'),html.indexOf('<!-- schedule-management:end -->'));
  for(const id of ['schedule-calendar','schedule-editor','schedule-request-deadline'])assert.match(employee,new RegExp('id="'+id+'"'));
- for(const id of ['bulk-sheet-read','schedule-admin-requests','schedule-admin-month-save','schedule-admin-publish']){assert.doesNotMatch(employee,new RegExp('id="'+id+'"'));assert.match(manager,new RegExp('id="'+id+'"'));}
+ for(const id of ['schedule-management-sheet-create','schedule-management-requests','schedule-management-deadline-save','schedule-management-publish']){assert.doesNotMatch(employee,new RegExp('id="'+id+'"'));assert.match(manager,new RegExp('id="'+id+'"'));}
  assert.doesNotMatch(manager,/id="schedule-editor"|id="schedule-request-deadline"/);
 });
 
