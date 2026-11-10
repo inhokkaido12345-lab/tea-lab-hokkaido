@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
     paths:
+      - 'Software/inventory/**'
+      - 'inventory/**'
       - 'workforce/inventory/**'
       - '.github/workflows/check-inventory-live.yml'
   workflow_dispatch:
@@ -20,20 +22,20 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
-          const names=['index.html','app.js','employee-transport.js','config.js','manifest.webmanifest','style.css'];
+          const names=["Software/inventory/index.html","Software/inventory/app.js","Software/inventory/employee-login.js","Software/inventory/employee-transport.js","Software/inventory/style.css","Software/inventory/config.js","Software/inventory/manifest.webmanifest","workforce/inventory/auth/index.html","workforce/inventory/auth/auth.js","workforce/inventory/index.html","inventory/index.html"];
           const normalize=text=>text.replace(/\r\n/g,'\n').trimEnd();
           let ready=false;
-          for(let attempt=0;attempt<10;attempt++){
+          for(let attempt=0;attempt<15;attempt++){
             const results=await Promise.all(names.map(async name=>{
               try{
-                const response=await fetch('https://tealabhokkaido.com/workforce/inventory/'+name+'?v='+process.env.GITHUB_SHA,
+                const response=await fetch('https://tealabhokkaido.com/'+name+'?v='+process.env.GITHUB_SHA,
                   {cache:'no-store',signal:AbortSignal.timeout(15000)});
-                return response.ok&&normalize(await response.text())===normalize(readFileSync('workforce/inventory/'+name,'utf8'));
+                return response.ok&&normalize(await response.text())===normalize(readFileSync(name,'utf8'));
               }catch{return false;}
             }));
             if(results.every(Boolean)){ready=true;break;}
-            if(attempt<9)await new Promise(resolve=>setTimeout(resolve,8000));
+            if(attempt<14)await new Promise(resolve=>setTimeout(resolve,8000));
           }
           if(!ready)throw Error('INVENTORY_LIVE_FILES_NOT_CONFIRMED');
-          console.log('INVENTORY_LIVE_FILES_CONFIRMED 6');
+          console.log('INVENTORY_LIVE_FILES_CONFIRMED 11');
           NODE

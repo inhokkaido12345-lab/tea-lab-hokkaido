@@ -1,0 +1,1 @@
+window.TlhInventoryConfig = Object.freeze({"apiUrl":"https://script.google.com/macros/s/AKfycbyE4M724IOqAJmLDocYnTj1Zp4_W4UVEMhHK1OR8Oc0WBb9ZbVm073NfctNQ8az1fAM/exec","liffId":"2011940133-JXUDzLnG"});

@@ -1,0 +1,116 @@
+/**
+ * TLH Inventoryの表示。web/index.html/app.jsから参照し、GAS/PWAへ共通生成。
+ * 削除すると視覚階層と狭幅対応が失われる。保存・認可には関与しない。
+ * 概念: design tokens / visual hierarchy / progressive disclosure。
+ * 改造: 01の色と02以降の部品。web/README・docs/design-and-speed.mdも同期する。
+ * 秘密や架空の業務値は含めない。hidden/disabledを装飾で解除しない。
+ * 検証: client/employee-pwaテスト、公開資産照合。実端末の見た目は別途確認。
+ */
+/* 01. WorkTimeと共有する6色・字体。補足も薄い色で読みにくくしない。 */
+:root {
+  --paper: #F3EFE7;
+  --teal: #2F5452;
+  --sage: #7C908E;
+  --ink: #252829;
+  --muted: #495C63;
+  --danger: #8E3F35;
+  --line: #d7d9d0;
+  font-family: "IBM Plex Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; line-height: 1.65; }
+[hidden] { display: none !important; }
+h1,h2,h3,h4,p { margin-top: 0; }
+h1,h2,h3,h4,strong,button,summary { font-weight: 600; }
+h1 { margin: 6px 0; font-size: clamp(26px,4vw,34px); letter-spacing: -.03em; }
+h2 { margin-bottom: 0; font-size: 22px; }
+h3 { margin: 0 0 10px; font-size: 20px; }
+h4 { margin: 20px 0 8px; font-size: 15px; }
+p { margin-bottom: 12px; }
+a { color: var(--teal); text-underline-offset: 4px; }
+/* 02. 小さなブランドと広い本文。正式ロゴの形・色は変更しない。 */
+header { max-width: 1088px; padding: 32px 24px 24px; margin: auto; border-bottom: 1px solid var(--line); }
+header small { font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+header p { margin: 0; font-size: 13px; color: var(--muted); }
+header a { display: inline-block; margin-top: 12px; font-size: 12px; }
+.brand-logo { display: block; width: 174px; height: auto; margin-bottom: 20px; }
+main { max-width: 1088px; margin: auto; padding: 20px 24px 110px; }
+aside { padding: 12px 16px; border-left: 3px solid var(--sage); font-size: 12px; color: var(--muted); }
+aside details { margin-top: 5px; }
+.sync-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 18px 0 30px; }
+#status { margin: 0; min-height: 26px; font-size: 13px; color: var(--muted); }
+#refresh { flex-shrink: 0; font-size: 12px; min-height: 40px; }
+.section-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 20px; }
+.eyebrow { color: var(--teal); font-size: 11px; letter-spacing: .14em; margin: 0 0 6px; }
+.overview { display: grid; grid-template-columns: repeat(3,1fr); border-block: 1px solid var(--line); margin-bottom: 20px; padding: 18px 0; }
+.overview > div { padding: 0 20px; border-right: 1px solid var(--line); }
+.overview > div:first-child { padding-left: 0; }
+.overview > div:last-child { border: 0; }
+.overview strong { display: block; font-size: 28px; line-height: 1.2; }
+.overview span { font-size: 12px; color: var(--muted); }
+.filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+/* 03. 残量→期限→操作。色に加え、警告を言葉でも示す。 */
+#cards { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px; align-items: start; }
+.card { background: #fff; padding: 24px; border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.card.attention { border-top: 4px solid var(--danger); padding-top: 21px; }
+.qty { font-size: 34px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 12px 0 4px; line-height: 1.35; }
+.muted { font-size: 12px; color: var(--muted); }
+.badge { display: inline-block; background: #edf2ef; color: var(--teal); border-radius: 5px; font-size: 11px; padding: 4px 8px; }
+.low { background: #f8eeeb; color: var(--danger); }
+.forecast-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-block: 1px solid var(--line); padding: 16px 0; margin: 16px 0; }
+.forecast-dates span { display: block; font-size: 11px; color: var(--muted); }
+.forecast-dates strong { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+.forecast-dates .deadline strong { color: var(--danger); }
+.redline { font-size: 13px; color: var(--muted); }
+.card details { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+summary { cursor: pointer; font-size: 13px; color: var(--teal); }
+details p { margin-top: 12px; }
+.card button { width: 100%; margin-top: 10px; }
+.card .line { background: var(--paper); }
+.card > .primary { margin-top: 18px; }
+/* 04. 入力は十分な押下領域。通信中は文字とCSSだけで状態を示す。 */
+button,input,select { font: inherit; min-height: 46px; padding: 10px 14px; border: 1px solid var(--sage); border-radius: 8px; background: #fff; color: var(--ink); }
+button { cursor: pointer; font-size: 14px; }
+button:disabled { opacity: .5; cursor: default; }
+.primary,[aria-pressed="true"] { background: var(--teal); color: #fff; border-color: var(--teal); }
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,a:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+.wide { width: 100%; margin-top: 20px; }
+label { display: block; margin: 14px 0 6px; font-size: 13px; }
+input,select { width: 100%; max-width: 100%; }
+.line { padding: 16px; background: #fff; border: 1px solid var(--line); border-radius: 10px; margin: 12px 0; }
+.line button { margin-top: 10px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#receipt { max-width: 660px; margin-top: 24px; }
+#recovery { padding: 18px; background: #f8eeeb; border-left: 3px solid var(--danger); margin-top: 20px; }
+#status[aria-busy="true"]::before { content: ""; display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--teal); border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { #status[aria-busy="true"]::before { animation: none; } }
+/* 05. 固定ナビと本文末尾の余白を一緒に変更する。 */
+/* 作業別の入口。選んだ作業だけ生成・表示する。認可や保存はapp.js/サーバーが担当。 */
+.stock-actions { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 22px 0; }
+.stock-actions button { font-size: 13px; }
+.stock-workspace { max-width: 660px; border-top: 1px solid var(--line); padding-top: 22px; }
+.stock-workspace > h3 { margin-bottom: 8px; }
+.action-card { margin-top: 18px; }
+.action-card h4 { margin-top: 0; }
+nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; background: var(--paper); border-top: 1px solid var(--line); padding: 8px 16px max(8px,env(safe-area-inset-bottom)); }
+nav button { width: min(30%,240px); border: 0; background: transparent; color: var(--muted); border-radius: 6px; }
+nav [aria-current="page"] { background: var(--teal); color: #fff; }
+footer { border-top: 1px solid var(--line); margin-top: 36px; padding-top: 18px; font-size: 11px; color: var(--muted); }
+footer span { float: right; }
+@media(max-width: 700px) {
+  .stock-actions { grid-template-columns: 1fr 1fr; }
+  #cards { grid-template-columns: 1fr; }
+  header { padding: 24px 20px 20px; }
+  main { padding: 16px 16px 110px; }
+  .card { padding: 20px; }
+  .card.attention { padding-top: 17px; }
+  .section-heading { display: block; }
+  .section-heading > span { display: block; margin-top: 8px; }
+  .sync-row { align-items: start; gap: 12px; }
+  #refresh { max-width: 130px; }
+  .forecast-dates strong { font-size: 17px; }
+}
