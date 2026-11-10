@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'software/inventory/**'
       - 'Software/inventory/**'
       - 'inventory/**'
       - 'workforce/inventory/**'
@@ -22,7 +23,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import {readFileSync} from 'node:fs';
-          const names=["Software/inventory/index.html","Software/inventory/app.js","Software/inventory/employee-login.js","Software/inventory/employee-transport.js","Software/inventory/style.css","Software/inventory/config.js","Software/inventory/manifest.webmanifest","workforce/inventory/auth/index.html","workforce/inventory/auth/auth.js","workforce/inventory/index.html","inventory/index.html"];
+          const names=["software/inventory/index.html","software/inventory/app.js","software/inventory/employee-login.js","software/inventory/employee-transport.js","software/inventory/style.css","software/inventory/config.js","software/inventory/manifest.webmanifest","workforce/inventory/auth/index.html","workforce/inventory/auth/auth.js","workforce/inventory/index.html","inventory/index.html","Software/inventory/index.html"];
           const normalize=text=>text.replace(/\r\n/g,'\n').trimEnd();
           let ready=false;
           for(let attempt=0;attempt<15;attempt++){
@@ -37,5 +38,5 @@ jobs:
             if(attempt<14)await new Promise(resolve=>setTimeout(resolve,8000));
           }
           if(!ready)throw Error('INVENTORY_LIVE_FILES_NOT_CONFIRMED');
-          console.log('INVENTORY_LIVE_FILES_CONFIRMED 11');
+          console.log('INVENTORY_LIVE_FILES_CONFIRMED 12');
           NODE
