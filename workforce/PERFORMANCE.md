@@ -24,3 +24,7 @@ scripts/measure-schedule-import.mjsは架空シフトの計算回数、punch.js�
 重い箇所を直す時は重複した読取・同じDTO内の再計算・不要な初期化から調べ、権限・固定ID・保存照合を外さないでください。対象試験と連結検査、実READを確認します。
 
 [説明整理前の記録](history/20261110-before-guidance-audit-PERFORMANCE.md)。
+
+## 今回の候補の測定範囲
+
+起動時のシフトcontrollerは2個→0個、役割の初回表示だけ1個、1000回の表示でも各1個。実HTML/controllerを使うオフライン検査でも確認。初期化回数でありGAS通信秒数の改善値ではありません。[再現コマンド](STARTUP.md)。

@@ -15,7 +15,7 @@ test('employee tab never starts admin reads even for managers; management shift 
  h.allow(false);h.api.activateAdmin();h.hide();h.api.activate();assert.equal(h.reads.length,2);
 });
 test('management pending state is isolated from unfinished personal requests',()=>{
- const h=harness();h.allow(true);h.showAdmin();h.controllers[1].onNavigationLock(true);assert.equal(h.controllers[0].loginBlocked(),true);assert.equal(h.node('schedule-month').disabled,false);
+ const h=harness();h.allow(true);h.api.activate();h.showAdmin();h.api.activateAdmin();h.controllers[1].onNavigationLock(true);assert.equal(h.controllers[0].loginBlocked(),true);assert.equal(h.node('schedule-month').disabled,false);
  h.controllers[1].onNavigationLock(false);assert.equal(h.controllers[0].loginBlocked(),false);h.node('schedule-month').value='2027-01';h.showEmployee();h.controllers[0].onMonthChange();assert.equal(h.reads.at(-1),'schedule');assert.equal(h.node('schedule-management-month').value,'2026-11');
 });
 
@@ -28,4 +28,23 @@ test('saved changes invalidate hidden role views and refresh them only when open
 test('automatic role refresh defers for an unfinished employee request; explicit refresh requires confirmation',()=>{
  const h=harness();h.allow(true);h.api.activate();h.editing(true);h.showAdmin();h.api.activateAdmin();h.controllers[1].onSaved();h.showEmployee();const n=h.reads.length;h.api.activate();assert.equal(h.reads.length,n);assert.equal(h.node('schedule-draft-notice').hidden,false);
  h.confirm(false);h.node('schedule-workspace-refresh').events.click();assert.equal(h.reads.length,n);h.confirm(true);h.node('schedule-workspace-refresh').events.click();assert.equal(h.reads.at(-1),'schedule');assert.equal(h.node('schedule-draft-notice').hidden,true);
+});
+
+
+test('startup initializes no hidden controllers; repeated activation and denied management never duplicate initialization',()=>{
+ const h=harness();assert.equal(h.controllers.length,0);assert.equal(h.reads.length,0);h.hide();
+ for(let i=0;i<1000;i++){h.api.activate();h.api.activateAdmin();}assert.equal(h.controllers.length,0);
+ h.showAdmin();h.api.activateAdmin();assert.equal(h.controllers.length,0);
+ h.showEmployee();for(let i=0;i<1000;i++)h.api.activate();assert.equal(h.controllers.length,1);assert.deepEqual(h.reads,['schedule']);
+ h.allow(true);h.showAdmin();for(let i=0;i<1000;i++)h.api.activateAdmin();assert.equal(h.controllers.length,2);assert.deepEqual(h.reads,['schedule','scheduleManagement']);
+});
+test('management can initialize first and invalidate the still-unopened employee view without losing either month',()=>{
+ const h=harness();h.allow(true);h.showAdmin();h.api.activateAdmin();assert.equal(h.controllers.length,1);
+ h.node('schedule-management-month').value='2027-02';h.controllers[0].onSaved();assert.deepEqual(h.reads,['scheduleManagement']);
+ h.showEmployee();h.api.activate();assert.equal(h.controllers.length,2);assert.equal(h.controllers[1].audience,'employee');
+ assert.equal(h.node('schedule-month').value,'2026-11');assert.equal(h.node('schedule-management-month').value,'2027-02');assert.deepEqual(h.reads,['scheduleManagement','schedule']);
+});
+test('hidden refresh never initializes controllers, while first visible refresh initializes once and fetches once',()=>{
+ const h=harness();h.hide();h.node('schedule-workspace-refresh').events.click();assert.equal(h.controllers.length,0);assert.equal(h.reads.length,0);
+ h.showEmployee();h.node('schedule-workspace-refresh').events.click();assert.equal(h.controllers.length,1);assert.deepEqual(h.reads,['schedule']);h.api.activate();assert.equal(h.controllers.length,1);
 });
