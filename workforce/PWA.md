@@ -1,3 +1,11 @@
+## 公開確認（2026-11-10）
+
+画面PR #64をmainへ反映し、Pagesの配信成功と変更49ファイルの一致を確認しました。LINE Developersの本番用Endpointは新URLへ保存済みです。開発用/審査用・scope・既存LINE IDは変更していません。
+
+画面314件・backendとの連結66件の検査とGitHub検査に成功。実ブラウザでは新ホームの既存LINEセッション初期化、管理者確認、勤務外/本日未打刻の読取、旧ホーム/旧管理URLからの新URLへの移動と管理シフト読取を確認しました。在庫の既存共通ログインも新窓口を経て「最新の記録を読みました」へ復帰しました。シフト入力ファイルの使い方B19も新しい管理URLへ更新済みです。
+
+実打刻・登録・承認・シフト公開・権限・受付・GASソースは変更していません。Androidホーム画面アイコンからの起動、iPhone、期限切れ後の新規OAuth往復は今回のブラウザ読取成功とは別の実機確認です。
+
 ## 公開URLの移行（2026-11-10）
 
 利用者の指定で公開入口を **https://tealabhokkaido.com/software/worktime/** へ統一します。旧URLは互換転送、既存PWAのmanifest URL/idとLINE IDは維持します。編集元は引き続き`workforce/`、公開HTMLは`python scripts/sync-worktime-url.py`で再生成。新URL・LINE設定・PWA・在庫認証・戻し方は[URL移行手順](URL-MIGRATION.md)を参照してください。以下の「URLは変更しない」は以前の表示名だけを変えた時点の記録です。保存先・最新認可・固定ID再送・保存読戻しは変更しません。
