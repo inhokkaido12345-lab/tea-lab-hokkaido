@@ -8,6 +8,9 @@
 const $=id=>document.getElementById(id);
 const el=(tag,text,cls)=>{const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;};
 let view=null,filter='all',pending=null,busy=false,activeTab='stock',historyDirty=true;
+// 作業切替は取得済みDTOとDOMだけを使う。切替の度に通信・保存しない。
+let stockAction='overview';
+const stockWorkspaces=new Map();
 // 1回の描画中の品目検索を索引にする。サーバーの在庫の代わりには使わない。
 let itemsById = new Map();
 // Intlの設定解析を毎回繰り返さず、表示専用フォーマッターを再利用する。
@@ -67,15 +70,22 @@ function appendNumberField(container, label, value) {
   return input;
 }
 
-function renderConsumptionSettings(container, item) {
-  const forecast = item.forecast;
+/** 棚卸は総量の実測だけ。消費速度や納期の設定と混ぜない。 */
+function renderStockCount(container, item) {
+  if(item.forecast?.countedAt)container.append(el('p','前回の棚卸 '+formatRecordedAt(item.forecast.countedAt),'muted'));
   const quantity = appendNumberField(container, '今ある総在庫（g、開封中の残量も含む）', '');
+  quantity.step='1';
   const count = el('button', '実数を在庫の新しい基準にする');
   count.onclick = () => {
     if (quantity.value === '') {message('総在庫を入力してください');return;}
     send({type: 'COUNT_STOCK', itemId: item.id, quantity: Number(quantity.value)});
   };
   container.append(count);
+}
+
+/** 納期だけを設定する。実績候補の転記では保存しない。 */
+function renderLeadSettings(container, item) {
+  const forecast=item.forecast;
   const lead = appendNumberField(container, '発注から到着まで（日）', forecast.config?.leadDays ?? '');
   if (item.delivery) {
     const adopt = el('button', '納期実績の候補 '+item.delivery.suggestedDays+'日を入力');
@@ -121,9 +131,12 @@ function renderConsumption(card, item) {
     el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
   card.append(explanation);
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
-  if (!view.permissions.includes('inventory.receive')) return;
-  card.append(el('h4','ときどき測る消費速度'),el('p','測る袋だけ開始→使い切り。普段の袋交換は記録不要です。','muted'));
+}
 
+/** 1袋の閉じた標本を測る操作だけ。棚卸と納期入力は別作業に置く。 */
+function renderSampleActions(card,item){
+  const forecast=item.forecast;
+  if(forecast.lastMeasuredAt)card.append(el('p','最終計測 '+formatRecordedAt(forecast.lastMeasuredAt),'muted'));
   if (forecast.open) {
     card.append(el('p', '計測中：'+quantities(forecast.open.amount)+' ／開始 '+formatRecordedAt(forecast.open.openedAt)));
     const finish = el('button', '使い切った：計測を終了', 'primary');
@@ -142,17 +155,46 @@ function renderConsumption(card, item) {
     };
     card.append(select, start);
   }
-  const details = el('details', '');details.append(el('summary', '在庫の基準・到着日数を設定'));
-  let mounted=false;
-  details.ontoggle = () => {
-    if (!details.open || mounted) return;
-    mounted=true;renderConsumptionSettings(details,item);lock(busy);
+}
+
+/** 作業ごと・品目ごとに入力DOMを保ち、切替で未保存入力を消さない。最新読取時は破棄する。 */
+function showStockAction(name){
+  if(!['overview','sampling','counting','lead'].includes(name))return;
+  stockAction=name;
+  for(const button of document.querySelectorAll('[data-stock-action]'))button.setAttribute('aria-pressed',String(button.dataset.stockAction===name));
+  const overview=$('stock-overview'),host=$('stock-workspaces');
+  if(!overview||!host)return;
+  overview.hidden=name!=='overview';host.hidden=name==='overview';
+  for(const [key,node] of stockWorkspaces)node.hidden=key!==name;
+  if(name==='overview'||!view||stockWorkspaces.has(name))return;
+  const titles={sampling:'消費速度を計測する',counting:'棚卸：今ある数量を実測する',lead:'納期と安全余裕を設定する'};
+  const help={sampling:'測る1袋だけ、開始→使い切りで終了。普段の袋交換は記録不要です。',counting:'未開封・開封中を含む総量をgで入力します。この実数を起点に消費推定をやり直します。',lead:'発注から受取までの暦日数と安全余裕を設定し、発注レッドラインを決めます。'};
+  const workspace=el('div','','stock-workspace');workspace.append(el('h3',titles[name]),el('p',help[name],'muted'));
+  stockWorkspaces.set(name,workspace);host.append(workspace);
+  if(!view.permissions.includes('inventory.receive')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
+  const label=el('label','対象の品目'),select=el('select','');select.setAttribute('aria-label',titles[name]+'：対象の品目');
+  for(const item of view.items.filter(i=>i.forecast))select.append(new Option(item.name+(name==='sampling'&&item.forecast.open?'（計測中）':''),item.id));
+  label.append(select);workspace.append(label);
+  const cards=new Map();
+  const choose=()=>{
+    for(const [id,card] of cards)card.hidden=id!==select.value;
+    if(!cards.has(select.value)){
+      const item=itemsById.get(select.value);if(!item)return;
+      const card=el('article','','card action-card');card.append(el('h4',item.name));
+      if(name==='sampling')renderSampleActions(card,item);
+      if(name==='counting')renderStockCount(card,item);
+      if(name==='lead')renderLeadSettings(card,item);
+      cards.set(item.id,card);workspace.append(card);
+    }
+    lock(busy);
   };
-  card.append(details);
+  select.onchange=choose;choose();
 }
 
 function render(){
  itemsById = new Map(view.items.map(item => [item.id, item]));
+ stockWorkspaces.clear();
+ if($('stock-workspaces'))$('stock-workspaces').replaceChildren();
  const asOf=$('as-of');
  if(asOf)asOf.textContent=view.asOf?'推定時点：'+formatRecordedAt(view.asOf)+' ／最新の記録を読むと更新':'推定時点を確認するには最新の記録を読んでください';
  historyDirty=true;
@@ -199,6 +241,7 @@ function render(){
  // 受取完了は注文ごと。一件を完了しても他の未入荷注文を残す。
  for(const i of view.items)for(const o of (i.orders||(i.order?[i.order]:[])).filter(o=>o.status==='ORDERED'))$('complete').append(new Option(i.name+' ／ '+(o.at?formatRecordedAt(o.at):'発注')+' ／ '+(o.plannedLine?o.plannedLine.quantity+' '+(i.units.find(u=>u.id===o.plannedLine.unitId)?.label||o.plannedLine.unitId):'数量未記入')+' ／ 到着 '+(o.expectedOn||'不明')+' ／ '+o.id,o.id));
  if(activeTab==='history')renderHistory();
+ showStockAction(stockAction);
 }
 /** 隠れている履歴100件を毎回DOM化しない。タブを初めて開いた時に最新DTOを描く。 */
 function renderHistory(){
@@ -238,7 +281,9 @@ async function send(command){
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
   pending=null;await load();message(errors[data.code]||'保存できませんでした：'+data.code);return;
  }
- saved=true;pending=null;
+ saved=true;
+ if(['RECEIVE','MARK_ORDERED'].includes(pending.type))stockAction='overview';
+ pending=null;
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
  $('lines').replaceChildren();addLine();tab('stock');message('保存しました。最新記録を確認しました。');
@@ -261,6 +306,7 @@ async function refresh(){
 $('refresh').onclick=refresh;
 $('add').onclick=()=>{if(view)addLine();};
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>tab(b.dataset.tab);
+for(const b of document.querySelectorAll('[data-stock-action]'))b.onclick=()=>{if(view&&!busy&&!pending)showStockAction(b.dataset.stockAction);};
 for(const b of document.querySelectorAll('[data-filter]'))b.onclick=()=>{filter=b.dataset.filter;for(const x of document.querySelectorAll('[data-filter]'))x.setAttribute('aria-pressed',String(x===b));if(view)render();};
 // 端末が海外時刻でも、サーバーと同じJSTの日付を入荷の初期値にする。
 $('day').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
@@ -268,4 +314,4 @@ refresh();
 
 
 
-window.addEventListener('pagehide', () => {view = null; pending = null; itemsById.clear();});
+window.addEventListener('pagehide', () => {view = null; pending = null; itemsById.clear();stockWorkspaces.clear();document.getElementById('stock-workspaces').replaceChildren();});
