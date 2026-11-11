@@ -4,7 +4,7 @@
      初歩：fieldsetのdisabledは本人の権限確認まで維持。秘密をHTMLへ埋め込まない。 -->
 <html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>会社運営管理 | TLH</title><link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="/workforce/app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="/workforce/operations.css?v=20261105-ops1">
+<title>会社運営管理 | TLH</title><link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="/workforce/app.css?v=20261111-status1"><link rel="stylesheet" href="/workforce/operations.css?v=20261105-ops1">
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="/workforce/operations.js?v=20261105-ops1" data-bootstrap="true" data-view="COMPANY"></script></head>
 <body class="secondary-page operations-page"><header><strong>会社運営管理</strong><nav aria-label="運営画面"><a href="/software/worktime/platform-operations.html">TLH運営管理</a> ／ <a href="/software/worktime/">タイムカードへ</a></nav></header>
 <main><h1>会社運営管理</h1><p>自社の店舗を登録・管理し、店舗サービス管理者を指定します。他社の情報は表示しません。</p>
@@ -21,4 +21,4 @@
 <label for="ops-reason">変更する理由（監査履歴に保存）</label><textarea id="ops-reason" maxlength="200" rows="3" autocomplete="off"></textarea><p>理由へパスワード・認証コード・個人の給与等を記載しないでください。</p><button id="ops-preview" type="button" disabled>対象と変更内容を確認</button></fieldset>
 <div id="ops-review" aria-live="polite"></div><div class="operations-actions"><button id="ops-commit" type="button" hidden disabled>確認した内容を保存する</button><button id="ops-cancel" type="button" disabled>確認を取り消す</button><button id="ops-retry" type="button" hidden disabled>同じ操作の保存結果を確認</button></div></section>
 <section aria-labelledby="ops-list-heading"><h2 id="ops-list-heading">自社の店舗・運営権限</h2><div id="ops-result"></div></section></div>
-<p><a href="/workforce/OPERATIONS.md">名称・使い方・現在の接続範囲</a></p><iframe id="ops-frame" name="tlhOperationsFrame" title="運営APIの確認応答" hidden></iframe></main></body></html>
+<p><a href="/workforce/OPERATIONS.md">名称・使い方・現在の接続範囲</a></p><iframe id="ops-frame" name="tlhOperationsFrame" title="運営APIの確認応答" hidden></iframe></main><script src="/workforce/status-guidance.js?v=20261111-status1"></script></body></html>

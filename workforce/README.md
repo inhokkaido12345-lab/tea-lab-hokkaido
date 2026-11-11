@@ -68,3 +68,9 @@ node --test tests/*.mjs
 結果不明の保存は同じ操作ID/入力で再確認し、新規送信を重ねません。原打刻・内部ID・履歴を消して復旧せず、token/鍵/個人情報をURL/console/Storageへ出しません。遅いからといって最新認可や保存後の全行読戻しを省略しません。[性能](PERFORMANCE.md)、[起動](STARTUP.md)、[自動読取](AUTO-READ.md)、[URL移行](URL-MIGRATION.md)。
 
 公開の経緯と旧説明は[今回の整理前README](history/20261110-before-maintenance-README.md)に保存しました。履歴に残る半月公開/CSV入力/未公開という記述を現行指示へ戻さないでください。
+
+## 要確認表示と直し方
+
+`status-guidance.js` は既存の状態文を残し、主要な入力・認証・権限・通信・競合エラーに褐色の要確認表示と次の操作を添える表示専用処理です。追加通信や保存、ログ、個人情報の永続化は行いません。色は `app.css` の `--status-warning`、案内は `guides` を変更します。成功文や保存結果の判定をこの装飾で変更しないでください。
+
+シフトは署名済み管理者READのセル番地を表示します。修正後に公開操作から差分確認をやり直します。保存結果不明時は送信を重ねず、同じ操作で確認します。検査は `node --test tests/status-guidance.test.mjs tests/schedule-management.test.mjs`、全体は `node --test tests/*.mjs`。HTML変更後は既存の二つの同期スクリプトを実行してください。

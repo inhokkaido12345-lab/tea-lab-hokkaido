@@ -1,6 +1,18 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
 import {managementHarness,managementSnapshot,sheetReply} from './helpers/schedule-management-harness.mjs';
 async function ready(){const h=managementHarness();await h.api.load();await h.reply(h.sent[0]);return h;}
+test('busy preview is a rejected read, never an import or automatic retry, and offers an explicit refresh',async()=>{
+ const h=await ready();h.click('publish');await h.reply(h.sent[1],null,'ENROLLMENT_BUSY');
+ assert.match(h.n('status').textContent,/差分確認の読取りを開始できません/);assert.match(h.n('status').textContent,/取込み・公開は行っていません/);
+ assert.equal(h.n('refresh').hidden,false);assert.equal(h.n('confirm').hidden,true);assert.equal(h.n('retry').hidden,true);assert.equal(h.sent.length,2);assert.equal(h.n('publish').disabled,false);
+ h.click('refresh');assert.equal(h.sent[2].command,'batchRead');assert.equal(h.sent[2].operationId,'');
+});
+test('signed input diagnostics show cell and remedy, reject foreign month and free-form data, and never import',async()=>{
+ const h=await ready();h.click('publish');const req=h.sent[1],value={version:1,month:'2026-11',inputIssues:[{cell:'T26',kind:'WORK_FORMAT'}],issueCount:1};
+ await h.reply(req,{...value,month:'2026-12'},'SCHEDULE_INVALID');assert.equal(h.n('publish').disabled,true);
+ await h.reply(req,{...value,inputIssues:[{cell:'T26',kind:'WORK_FORMAT',secret:'no'}]},'SCHEDULE_INVALID');assert.equal(h.n('publish').disabled,true);
+ await h.reply(req,value,'SCHEDULE_INVALID');assert.match(h.n('status').textContent,/T26/);assert.match(h.n('status').textContent,/09:00-18:00\/60/);assert.match(h.n('status').textContent,/取込み・公開していません/);assert.equal(h.n('publish').disabled,false);assert.equal(h.n('confirm').hidden,true);assert.equal(h.sent.length,2);
+});
 const plan=()=>({day:'2026-11-05',periods:[],appointments:[],leave:{type:'PUBLIC_OFF',unit:'DAY',minutes:null,note:''},note:''});
 const change=()=>({employeeCode:'EMP001',employeeName:'架空社員1',day:'2026-11-05',before:'なし',after:'公休',expectedPlanRevision:0,published:false,workText:'公休',plan:plan()});
 test('management has exactly two categories; switching them reads nothing and employee editing/CSV are absent',async()=>{

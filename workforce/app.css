@@ -11,6 +11,8 @@
  * 色だけで状態を区別せず、ラベル/枠/disabledも残す。詳しい手順はDESIGN.md。
  */
 :root {
+  /* 要確認の意味色。背景と十分に差を付け、記号・見出し・直し方と併用する。 */
+  --status-warning:#8E3F35;
   /* 本文。操作色とは分け、長文の読みやすさを守る。 */
   --ink:#252829;
   /* 補足。薄くしすぎると小さな説明が読めなくなる。 */
@@ -1671,3 +1673,9 @@ input,select,textarea { font-size:var(--type-body); font-weight:400; border-radi
 .current-workplace-mark strong { font-size:16px; font-weight:600; }
 .current-workplace-mark span { font-size:12px; }
 .current-workplace-mark p { margin:4px 0 0; color:#8e3f35; }
+
+/* 要対応通知。本文はcontroller、直し方はstatus-guidance.js。hidden/disabled/保存結果は変えない。 */
+.status-needs-action { color:var(--status-warning); border-left:3px solid currentColor; padding:8px 12px; font-weight:600; white-space:pre-wrap; }
+.status-needs-action::before { content:'⚠ 要確認　'; font-weight:700; }
+.status-resolution { color:var(--status-warning); margin:4px 0 16px; padding-left:15px; font-size:.9rem; line-height:1.65; }
+.status-resolution[hidden] { display:none; }

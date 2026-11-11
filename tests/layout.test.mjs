@@ -21,7 +21,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     const attrs = match[1], id = match[2]; assert.ok(!nodes.has(id), 'duplicate DOM id: ' + id);
     const pane = attrs.match(/data-workforce-pane="([^"]+)"/);
     const node = { id, hidden: /\bhidden\b/.test(attrs), disabled: /\bdisabled\b/.test(attrs), value: '', textContent: '', events: {}, contentWindow:{},
-      dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},
+      dataset: pane ? { workforcePane: pane[1] } : {}, attributes: {},classList:{toggle(){}},after(){},
       addEventListener(type, fn) { this.events[type] = fn; },
       setAttribute(name, value) { this.attributes[name] = value;for(const o of observers)if(o.node===this)queueMicrotask(()=>{if(observers.has(o))o.fn();}); },getAttribute(name){return this.attributes[name]??null;},click(){if(!this.disabled)this.events.click?.();},children:[],replaceChildren(){this.children=[];},appendChild(child){this.children.push(child);}, querySelectorAll(){return [];},removeAttribute(name){delete this.attributes[name];},focus() { focused = id; } };
     nodes.set(id, node); if (pane) panes.push(node);
@@ -37,7 +37,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     setTimeout(fn) { const id = ++timer; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { (handlers[type] ||= []).push(fn); },
     document: { getElementById: node,
-      querySelectorAll(selector) { if(['[data-approval-badge]','[data-current-workplace]'].includes(selector))return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
+      querySelectorAll(selector) { if(selector==='[role="status"], [id$="-status"]')return [...nodes.values()].filter(n=>n.id.endsWith('-status'));if(['[data-approval-badge]','[data-current-workplace]'].includes(selector))return [];assert.equal(selector, '[data-workforce-pane]'); return panes; },
       querySelector(selector) { assert.equal(selector, '.diagnostics'); return diagnostics; },
       body: { appendChild() {} }, createElement() { return { children: [],getAttribute(k){return this[k];},
         appendChild(child) { this.children.push(child); }, remove() {},
