@@ -58,3 +58,8 @@ test('在庫サービスは店舗作成・参加・店舗選択と仕入品情�
  assert.match(read('app.js'),/SAVE_ITEM/);assert.match(read('app.js'),/childUnitId/);assert.match(read('app.js'),/CATALOG_CHANGED/);
  assert.match(read('employee-transport.js'),/readView/);assert.match(read('employee-transport.js'),/新しい店舗を作成/);assert.match(read('employee-transport.js'),/招待された店舗に参加/);
 });
+
+
+test('現行品の管理と仕入情報の連動・変更履歴・容量/本数を備える',()=>{
+ const app=read('app.js');assert.match(app,/使用終了のみ/);assert.match(app,/CATALOG_REFERENCE_CHANGED/);assert.match(app,/manufacturerSourceItemId/);assert.match(app,/suppliersSourceItemId/);assert.match(app,/品目の状態/);assert.match(app,/在庫の基準単位/);
+});
