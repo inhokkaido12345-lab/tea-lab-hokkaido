@@ -34,6 +34,8 @@ function categoryOptions(select,items,selected){
  const counts=new Map();for(const item of items){const c=categoryOf(item);counts.set(c,(counts.get(c)||0)+1);}
  select.replaceChildren(new Option('すべてのカテゴリ（'+items.length+'件）','all'));
  const names=[...productCategories,...[...counts.keys()].filter(c=>!productCategories.includes(c)&&c!=='未分類').sort(), '未分類'];
+ // 状態の切替で旧分類が0件になっても、選択表示と適用中の条件を一致させる。
+ if(selected!=='all'&&!names.includes(selected))names.splice(names.length-1,0,selected);
  for(const c of names)select.append(new Option(c+'（'+(counts.get(c)||0)+'件）',c));
  select.value=names.includes(selected)?selected:'all';
 }
