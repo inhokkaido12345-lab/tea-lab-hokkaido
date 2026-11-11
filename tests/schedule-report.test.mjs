@@ -26,8 +26,8 @@ test('both pages use dedicated shared-only print section; private forms and scre
 });
 
 function fakeCanvas(){
- const drawn=[],context={measureText:s=>({width:[...String(s)].length*7}),scale(){},fillRect(){},strokeRect(){},fillText(s){drawn.push(s);}};
- return{drawn,width:0,height:0,getContext:()=>context,toBlob(done){done(new Blob(['fake png'],{type:'image/png'}));}};
+ let strokes=0;const drawn=[],context={measureText:s=>({width:[...String(s)].length*7}),scale(){},beginPath(){},moveTo(){},lineTo(){},stroke(){strokes++;},fillRect(){},strokeRect(){},fillText(s){drawn.push(s);}};
+ return{get strokes(){return strokes;},drawn,width:0,height:0,getContext:()=>context,toBlob(done){done(new Blob(['fake png'],{type:'image/png'}));}};
 }
 test('PNG retains shared dates, shifts and wrapped notes without private fields or redundant prefix',()=>{
  const h=scheduleUiHarness(),s=shared(h),canvas=fakeCanvas();s.plans[0].publicNote='長い公開備考'.repeat(18);
@@ -53,4 +53,16 @@ test('refresh discards in-flight PNG and repeated clicks produce one conversion'
 test('oversized PNG refuses allocation instead of dropping rows',()=>{
  const h=scheduleUiHarness(),s=shared(h);s.plans=Array.from({length:300},(_,i)=>({...s.plans[0],employeeCode:'EMP'+i}));
  assert.throws(()=>h.window.TlhScheduleReport.drawPng(fakeCanvas(),h.window.TlhScheduleReport.build(s)),/PNG_TOO_LARGE/);
+});
+
+test('public off is diagonal only in visual outputs; leave, unknown days, public notes and CSV semantics survive',()=>{
+ const h=scheduleUiHarness(),s=shared(h),original=s.plans[0];
+ s.plans=[{...original,periods:[],workIntervals:[],plannedMinutes:0,leaveType:'PUBLIC_OFF',publicNote:'帰省'},
+ {...original,day:'2026-11-06',periods:[],workIntervals:[],plannedMinutes:0,leaveType:'LEAVE',publicNote:''}];
+ const before=JSON.stringify(s),report=h.window.TlhScheduleReport.build(s),canvas=fakeCanvas();
+ h.window.TlhScheduleReport.renderMatrix(h.n('report-rows'),report.matrix);const descendants=n=>[n,...n.children.flatMap(descendants)];
+ const nodes=descendants(h.n('report-rows')),svgs=nodes.filter(n=>n.tagName==='svg');assert.equal(svgs.length,1);assert.equal(svgs[0].attrs['aria-hidden'],'true');
+ assert.equal(nodes.filter(n=>n.className==='matrix-off-label').length,1);assert.match(text(h.n('report-rows')),/帰省/);
+ h.window.TlhScheduleReport.drawPng(canvas,report);assert.equal(canvas.strokes,1);assert.ok(canvas.drawn.includes('帰省'));assert.ok(canvas.drawn.includes('休暇'));assert.ok(!canvas.drawn.includes('公休'));
+ assert.match(h.window.TlhScheduleReport.csv(report),/公休/);assert.equal(JSON.stringify(s),before);
 });

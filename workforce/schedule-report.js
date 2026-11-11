@@ -62,7 +62,9 @@
     const label=el('th',undefined,tr);label.className='matrix-person';label.setAttribute('scope','row');el('strong',person.employeeName,label);el('small',person.employeeCode+(person.employeeCode===ownCode?' / 自分':''),label);
     el('td',String(person.workDays),tr).className='matrix-count';
     person.cells.forEach((cell,i)=>{const td=el('td',undefined,tr);td.dataset.weekday=String(block.days[i].weekday);td.dataset.state=cell.state;
-      el('span',cell.text,td).className='matrix-time';if(cell.rest)el('small',cell.rest,td).className='matrix-rest';if(cell.note)el('small',cell.note,td).className='matrix-public-note';
+      // 斜線は表示記号だけ。公休の文字は読み上げ用に残し、備考/保存区分を消さない。
+      if(cell.state==='off'){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),line=document.createElementNS(ns,'line');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');svg.classList.add('matrix-off-line');for(const [k,v] of Object.entries({x1:'0',y1:'100',x2:'100',y2:'0',stroke:'currentColor','stroke-width':'1','vector-effect':'non-scaling-stroke'}))line.setAttribute(k,v);svg.appendChild(line);td.appendChild(svg);}
+      el('span',cell.text,td).className=cell.state==='off'?'matrix-off-label':'matrix-time';if(cell.rest)el('small',cell.rest,td).className='matrix-rest';if(cell.note)el('small',cell.note,td).className='matrix-public-note';
     });
    }
    if(!block.employees.length){const td=el('td',block.unpublished?'この期間は未公開です。':'この期間に表示できる確定従業員情報はありません。予定未設定です。',el('tr',undefined,body));td.setAttribute('colspan',String(block.days.length+2));}
@@ -88,7 +90,7 @@
   const sections=r.matrix.blocks.map(b=>{
    const dayWidth=(width-pad*2-person-count)/b.days.length,widths=[person,count,...b.days.map(()=>dayWidth)],holiday=d=>d.holiday||d.weekday===0?'#8E3F35':d.weekday===6?'#285E94':'#252829';
    const headers=row([[text('氏名',12,true)],[text('勤務\n日数',10,true)],...b.days.map(d=>[text(d.number,13,true,holiday(d)),text('日月火水木金土'[d.weekday],11,false,holiday(d)),...(d.event?[text(d.event,9,false,holiday(d))]:[])])],widths,widths.map((_,i)=>i<2?'#F3EFE7':'#E5ECEB'));
-   const rows=b.employees.map(p=>row([[text(p.employeeName,12,true),text(p.employeeCode,9)],[text(p.workDays,11)],...p.cells.map(c=>[text(c.text,12,true),...(c.rest?[text(c.rest,9)]:[]),...(c.note?[text(c.note,9)]:[])])],widths,widths.map((_,i)=>i===0?'#F3EFE7':'#FFFFFF')));
+   const rows=b.employees.map(p=>Object.assign(row([[text(p.employeeName,12,true),text(p.employeeCode,9)],[text(p.workDays,11)],...p.cells.map(c=>[text(c.state==='off'?'':c.text,12,true),...(c.rest?[text(c.rest,9)]:[]),...(c.note?[text(c.note,9)]:[])])],widths,widths.map((_,i)=>i===0?'#F3EFE7':'#FFFFFF')),{offColumns:p.cells.map(c=>c.state==='off')}));
    if(!rows.length)rows.push(row([[text(b.unpublished?'この期間は未公開です。':'表示できる確定従業員情報はありません。',12)]],[width-pad*2],['#FFFFFF']));
    return{title:b.title,headers,rows,height:32+headers.height+rows.reduce((h,r)=>h+r.height,0)+24};
   });
@@ -99,8 +101,8 @@
   function put(p,x,y){ctx.fillStyle=p.color;ctx.font=(p.bold?'600 ':'')+p.size+'px '+font;ctx.fillText(p.value,x,y);}
   put(text('TLH Work Time｜確定シフト '+r.month,22,true),pad,18);let y=52;
   for(const line of meta){put(text(line,12),pad,y);y+=16;}
-  put(text('勤務予定（日本時間）。休は予定休憩。勤務日数は各表内の予定日数。実際の打刻とは別です。',11),pad,y+4);y+=36;
-  function paint(row){let x=pad;row.prepared.forEach((parts,i)=>{ctx.fillStyle=row.backgrounds[i];ctx.fillRect(x,y,row.widths[i],row.height);ctx.strokeStyle='#7C908E';ctx.lineWidth=.7;ctx.strokeRect(x,y,row.widths[i],row.height);let ty=y+5;for(const p of parts)for(const line of p.lines){put({...p,value:line},x+5,ty);ty+=p.size+3;}x+=row.widths[i];});y+=row.height;}
+  put(text('勤務予定（日本時間）。斜線は公休。休は予定休憩。勤務日数は各表内の予定日数。実際の打刻とは別です。',11),pad,y+4);y+=36;
+  function paint(row){let x=pad;row.prepared.forEach((parts,i)=>{ctx.fillStyle=row.backgrounds[i];ctx.fillRect(x,y,row.widths[i],row.height);ctx.strokeStyle='#7C908E';ctx.lineWidth=.7;ctx.strokeRect(x,y,row.widths[i],row.height);if(row.offColumns?.[i-2]){ctx.beginPath();ctx.moveTo(x,y+row.height);ctx.lineTo(x+row.widths[i],y);ctx.strokeStyle='#495C63';ctx.lineWidth=1;ctx.stroke();}let ty=y+5;for(const p of parts)for(const line of p.lines){if(row.offColumns?.[i-2]&&line){ctx.fillStyle='#FFFFFF';ctx.fillRect(x+3,ty-1,row.widths[i]-6,p.size+4);}put({...p,value:line},x+5,ty);ty+=p.size+3;}x+=row.widths[i];});y+=row.height;}
   for(const section of sections){put(text(section.title,14,true),pad,y);y+=32;paint(section.headers);section.rows.forEach(paint);y+=24;}
   return canvas;
  }

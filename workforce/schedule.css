@@ -127,3 +127,10 @@
  #schedule-report .schedule-matrix thead { display:table-header-group; }
  #schedule-report .schedule-matrix tr { break-inside:avoid; }
 }
+
+/* 公休は背景画像でなくSVGの線にする。背景印刷OFFでもPDFの斜線が残る。
+ * 改造: 線色/太さはSVG属性、方向はrenderMatrixの座標。休暇/未設定へ適用しない。 */
+.schedule-matrix td[data-state="off"] { position:relative; }
+.schedule-matrix .matrix-off-line { position:absolute; inset:0; width:100%; height:100%; color:#495C63; pointer-events:none; }
+.schedule-matrix .matrix-off-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.schedule-matrix [data-state="off"] .matrix-public-note { position:relative; background:#EFF1EF; width:fit-content; }
