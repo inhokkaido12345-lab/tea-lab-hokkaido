@@ -35,6 +35,18 @@
     return {start:month+(period==='SECOND'?'-16':'-01'),end:month+'-'+String(period==='FIRST'?15:last).padStart(2,'0')};
   }
 
+  /** 表示専用の公表済み祝日。共有イベントの自由入力から祝日を推測しない。
+   * 出典: https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html （2026-11-11確認）。
+   * 改造: 毎年公表を確認してScheduleInputSheet.gsの一覧と同時更新する。
+   * 未公表年は推算せずnull。法定休日・割増賃金の計算には使わない。 */
+  function holidayName(day){
+    const years={
+    '2026':{'01-01':'元日','01-12':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-20':'春分の日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','05-06':'振替休日','07-20':'海の日','08-11':'山の日','09-21':'敬老の日','09-22':'国民の休日','09-23':'秋分の日','10-12':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'},
+    '2027':{'01-01':'元日','01-11':'成人の日','02-11':'建国記念の日','02-23':'天皇誕生日','03-21':'春分の日','03-22':'振替休日','04-29':'昭和の日','05-03':'憲法記念日','05-04':'みどりの日','05-05':'こどもの日','07-19':'海の日','08-11':'山の日','09-20':'敬老の日','09-23':'秋分の日','10-11':'スポーツの日','11-03':'文化の日','11-23':'勤労感謝の日'}
+  };
+    return years[day.slice(0,4)]?.[day.slice(5)] ?? (years[day.slice(0,4)] ? '' : null);
+  }
+
   /** 人が追う時刻だけ短くする。00分以外・翌日・中抜けを省略せず、計算値は変えない。 */
   function compactWorkText(intervals,day){return workText(intervals,day,'\n').replace(/(^|\n|–)(\d{2}):(\d{2})/g,(_m,p,h,m)=>p+Number(h)+(m==='00'?'':':'+m));}
 
@@ -47,7 +59,7 @@
     const employees=[...people].sort((a,b)=>a[0].localeCompare(b[0])),blocks=[];
     for(const part of ['FIRST','SECOND']){
       const half=periodRange(s.month,part),start=half.start>range.start?half.start:range.start,end=half.end<range.end?half.end:range.end;if(start>end)continue;
-      const days=[];for(let n=Number(start.slice(8));n<=Number(end.slice(8));n++){const day=s.month+'-'+String(n).padStart(2,'0');days.push({day,number:n,weekday:new Date(day+'T00:00:00Z').getUTCDay(),event:(events.get(day)||[]).map(e=>e.title+(e.note?'：'+e.note:'')).join('\n')});}
+      const days=[];for(let n=Number(start.slice(8));n<=Number(end.slice(8));n++){const day=s.month+'-'+String(n).padStart(2,'0');days.push({day,number:n,holiday:holidayName(day),weekday:new Date(day+'T00:00:00Z').getUTCDay(),event:(events.get(day)||[]).map(e=>e.title+(e.note?'：'+e.note:'')).join('\n')});}
       blocks.push({title:Number(s.month.slice(0,4))+'年'+Number(s.month.slice(5))+'月 '+Number(start.slice(8))+'〜'+Number(end.slice(8))+'日',unpublished:days.every(d=>unpublished.has(d.day)),days,employees:employees.map(([employeeCode,employeeName])=>{
         let workDays=0;const cells=days.map(({day})=>{const p=byPersonDay.get(employeeCode+'|'+day);
           if(unpublished.has(day))return{day,text:'未公開',rest:'',note:'',state:'unpublished'};
@@ -59,5 +71,5 @@
     }
     return{month:s.month,blocks};
   }
-  global.TlhScheduleView=Object.freeze({groupByDay,workText,periodRange,compactWorkText,matrix});
+  global.TlhScheduleView=Object.freeze({groupByDay,workText,periodRange,holidayName,compactWorkText,matrix});
 })(window);

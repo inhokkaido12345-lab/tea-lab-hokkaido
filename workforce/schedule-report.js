@@ -56,7 +56,7 @@
    const head=el('thead',undefined,table),dates=el('tr',undefined,head),weekdays=el('tr',undefined,head),eventRow=el('tr',undefined,head);
    const name=el('th','氏名',dates);name.setAttribute('rowspan','3');name.setAttribute('scope','col');name.className='matrix-person';
    const count=el('th','勤務\n日数',dates);count.setAttribute('rowspan','3');count.setAttribute('scope','col');count.className='matrix-count';
-   for(const d of block.days){for(const [row,label] of [[dates,String(d.number)],[weekdays,'日月火水木金土'[d.weekday]],[eventRow,d.event]]){const th=el('th',label,row);th.dataset.weekday=String(d.weekday);th.setAttribute('scope','col');if(row===dates)th.dataset.day=d.day;if(row===eventRow)th.className='matrix-event';}}
+   for(const d of block.days){for(const [row,label] of [[dates,String(d.number)],[weekdays,'日月火水木金土'[d.weekday]],[eventRow,d.event]]){const th=el('th',label,row);th.dataset.weekday=String(d.weekday);if(d.holiday){th.dataset.holiday='true';th.title=d.holiday;}th.setAttribute('scope','col');if(row===dates)th.dataset.day=d.day;if(row===eventRow)th.className='matrix-event';}}
    const body=el('tbody',undefined,table);
    for(const person of block.employees){const tr=el('tr',undefined,body);if(person.employeeCode===ownCode)tr.className='matrix-own';
     const label=el('th',undefined,tr);label.className='matrix-person';label.setAttribute('scope','row');el('strong',person.employeeName,label);el('small',person.employeeCode+(person.employeeCode===ownCode?' / 自分':''),label);

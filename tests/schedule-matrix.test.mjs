@@ -16,3 +16,11 @@ test('leap and common February, thirty-first and second-half views retain every 
  for(const [month,last] of [['2028-02',29],['2026-02',28],['2026-12',31]]){const m=view.matrix({month,plans:[],events:[]});assert.equal(m.blocks.flatMap(b=>b.days).length,last);assert.equal(m.blocks.at(-1).days.at(-1).number,last);}
  const m=view.matrix({month:'2026-11',period:'SECOND',plans:[],events:[]});assert.equal(m.blocks.length,1);assert.equal(m.blocks[0].days[0].number,16);
 });
+
+test('published holidays include substitute holidays and do not infer holidays from events',()=>{
+ assert.equal(view.holidayName('2026-11-03'),'文化の日');assert.equal(view.holidayName('2026-11-23'),'勤労感謝の日');
+ assert.equal(view.holidayName('2026-05-06'),'振替休日');assert.equal(view.holidayName('2027-03-22'),'振替休日');
+ assert.equal(view.holidayName('2028-11-03'),null);
+ const m=view.matrix({month:'2026-11',plans:[],events:[{day:'2026-11-04',title:'文化の日'}]});
+ assert.equal(m.blocks[0].days[2].holiday,'文化の日');assert.equal(m.blocks[1].days[7].holiday,'勤労感謝の日');assert.equal(m.blocks[0].days[3].holiday,'');
+});
