@@ -109,7 +109,7 @@
 @media print{
  @page { size:A4 landscape; margin:8mm; }
  #schedule-report .schedule-matrix-scroll { overflow:visible; margin:0 0 5mm; padding:0; }
- #schedule-report table.schedule-matrix { width:100%; min-width:0; table-layout:fixed; font-size:8pt; }
+ #schedule-report table.schedule-matrix { width:100%; min-width:0; table-layout:fixed; font-size:8pt; line-height:1.2; }
  #schedule-report .schedule-matrix caption { font-size:10pt; padding:2mm 0; }
  #schedule-report .schedule-matrix th,#schedule-report .schedule-matrix td { padding:1mm .6mm; border-color:#687A78; white-space:pre-line; }
  #schedule-report .schedule-matrix .matrix-person { position:static; width:30mm; padding-left:1.5mm; }
