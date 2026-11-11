@@ -2,6 +2,8 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 test('status remedies distinguish uncertain writes, expired login and ordinary reads without side effects',()=>{
  const context=vm.createContext({window:{}});vm.runInContext(fs.readFileSync(new URL('../workforce/status-guidance.js',import.meta.url),'utf8'),context);const guide=context.window.TlhStatusGuidance.guidance;
  assert.match(guide('保存結果を確認できません。同じ操作で再確認してください。'),/送信ボタンを押し直さず/);
+ assert.match(guide('応答を確認できません。記録の変更は行っていません。'),/更新／再読み込み/);
+ assert.doesNotMatch(guide('応答を確認できません。記録の変更は行っていません。'),/同じ操作/);
  assert.match(guide('LINEでログインし直してください。'),/元の画面/);
  assert.match(guide('シフトを取得できませんでした。'),/通信状況/);
  assert.match(guide('入力シートに修正が必要な箇所が5件あります。'),/表示されたセル/);
