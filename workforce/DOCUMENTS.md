@@ -9,6 +9,7 @@
 | 従業員の操作 | [従業員ヘルプ](employee-help.html) |
 | 管理者の操作 | [管理者ガイド](admin-guide.html) |
 | シフト運用/二分類/入力 | [SCHEDULE](SCHEDULE.md) / [SCHEDULE-MANAGEMENT](SCHEDULE-MANAGEMENT.md) / [SHEET-INPUT](SHEET-INPUT.md) |
+| 確定シフトのPDF/PNG/CSV・配色 | [SHIFT-EXPORT](SHIFT-EXPORT.md) |
 | シフトの責務・魔改造 | [SHIFT-MAINTENANCE](SHIFT-MAINTENANCE.md) |
 | 公開URL・LINE・PWA | [URL-MIGRATION](URL-MIGRATION.md) / [PWA](PWA.md) |
 | 起動・読取・性能 | [STARTUP](STARTUP.md) / [AUTO-READ](AUTO-READ.md) / [PERFORMANCE](PERFORMANCE.md) |

@@ -5,7 +5,7 @@
 - 対象は従業員情報・出退勤・シフトのWeb。POS/顧客サイト/在庫本体の別作業を混ぜない。
 - 公開入口は https://tealabhokkaido.com/software/worktime/ 。編集元/共有資産はworkforce、software/worktimeはscripts/sync-worktime-url.pyの生成HTML。GAS編集画面・生成物の手修正は禁止。コード正本はGitHub main、シフト入力データの正本は専用Sheet。
 - 現在の事実はCURRENT-STATUS.md、操作はemployee-help.html/admin-guide.html、保守はREADME.mdとDOCUMENTS.mdを優先。historyや日付付き改修記録を現在の操作指示に使わない。
-- 最終確認のGAS v82、既存の通常打刻受付ONを維持する。復旧/一般登録/運営専用設定が有効な意味ではない。新たな公開・実データ・権限・受付の変更は承認範囲を確認し、新しい公開の確認を省略しない。
+- 2026-11-11の最終確認のGAS v88、既存の通常打刻受付ONを維持する。復旧/一般登録/運営専用設定が有効な意味ではない。新たな公開・実データ・権限・受付の変更は承認範囲を確認し、新しい公開の確認を省略しない。
 - 既存の未コミット変更、他サービスの作業、sourcesの参照資料を破棄・上書きしない。新しい外部サービスを追加しない。
 
 ## 認証・保存・会社店舗

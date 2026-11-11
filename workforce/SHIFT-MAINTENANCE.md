@@ -9,7 +9,7 @@
 | schedule.html / schedule.js | 本人の月暦・希望/変更申請・同意 | 本人シフトの操作/読取が停止 |
 | admin-schedule.html / schedule-management.js | 二分類の管理、シート作成/READ/確認/反映/公開、希望受付/承認 | 管理シフトが停止。原打刻は別 |
 | schedule-management-contract.js | シート/管理応答の構造・月・社員・digest検査 | 未検証データを表示しない境界が失われる |
-| schedule-view.js / schedule-report.js | 取得済みデータの索引/JST表示、共有DTOからのPDF/CSV | 表示/出力が停止。通信/認可は担当しない |
+| schedule-view.js / schedule-report.js | 取得済みデータの索引/JST表示、共有DTOからのPDF/PNG/CSV | 表示/出力が停止。通信/認可は担当しない |
 | schedule-workspace.js | 本人/管理の別フォーム・月・状態を既存LIFFへ接続 | 統合画面の接続が停止 |
 | scripts/sync-schedule-workspace.py | 単独の本人/管理ページからホームの2範囲を生成 | ホームへ修正が伝わらなくなる |
 | scripts/sync-worktime-url.py | 編集元から新URL用HTMLを生成 | 新URLへ修正が伝わらなくなる |
@@ -25,6 +25,8 @@ schedule-bulk*.jsとschedule-sheet.jsは旧client/互換検査用です。通常
 画面内編集や日別planの直接送信は現行管理手順ではありません。勤務/備考/用事等はシートで編集し、確定後の勤務変更は本人同意/管理者承認を経ます。月型の表示、希望受付の日付範囲、実打刻、給与の判定は別の概念です。
 
 一般従業員は本人申請と全員向け確定情報、管理者は固定認可済みの管理情報を扱います。管理HTMLが公開されていてもGASが毎回本人・最新role・店舗・対象を確認します。画面audienceやhidden解除を認可にしません。運営roleへ個別勤怠閲覧を暗黙継承させません。
+
+共有帳票の詳しい責務・改造/検査は[SHIFT-EXPORT](SHIFT-EXPORT.md)。
 
 ## 魔改造時の連動箇所
 
