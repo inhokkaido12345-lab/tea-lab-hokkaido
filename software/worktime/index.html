@@ -35,7 +35,7 @@
   -->
 
   <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="/workforce/app.css?v=20261111-status1">
-<link rel="stylesheet" href="/workforce/schedule.css?v=20261111-holiday1">
+<link rel="stylesheet" href="/workforce/schedule.css?v=20261111-off1">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="/software/worktime/"><span class="brand-mark" aria-hidden="true">TLH</span><span>Work Time</span></a><span class="account-label">LINEログイン<span>勤怠・シフト管理</span></span></header>
@@ -125,7 +125,7 @@
 <section class="management-section"><h2>自分の申請・本人同意の確認</h2><div id="schedule-requests" class="record-list"></div></section>
 <iframe id="schedule-frame" name="tlhScheduleFrame" title="シフトの署名付き応答" hidden></iframe>
 <!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
-<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。時刻は日本時間、休は予定休憩です。勤務日数は各表の期間内の勤務予定日数です。公休・予定未設定・未公開は別です。</p><div id="schedule-report-rows"></div></section>
+<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。時刻は日本時間、休は予定休憩です。勤務日数は各表の期間内の勤務予定日数です。斜線は公休です。予定未設定・未公開とは別です。</p><div id="schedule-report-rows"></div></section>
 </div>
 <!-- schedule-workspace:end -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
@@ -438,8 +438,8 @@
   <script src="/workforce/auto-read.js?v=20261110-read-priority1"></script>
   <script src="/workforce/account-info.js?v=20261105-more1"></script>
   <script src="/workforce/schedule-view.js?v=20261111-holiday1"></script>
-  <script src="/workforce/schedule-report.js?v=20261111-png1"></script>
-  <script src="/workforce/schedule.js?v=20261111-matrix1"></script>
+  <script src="/workforce/schedule-report.js?v=20261111-off1"></script>
+  <script src="/workforce/schedule.js?v=20261111-off1"></script>
   <script src="/workforce/schedule-management-contract.js?v=20261111-issues1"></script>
   <script src="/workforce/schedule-management.js?v=20261111-issues1"></script>
   <script src="/workforce/schedule-workspace.js?v=20261110-lazy-init1"></script>

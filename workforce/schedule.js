@@ -180,7 +180,7 @@
         const shared=wholeMonth()?sharedMonth():{month:s.month,period:s.period,plans:s.plans,events:s.events,unpublishedDays};
         n.calendar.className='schedule-calendar schedule-month-calendar schedule-matrix-calendar';
         global.TlhScheduleReport.renderMatrix(n.calendar,global.TlhScheduleView.matrix(shared),s.employeeCode);
-        el('p','時刻は日本時間。休は予定休憩。勤務日数は表の期間内の勤務予定日数です。公休・予定未設定・未公開は別です。横にスクロールして確認できます。',n.calendar).className='footnote';
+        el('p','時刻は日本時間。休は予定休憩。勤務日数は表の期間内の勤務予定日数です。斜線は公休です。予定未設定・未公開とは別です。横にスクロールして確認できます。',n.calendar).className='footnote';
         // 本人限定の用事/非公開メモは共有表の外へ。印刷用modelには渡さない。
         const own=monthSnapshots?['FIRST','SECOND'].flatMap(k=>monthSnapshots[k].ownPlans):s.ownPlans;
         if(own.length){const details=el('details',undefined,n.calendar);details.className='tool-help';el('summary','自分の用事・特記事項（本人限定）',details);for(const p of own){if(p.employeeCode!==s.employeeCode)continue;el('h3',p.day,details);el('p',planText(p.plan),details);}}

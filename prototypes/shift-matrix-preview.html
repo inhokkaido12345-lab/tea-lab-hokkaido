@@ -2,7 +2,7 @@
 <link rel="stylesheet" href="../workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="../workforce/app.css"><link rel="stylesheet" href="../workforce/schedule.css">
 <body class="secondary-page schedule-page"><main><h1>シフト表の表示見本</h1><p>架空の従業員・予定です。保存・認証・実データへの通信はありません。</p><div id="demo-matrix" class="schedule-matrix-calendar"></div>
 <button id="schedule-png" disabled>PNG保存（架空データ）</button><button id="schedule-print" hidden>印刷</button><button id="schedule-csv" hidden>CSV</button><p id="schedule-export-status" hidden></p>
-<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>時刻は日本時間。休は予定休憩。勤務日数は各表の期間内の勤務予定日数です。公休・予定未設定・未公開は別です。</p><div id="schedule-report-rows"></div></section></main>
+<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>時刻は日本時間。休は予定休憩。勤務日数は各表の期間内の勤務予定日数です。斜線は公休です。予定未設定・未公開とは別です。</p><div id="schedule-report-rows"></div></section></main>
 <script src="../workforce/schedule-view.js"></script><script src="../workforce/schedule-report.js"></script><script>
 const s={month:'2026-11',period:'MONTH',phase:'PUBLISHED',publishedAt:'2026-11-10T03:00:00Z',plans:[],events:[{day:'2026-11-03',title:'文化の日',note:''},{day:'2026-11-23',title:'勤労感謝の日',note:''}]};
 for(let e=0;e<7;e++)for(let d=1;d<=30;d++){
