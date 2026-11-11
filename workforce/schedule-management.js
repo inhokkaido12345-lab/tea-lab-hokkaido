@@ -137,6 +137,10 @@
         if(request.command==='sheetRead'&&reply.code==='SCHEDULE_INVALID'&&value){
           const format=value.inputIssues.filter(v=>v.kind==='WORK_FORMAT').map(v=>v.cell),rule=value.inputIssues.filter(v=>v.kind==='PLAN_RULE').map(v=>v.cell);
           n.status.textContent='入力シートに修正が必要な箇所が'+value.issueCount+'件あります。'+(format.length?' 時刻の書式：'+format.join('、')+'。09:00-18:00/60 の形式で入力してください（最後は休憩分数）。':'')+(rule.length?' 勤務条件：'+rule.join('、')+'。出退勤の順序・勤務の重複・休憩分数・休暇との重複・備考の長さを確認してください。':'')+(value.issueCount>20?' 先頭20件を表示しています。':'')+' シートを直してから、もう一度「下書きを公開する／シートの変更を反映する」を押してください。今回は取込み・公開していません。';
+        }else if(reply.code==='ENROLLMENT_BUSY'){
+          // Lock未取得は開始前の拒否。直前の別操作まで未保存と断定せず、READ/保存を分けて案内する。
+          n.status.textContent=READS.has(request.command)?(request.command==='sheetRead'?'差分確認の読取り':'最新状態の読取り')+'を開始できませんでした。別の処理がデータを保護中です。この操作では取込み・公開は行っていません。しばらく待って「再読み込み」を押し、表示後にもう一度公開を確認してください。':
+            '別の処理がデータを保護中のため、今回の操作は開始できませんでした。前の操作の保存結果が不明な場合は、その同じ操作で結果を確認してください。それ以外は、しばらく待って「再読み込み」から最新状態を確認してください。';
         }else n.status.textContent=messages[reply.code];return;
       }
       uncertain=null;failed=false;finish();
