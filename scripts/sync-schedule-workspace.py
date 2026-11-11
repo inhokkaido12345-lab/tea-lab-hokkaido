@@ -23,7 +23,7 @@ def main(name, offset=0):
 employee = main('schedule.html')
 employee = employee.replace('<button id="schedule-refresh" type="button" disabled>最新の状態に更新</button>', '<button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button>')
 admin = main('admin-schedule.html', offset=1)
-navigation = '<nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav>'
+navigation = '<nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">全員のシフト表</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav>'
 employee = employee.replace('<h1>月間シフト・希望の提出</h1>', '<h1>月間シフト・希望</h1>')
 employee = employee.replace('</div></div>', '</div></div>' + navigation + '<p id="schedule-draft-notice" class="footnote" role="status" hidden></p>', 1)
 employee_block = ('<!-- schedule-workspace:start -->\n'

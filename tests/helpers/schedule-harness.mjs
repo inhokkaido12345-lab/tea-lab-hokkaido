@@ -17,6 +17,7 @@ export function scheduleUiHarness(audience='employee',options={}){
  async function reply(request,data,code='SCHEDULE_READY',patch={},source=n('frame').contentWindow){
   const d={type:'TLH_BRIDGE_SCHEDULE',action:'bridgeScheduleV1',command:request.command,nonce:request.nonce,code,data:typeof data==='string'?data:JSON.stringify(data)};d.mac=createHmac('sha256',request.responseKey).update([d.type,d.action,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');await events.message({source,origin:'null',data:{...d,...patch}});
  }
- return{api,n,sent,events,timers,window,liff,reply,click:k=>n(k).events.click(),snapshot:()=>snapshot(audience),module:window.TlhSchedule};
+ const descend=node=>[node,...node.children.flatMap(descend)];
+ return{api,n,sent,events,timers,window,liff,reply,calendarDays:()=>descend(n('calendar')).filter(node=>node.tagName==='th'&&node.dataset.day),click:k=>n(k).events.click(),snapshot:()=>snapshot(audience),module:window.TlhSchedule};
 }
 export function snapshot(audience='employee'){return{version:1,month:'2026-11',monthRevision:1,phase:'COLLECTING',deadline:'2026-11-20T00:00:00.000Z',serverNow:'2026-11-04T03:00:00.000Z',admin:audience==='admin',employeeCode:audience==='employee'?'SCH001':'',employees:audience==='admin'?[{employeeCode:'SCH001',employeeName:'架空社員'}]:[],plans:[],ownPlans:[],drafts:[],requests:[],events:[],draftEvents:[]};}
