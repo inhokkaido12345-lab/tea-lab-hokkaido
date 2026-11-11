@@ -37,6 +37,7 @@
  });
  global.TlhInventoryLogin=Object.freeze({
   getToken:()=>stopped?null:token,
+  clearToken:()=>{token=null;},
   login(){
    if(stopped)return Promise.reject(Error('PAGE_CLOSED'));
    if(pending?.popup?.closed)finish('LOGIN_UNAVAILABLE');
