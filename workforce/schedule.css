@@ -134,3 +134,10 @@
 .schedule-matrix .matrix-off-line { position:absolute; inset:0; width:100%; height:100%; color:#495C63; pointer-events:none; }
 .schedule-matrix .matrix-off-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 .schedule-matrix [data-state="off"] .matrix-public-note { position:relative; background:#EFF1EF; width:fit-content; }
+
+/* PDFも画面の色分けを維持。ブラウザが省インクで背景を省くのを抑える。
+ * 印刷画面の利用者設定が優先される環境は「背景のグラフィック」もONにする。
+ * PNGの同色対応はdrawPng。色で公休/勤務/未設定の保存区分を決めない。 */
+@media print {
+ #schedule-report .schedule-matrix,#schedule-report .schedule-matrix * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+}

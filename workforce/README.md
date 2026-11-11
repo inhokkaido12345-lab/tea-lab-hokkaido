@@ -88,3 +88,5 @@ node --test tests/*.mjs
 PNG出力: 従業員シフトの「PNG保存」はPDFと同じ共有matrixを端末内のCanvasで画像化する。外部サービス・新通信・保存先の書換えなし。氏名/時刻/休憩/公開備考を表示し、「共有事項：」の接頭辞は省く。画像が端末の安全上限を超える場合はPDFを案内。再読取・退場中の生成結果は破棄する。見た目の改造はschedule-report.jsのdrawPng、画面/PDFはrenderMatrixとschedule.cssを確認。共有情報の選別はbuild/matrixを維持する。
 
 確定シフトの公休表示: アプリ/PDFはSVG、PNGはCanvasの斜線で表示。読み上げには公休の文字を残す。休暇・予定未設定・未公開・勤務0時間を公休へ変換しない。CSVと保存区分は従来どおり「公休」。公開備考も保持する。
+
+共有出力の配色: PNGも画面と同じ日付/曜日 #E5EBE9、イベント #FFF7DF、公休 #EFF1EF、勤務 #FFFDFA、未設定/未公開・氏名/日数 #F3EFE7 を使用する。備考の斜線マスクもセルの色を維持。PDFはprint-color-adjust:exactを指定するが、印刷環境で背景が消える場合は「背景のグラフィック」をONにする。PNGは印刷設定に依存しない。改造時はschedule.cssとdrawPngを同時確認する。

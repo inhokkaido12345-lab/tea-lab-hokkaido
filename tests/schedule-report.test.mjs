@@ -26,8 +26,8 @@ test('both pages use dedicated shared-only print section; private forms and scre
 });
 
 function fakeCanvas(){
- let strokes=0;const drawn=[],context={measureText:s=>({width:[...String(s)].length*7}),scale(){},beginPath(){},moveTo(){},lineTo(){},stroke(){strokes++;},fillRect(){},strokeRect(){},fillText(s){drawn.push(s);}};
- return{get strokes(){return strokes;},drawn,width:0,height:0,getContext:()=>context,toBlob(done){done(new Blob(['fake png'],{type:'image/png'}));}};
+ let strokes=0;const fills=[],drawn=[],context={measureText:s=>({width:[...String(s)].length*7}),scale(){},beginPath(){},moveTo(){},lineTo(){},stroke(){strokes++;},fillRect(){fills.push(this.fillStyle);},strokeRect(){},fillText(s){drawn.push(s);}};
+ return{get strokes(){return strokes;},fills,drawn,width:0,height:0,getContext:()=>context,toBlob(done){done(new Blob(['fake png'],{type:'image/png'}));}};
 }
 test('PNG retains shared dates, shifts and wrapped notes without private fields or redundant prefix',()=>{
  const h=scheduleUiHarness(),s=shared(h),canvas=fakeCanvas();s.plans[0].publicNote='長い公開備考'.repeat(18);
@@ -65,4 +65,12 @@ test('public off is diagonal only in visual outputs; leave, unknown days, public
  assert.equal(nodes.filter(n=>n.className==='matrix-off-label').length,1);assert.match(text(h.n('report-rows')),/帰省/);
  h.window.TlhScheduleReport.drawPng(canvas,report);assert.equal(canvas.strokes,1);assert.ok(canvas.drawn.includes('帰省'));assert.ok(canvas.drawn.includes('休暇'));assert.ok(!canvas.drawn.includes('公休'));
  assert.match(h.window.TlhScheduleReport.csv(report),/公休/);assert.equal(JSON.stringify(s),before);
+});
+
+test('PNG matches screen colors for headers, event row, off days, working days and unspecified dates',()=>{
+ const h=scheduleUiHarness(),s=shared(h),base=s.plans[0];s.plans.push({...base,day:'2026-11-06',workIntervals:[],periods:[],plannedMinutes:0,leaveType:'PUBLIC_OFF',publicNote:'公休の備考'});
+ const canvas=fakeCanvas();h.window.TlhScheduleReport.drawPng(canvas,h.window.TlhScheduleReport.build(s));
+ for(const color of ['#E5EBE9','#FFF7DF','#EFF1EF','#FFFDFA','#F3EFE7'])assert.ok(canvas.fills.includes(color),color);
+ assert.match(fs.readFileSync(new URL('../workforce/schedule.css',import.meta.url),'utf8'),/print-color-adjust:exact/);
+ assert.equal(canvas.strokes,1);assert.ok(canvas.drawn.join('').includes('公休の備考'));
 });

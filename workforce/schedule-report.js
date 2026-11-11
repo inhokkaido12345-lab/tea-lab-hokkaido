@@ -89,10 +89,12 @@
   }
   const sections=r.matrix.blocks.map(b=>{
    const dayWidth=(width-pad*2-person-count)/b.days.length,widths=[person,count,...b.days.map(()=>dayWidth)],holiday=d=>d.holiday||d.weekday===0?'#8E3F35':d.weekday===6?'#285E94':'#252829';
-   const headers=row([[text('氏名',12,true)],[text('勤務\n日数',10,true)],...b.days.map(d=>[text(d.number,13,true,holiday(d)),text('日月火水木金土'[d.weekday],11,false,holiday(d)),...(d.event?[text(d.event,9,false,holiday(d))]:[])])],widths,widths.map((_,i)=>i<2?'#F3EFE7':'#E5ECEB'));
-   const rows=b.employees.map(p=>Object.assign(row([[text(p.employeeName,12,true),text(p.employeeCode,9)],[text(p.workDays,11)],...p.cells.map(c=>[text(c.state==='off'?'':c.text,12,true),...(c.rest?[text(c.rest,9)]:[]),...(c.note?[text(c.note,9)]:[])])],widths,widths.map((_,i)=>i===0?'#F3EFE7':'#FFFFFF')),{offColumns:p.cells.map(c=>c.state==='off')}));
+   const headers=row([[text('氏名',12,true)],[text('勤務\n日数',10,true)],...b.days.map(d=>[text(d.number,13,true,holiday(d)),text('日月火水木金土'[d.weekday],11,false,holiday(d))])],widths,widths.map((_,i)=>i<2?'#F3EFE7':'#E5EBE9'));
+   // アプリの見出し/イベント/勤務/公休/未設定色をschedule.cssと揃える。個人の強調色は共有帳票へ持ち込まない。
+   const eventRow=row([[text('',9)],[text('',9)],...b.days.map(d=>[text(d.event,9,false,holiday(d))])],widths,widths.map((_,i)=>i<2?'#F3EFE7':'#FFF7DF'));
+   const rows=b.employees.map(p=>Object.assign(row([[text(p.employeeName,12,true),text(p.employeeCode,9)],[text(p.workDays,11)],...p.cells.map(c=>[text(c.state==='off'?'':c.text,12,true),...(c.rest?[text(c.rest,9)]:[]),...(c.note?[text(c.note,9)]:[])])],widths,widths.map((_,i)=>i<2?'#F3EFE7':p.cells[i-2].state==='off'?'#EFF1EF':['unset','unpublished'].includes(p.cells[i-2].state)?'#F3EFE7':'#FFFDFA')),{offColumns:p.cells.map(c=>c.state==='off')}));
    if(!rows.length)rows.push(row([[text(b.unpublished?'この期間は未公開です。':'表示できる確定従業員情報はありません。',12)]],[width-pad*2],['#FFFFFF']));
-   return{title:b.title,headers,rows,height:32+headers.height+rows.reduce((h,r)=>h+r.height,0)+24};
+   return{title:b.title,headers,eventRow,rows,height:32+headers.height+eventRow.height+rows.reduce((h,r)=>h+r.height,0)+24};
   });
   const meta=lines('対象期間：'+r.rangeStart+'〜'+r.rangeEnd+'／最終更新：'+stamp(r.publishedAt)+'（日本時間）',width-pad*2,12);
   const height=100+meta.length*16+sections.reduce((h,s)=>h+s.height,0)+40,scale=2;
@@ -102,8 +104,8 @@
   put(text('TLH Work Time｜確定シフト '+r.month,22,true),pad,18);let y=52;
   for(const line of meta){put(text(line,12),pad,y);y+=16;}
   put(text('勤務予定（日本時間）。斜線は公休。休は予定休憩。勤務日数は各表内の予定日数。実際の打刻とは別です。',11),pad,y+4);y+=36;
-  function paint(row){let x=pad;row.prepared.forEach((parts,i)=>{ctx.fillStyle=row.backgrounds[i];ctx.fillRect(x,y,row.widths[i],row.height);ctx.strokeStyle='#7C908E';ctx.lineWidth=.7;ctx.strokeRect(x,y,row.widths[i],row.height);if(row.offColumns?.[i-2]){ctx.beginPath();ctx.moveTo(x,y+row.height);ctx.lineTo(x+row.widths[i],y);ctx.strokeStyle='#495C63';ctx.lineWidth=1;ctx.stroke();}let ty=y+5;for(const p of parts)for(const line of p.lines){if(row.offColumns?.[i-2]&&line){ctx.fillStyle='#FFFFFF';ctx.fillRect(x+3,ty-1,row.widths[i]-6,p.size+4);}put({...p,value:line},x+5,ty);ty+=p.size+3;}x+=row.widths[i];});y+=row.height;}
-  for(const section of sections){put(text(section.title,14,true),pad,y);y+=32;paint(section.headers);section.rows.forEach(paint);y+=24;}
+  function paint(row){let x=pad;row.prepared.forEach((parts,i)=>{ctx.fillStyle=row.backgrounds[i];ctx.fillRect(x,y,row.widths[i],row.height);ctx.strokeStyle='#7C908E';ctx.lineWidth=.7;ctx.strokeRect(x,y,row.widths[i],row.height);if(row.offColumns?.[i-2]){ctx.beginPath();ctx.moveTo(x,y+row.height);ctx.lineTo(x+row.widths[i],y);ctx.strokeStyle='#495C63';ctx.lineWidth=1;ctx.stroke();}let ty=y+5;for(const p of parts)for(const line of p.lines){if(row.offColumns?.[i-2]&&line){ctx.fillStyle=row.backgrounds[i];ctx.fillRect(x+3,ty-1,row.widths[i]-6,p.size+4);}put({...p,value:line},x+5,ty);ty+=p.size+3;}x+=row.widths[i];});y+=row.height;}
+  for(const section of sections){put(text(section.title,14,true),pad,y);y+=32;paint(section.headers);paint(section.eventRow);section.rows.forEach(paint);y+=24;}
   return canvas;
  }
  // CSVは引用符だけでは数式実行を防げない。氏名/公開メモにも式の開始文字が入り得る。
