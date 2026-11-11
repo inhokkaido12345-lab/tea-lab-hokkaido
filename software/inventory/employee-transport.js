@@ -13,6 +13,7 @@
   const random = size => Array.from(crypto.getRandomValues(new Uint8Array(size)),
     byte => byte.toString(16).padStart(2, '0')).join('');
   let stopped = false;
+  let configured = false;
   let pending = null;
   const login = document.getElementById('line-login');
   const frame = document.getElementById('inventory-api-frame');
@@ -21,6 +22,7 @@
     if (global !== global.top || global.location.origin !== 'https://tealabhokkaido.com' ||
         !['/software/inventory/','/inventory/','/workforce/inventory/'].includes(global.location.pathname) ||
         !config || !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(config.apiUrl)) throw Error('NOT_CONFIGURED');
+    configured=true;
     if(global.TlhInventoryLogin){showLogin();return;}
     if (!global.liff) throw Error('LOGIN_UNAVAILABLE');
     await Promise.race([global.liff.init({liffId: config.liffId}),
@@ -33,12 +35,14 @@
 
   login.onclick = async () => {
     try {
-      await ready;
+      // 独立PWAではclickの同期処理中にpopupを開き、ブラウザーの操作許可を失わない。
+      if(!configured)await ready;
       if (stopped) return;
       if(global.TlhInventoryLogin){
         await global.TlhInventoryLogin.login();
         if(stopped)return;login.hidden=true;document.getElementById('refresh').click();return;
       }
+      await ready;
       if (global.liff.isInClient()) {
         global.location.href = 'https://miniapp.line.me/' + config.liffId + '/inventory/';
         return;
@@ -94,7 +98,10 @@
       const valid = await crypto.subtle.verify('HMAC', key,
         Uint8Array.from(data.mac.match(/../g), byte => parseInt(byte, 16)), encoder.encode(text));
       if (!valid || stopped || pending !== current) return;
-      if (data.code === 'AUTH_REQUIRED') showLogin();
+      if (data.code === 'AUTH_REQUIRED') {
+        global.TlhInventoryLogin?.clearToken?.();storeContext=null;selectedStore=null;
+        clearStoreView();contextHost()?.replaceChildren();showLogin();
+      }
       if (data.code !== 'OK') {finish(null, {ok: false, code: data.code}); return;}
       finish(null, {ok: true, value: JSON.parse(data.data)});
     } catch (_error) { /* 未検証の結果は表示せず、元の期限で失敗にする。 */ }
@@ -193,5 +200,7 @@
     return result;
   }
 
-  global.TlhInventory = Object.freeze({request,readView});
+  // 未ログインは通常の開始状態。画面はこの時点ではACCOUNT/READを送らない。
+  const requiresLogin=()=>Boolean(global.TlhInventoryLogin&&!global.TlhInventoryLogin.getToken());
+  global.TlhInventory = Object.freeze({request,readView,requiresLogin});
 })(window);
