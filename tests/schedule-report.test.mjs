@@ -24,3 +24,33 @@ test('both pages use dedicated shared-only print section; private forms and scre
  const read=name=>fs.readFileSync(new URL('../workforce/'+name,import.meta.url),'utf8');for(const page of ['schedule.html']){const html=read(page);assert.match(html,/class="secondary-page schedule-page"/);assert.match(html,/id="schedule-report" class="schedule-print-only" hidden/);assert.match(html,/schedule-report.js/);}
  assert.doesNotMatch(read('admin-schedule.html'),/schedule-report-title|schedule-csv/);assert.match(read('schedule.css'),/\.schedule-page main>\*\{display:none!important\}/);assert.match(read('schedule.css'),/#schedule-report:not\(\[hidden\]\)/);assert.doesNotMatch(read('schedule-report.js'),/fetch\(|localStorage|sessionStorage|innerHTML|sendBeacon/);
 });
+
+function fakeCanvas(){
+ const drawn=[],context={measureText:s=>({width:[...String(s)].length*7}),scale(){},fillRect(){},strokeRect(){},fillText(s){drawn.push(s);}};
+ return{drawn,width:0,height:0,getContext:()=>context,toBlob(done){done(new Blob(['fake png'],{type:'image/png'}));}};
+}
+test('PNG retains shared dates, shifts and wrapped notes without private fields or redundant prefix',()=>{
+ const h=scheduleUiHarness(),s=shared(h),canvas=fakeCanvas();s.plans[0].publicNote='長い公開備考'.repeat(18);
+ h.window.TlhScheduleReport.drawPng(canvas,h.window.TlhScheduleReport.build(s));
+ assert.equal(canvas.width,2400);assert.ok(canvas.height>0);const output=canvas.drawn.join('');
+ assert.match(output,/23–1（翌日）/);assert.match(output,/休15分/);assert.match(output,/架空イベント/);assert.match(output,/長い/);assert.doesNotMatch(output,/PRIVATE_MARKER|共有事項：/);
+ const before=canvas.height;s.plans[0].publicNote='短い';h.window.TlhScheduleReport.drawPng(canvas,h.window.TlhScheduleReport.build(s));assert.ok(canvas.height<before);
+});
+test('PNG needs verified publication and performs no new communication',async()=>{
+ const canvas=fakeCanvas(),h=scheduleUiHarness('employee',{createCanvas:()=>canvas});
+ assert.equal(h.n('png').disabled,true);await h.click('png');assert.equal(canvas.width,0);
+ await h.api.read();await h.reply(h.sent[0],shared(h));assert.equal(h.n('png').disabled,false);const count=h.sent.length;
+ await h.click('png');assert.equal(h.sent.length,count);assert.match(h.n('export-status').textContent,/PNGの保存を開始/);assert.equal(canvas.width,0);assert.equal(h.n('png').disabled,false);
+ h.events.pagehide();assert.equal(h.n('png').disabled,true);
+});
+test('refresh discards in-flight PNG and repeated clicks produce one conversion',async()=>{
+ const canvas=fakeCanvas();let finish,calls=0;canvas.toBlob=done=>{calls++;finish=done;};
+ const h=scheduleUiHarness('employee',{createCanvas:()=>canvas});await h.api.read();await h.reply(h.sent[0],shared(h));
+ const task=h.click('png');await h.click('png');assert.equal(calls,1);
+ await h.api.read();finish(new Blob(['png'],{type:'image/png'}));await task;
+ assert.equal(h.n('png').disabled,true);assert.doesNotMatch(h.n('export-status').textContent,/PNGの保存を開始/);
+});
+test('oversized PNG refuses allocation instead of dropping rows',()=>{
+ const h=scheduleUiHarness(),s=shared(h);s.plans=Array.from({length:300},(_,i)=>({...s.plans[0],employeeCode:'EMP'+i}));
+ assert.throws(()=>h.window.TlhScheduleReport.drawPng(fakeCanvas(),h.window.TlhScheduleReport.build(s)),/PNG_TOO_LARGE/);
+});
