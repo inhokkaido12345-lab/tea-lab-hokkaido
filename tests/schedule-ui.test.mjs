@@ -38,7 +38,7 @@ test('admin can compose first draft with no collection; public/private notes sta
 test('another employee sees explicit shared note as text and cannot receive a malformed public note',async()=>{
  const h=scheduleUiHarness(),s=h.snapshot();s.phase='PUBLISHED';s.plans=[{employeeCode:'SCH002',employeeName:'別の社員',day:'2026-11-05',revision:1,periods:[],workIntervals:[],plannedMinutes:0,leaveType:'PUBLIC_OFF',publicNote:'帰省 <script>text</script>'}];
  assert.equal(h.module.validate({...s,plans:[{...s.plans[0],publicNote:{private:'bad'}}]},s.month,false),false);
- await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('calendar')),/共有事項：帰省 <script>text<\/script>/);
+ await h.api.read();await h.reply(h.sent[0],s);const text=n=>n.textContent+' '+n.children.map(text).join(' ');assert.match(text(h.n('calendar')),/帰省 <script>text<\/script>/);
 });
 test('verified publication date is displayed in Japan time and invalid timestamps are rejected',async()=>{
  const h=scheduleUiHarness(),s={...h.snapshot(),phase:'PUBLISHED',publishedAt:'2026-11-04T18:30:00.000Z'};

@@ -84,3 +84,5 @@ node --test tests/*.mjs
 魔改造MAP：純粋な表model/時刻表記はschedule-view.js、共通table renderer/印刷はschedule-report.js、画面への組込みはschedule.js。氏名幅・週境界・A4横の寸法はschedule.css。HTML変更後は二つの同期scriptを実行し、node --test tests/*.mjsで検査します。前半/後半・2月末・未公開・非公開除外はschedule-matrix.test.mjs等で検査します。架空の表示見本はprototypes/shift-matrix-preview.html（?print=1で印刷CSS相当）。
 
 祝日の表示: アプリとPDFの表は公表済み2026・2027年の祝日・振替休日を日曜と同じ赤で表示する。土曜より祝日を優先し、自由入力の共有イベントから祝日を推測しない。追加年はschedule-view.jsとGASのScheduleInputSheet.gsを同時確認する。表示色は労務計算に使わない。
+
+PNG出力: 従業員シフトの「PNG保存」はPDFと同じ共有matrixを端末内のCanvasで画像化する。外部サービス・新通信・保存先の書換えなし。氏名/時刻/休憩/公開備考を表示し、「共有事項：」の接頭辞は省く。画像が端末の安全上限を超える場合はPDFを案内。再読取・退場中の生成結果は破棄する。見た目の改造はschedule-report.jsのdrawPng、画面/PDFはrenderMatrixとschedule.cssを確認。共有情報の選別はbuild/matrixを維持する。

@@ -105,7 +105,7 @@
 <div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label id="schedule-legacy-picker" hidden>過去のシフト表示<select id="schedule-scope" disabled><option value="FIRST">現在の月間シフト</option><option value="SECOND" hidden>現在の月間シフト（互換）</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
 <p class="footnote">カレンダー・申請一覧・共有出力は1日〜月末の月全体です。希望の日付から申請先を自動で選びます。スマホではカレンダーを横にスクロールできます。</p>
 <p id="schedule-status" role="status" aria-live="polite" aria-busy="true">LINE本人確認を待っています。</p><p id="schedule-summary"></p><p id="schedule-published-at" class="schedule-updated" aria-live="polite"></p>
-<section class="schedule-export"><h2>確定シフトの共有・印刷</h2><button id="schedule-print" type="button" disabled>印刷・PDF保存</button> <button id="schedule-csv" type="button" disabled>CSV保存</button><p id="schedule-export-status" role="status">確定シフトの取得後に出力できます。</p><p class="footnote">印刷画面で「PDFに保存」を選べます。保存したファイルをLINE・メールへ添付してください。LINE内で保存できない場合は通常のブラウザで開きます。非公開メモや未確定の希望は出力しません。</p></section>
+<section class="schedule-export"><h2>確定シフトの共有・印刷</h2><button id="schedule-print" type="button" disabled>印刷・PDF保存</button> <button id="schedule-png" type="button" disabled>PNG保存</button> <button id="schedule-csv" type="button" disabled>CSV保存</button><p id="schedule-export-status" role="status">確定シフトの取得後に出力できます。</p><p class="footnote">印刷画面で「PDFに保存」を選べます。PNG保存は同じ確定シフト表を画像にします。保存したファイルをLINE・メールへ添付してください。LINE内で保存できない場合は通常のブラウザで開きます。非公開メモや未確定の希望は出力しません。</p></section>
 <button id="schedule-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button>
 <p class="footnote">時刻は日本時間。希望の提出だけでは予定は確定しません。未設定の日を公休や0時間とみなしません。勤務予定は実際の打刻とは別です。</p>
 <section class="management-section" hidden><h2>期間の受付と確定公開</h2><fieldset id="schedule-month-form" disabled><label>この期間の希望締切（日本時間）<input id="schedule-deadline" type="datetime-local"></label><button id="schedule-month-save" type="button">この期間の希望受付・締切を設定</button></fieldset><button id="schedule-publish" type="button" disabled>この期間の下書きを確定公開</button><p class="footnote">締切後に公開できます。確定後の勤務変更は本人の申請または同意を経て承認します。未設定の日が残っている場合は確認してください。</p></section>
@@ -438,7 +438,7 @@
   <script src="auto-read.js?v=20261110-read-priority1"></script>
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261111-holiday1"></script>
-  <script src="schedule-report.js?v=20261111-holiday1"></script>
+  <script src="schedule-report.js?v=20261111-png1"></script>
   <script src="schedule.js?v=20261111-matrix1"></script>
   <script src="schedule-management-contract.js?v=20261111-issues1"></script>
   <script src="schedule-management.js?v=20261111-issues1"></script>
