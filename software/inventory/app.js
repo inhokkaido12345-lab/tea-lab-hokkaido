@@ -2,7 +2,7 @@
  * 連結画面：APIへ送信し、サーバーが保存後に検証した画面DTOを表示。旧APIだけ別READ。
  * 状態はサーバーが正本。DOMの数量を直接加算しない。
  * 概念：DTO/再送ID/通信結果不明。改造：行フォームはaddLine、描画はrender。
- * tokenはメモリだけ。入力やエラーにinnerHTMLを使わない。ローカル専用で本番認証はない。
+ * 入力やエラーにはtextContentを使う。認証は生成先のtransportが担当し、tokenを永続保存しない。
  * 削除すると連結画面の操作が停止。検証はHTTP試験とREADMEのブラウザ操作手順。
  */
 const $=id=>document.getElementById(id);
@@ -68,7 +68,48 @@ const measurementQuantity = (value,base='g') => base==='g'&&value<1000?quantityF
 const formatRecordedAt = value => value ? dateFormatter.format(new Date(value)) : '算出前';
 const calendarFormatter = new Intl.DateTimeFormat('ja-JP', {timeZone:'Asia/Tokyo',month:'numeric',day:'numeric'});
 const calendarDate = value => value ? calendarFormatter.format(new Date(value)) : '算出前';
-const message=t=>{$('status').textContent=t;};
+/** WorkTimeと同じ褐色の要確認表示。業務結果は変更せず、固定コードと次の操作を補う。
+ * 例外全文・token・入力値を診断欄へ出さない。保存結果不明では再送IDを維持する。
+ */
+const statusGuides={
+ AUTH_REQUIRED:['LINEでログインし直し、元の在庫画面へ戻ってください。','login'],
+ LOGIN_POPUP_BLOCKED:['このサイトのポップアップを許可し、「LINEでログイン」を押してください。','login'],
+ LOGIN_UNAVAILABLE:['通信状態を確認してLINEログインをやり直してください。','login'],
+ STORE_SELECTION_REQUIRED:['上部で店舗を選ぶか、作成・招待コードで参加してください。'],
+ FORBIDDEN:['利用するアカウントと店舗を確認し、店舗管理者へ所属・権限の確認を依頼してください。'],
+ OWNER_AUTHORIZATION_REQUIRED:['サービス管理者がGoogle連携の認可を確認する必要があります。'],
+ SAVE_UNKNOWN:['新しい保存を重ねず、「同じ操作を再確認」で保存済みか確認してください。','retry'],
+ TENANT_SAVE_UNKNOWN:['店舗の作成や参加を繰り返さず、画面の「同じ店舗操作の結果を確認」を押してください。'],
+ SAVE_VIEW_FAILED:['保存は完了しています。再登録せず、最新の記録を読み直してください。','refresh'],
+ CATALOG_SYNC_REQUIRED:['アプリの保存は完了しています。商品を再登録せず、一覧シートだけ再同期してください。','sync'],
+ CATALOG_CHANGED:['別の端末で更新されています。最新の情報を読み、変更内容を確認してから保存してください。','refresh'],
+ CONVERSION_CHANGED:['包装規格が変わっています。最新の情報を読み直してください。','refresh'],
+ BUSY:['他の処理が終わるのを待ち、最新状態を確認してください。','refresh'],
+ INPUT_REQUIRED:['入力欄の値・単位・必須項目を確認してから、もう一度保存してください。'],
+ LEDGER_REVIEW_REQUIRED:['原簿を手で変更・削除せず、サービス管理者へ確認コードを伝えてください。'],
+ LEDGER_LIMIT:['保存先の上限です。履歴を削除せず、管理者へ保存先の移行を依頼してください。'],
+ NOT_CONFIGURED:['サービスの接続設定を管理者へ確認してください。'],
+ SCHEMA_MISMATCH:['保存先の固定見出しや構成を管理者へ確認してください。'],
+ UNAVAILABLE:['通信状態を確認し、最新の記録を読み直してください。続く場合は確認コードを管理者へ伝えてください。','refresh'],
+};
+for(const code of ['OFFLINE','RPC_TIMEOUT','RPC_FAILED','AUTH_UNAVAILABLE','UI_ERROR','JS_SYNTAX','JS_REFERENCE','JS_TYPE','JS_START_FAILED'])statusGuides[code]=statusGuides.UNAVAILABLE;
+function message(text,code=''){
+ const node=$('status');node.textContent=text;
+ // 文言だけの既存入力エラーも補足する。成功・待機・通常のログイン案内はエラーにしない。
+ if(!code&&/保存結果.*不明|店舗操作の結果を確認できません/.test(text))code='SAVE_UNKNOWN';
+ if(!code&&/入力してください|確認してください|保存できません|無効・使用済み|までです/.test(text))code='INPUT_REQUIRED';
+ const safe=Object.hasOwn(statusGuides,code)?code:code?'INPUT_REQUIRED':'';
+ const unresolved=Boolean(pending&&safe),guide=unresolved?statusGuides.SAVE_UNKNOWN:statusGuides[safe];
+ node.className=guide?'status-needs-action':'';
+ const details=$('status-detail');if(!details)return;details.replaceChildren();details.hidden=!guide;
+ if(!guide)return;
+ details.append(el('p',guide[0]),el('p','確認コード：'+(unresolved?'SAVE_UNKNOWN':safe),'diagnostic-code'));
+ const action=guide[1],labels={login:'LINEでログイン',retry:'同じ操作を再確認',refresh:'最新の記録を読む',sync:'一覧シートへ再同期'};
+ if(action){const button=el('button',labels[action]);button.type='button';
+  button.onclick=()=>{if(busy)return;if(action==='login')$('line-login')?.onclick?.();else if(action==='retry')send();else if(action==='sync')send({type:'SYNC_CATALOG'});else refresh();};details.append(button);
+ }
+}
+globalThis.TlhInventoryStatus=Object.freeze({show:message});
 /** 通信中・読込未完了・結果不明を分ける。失敗後の再読取は必ず押せるようにする。 */
 function lock(value){busy=value;$('status').setAttribute('aria-busy',String(value));for(const b of document.querySelectorAll('button,input,select,textarea')){
  const recovery=['retry','refresh','line-login'].includes(b.id);
@@ -149,7 +190,7 @@ function renderOrderBuffer(container, item) {
   container.append(save);
 }
 
-/** 計測方式にかかわらず、投入量/日へ統一した予測と根拠を表示する。 */
+/** 基準単位/日へ統一した予測と根拠を表示する。g・mL・本数を混ぜない。 */
 function renderConsumption(card, item) {
   const forecast = item.forecast;
   card.append(el('p', forecastMessages[forecast.status] || forecast.status,
@@ -185,24 +226,6 @@ function renderConsumption(card, item) {
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
 }
 
-/** 共通数量入力。袋・個は換算版付きで送り、g/kgを含めサーバーが最終換算する。 */
-function measurementAmountField(container,item,label){
-  const input=appendNumberField(container,label,'');
-  const select=el('select','');select.setAttribute('aria-label',label+'：単位');
-  select.append(new Option('g','g'),new Option('kg','kg'));
-  for(const unit of item.units)select.append(new Option(unit.label+'（'+measurementQuantity(unit.baseQuantity,item.baseUnit)+'）','pack:'+unit.id));
-  container.append(select);
-  return {read(optional=false){
-    if(String(input.value).trim()===''){if(optional)return null;throw Error('量を入力してください');}
-    const value=Number(input.value);if(!Number.isFinite(value)||value<0)throw Error('量を確認してください');
-    if(select.value.startsWith('pack:')){
-      const unit=item.units.find(u=>u.id===select.value.slice(5));
-      if(!unit)throw Error('単位を選び直してください');
-      return {value,unit:'pack',unitId:unit.id,conversionVersion:unit.version};
-    }
-    return {value,unit:select.value};
-  }};
-}
 /** 日時入力は日本時間。記録した日時と実際に測った日時を区別する。 */
 function measurementTimeField(container,label,required=false){
   const wrapper=el('label',label),input=el('input','');input.type='datetime-local';input.step='60';
@@ -215,7 +238,7 @@ function measurementTimeField(container,label,required=false){
 }
 function sendMeasurement(makeCommand){try{send(makeCommand());}catch(error){message(error.message);}}
 
-/** 1つの計測を途中確認→使い切りへ更新する。棚卸の実在庫とは別の観測。 */
+/** 1包装の開始・全量の使い切り・取消。旧計測を閉じる読取互換もここで扱う。 */
 function renderSampleActions(card,item){
   const forecast=item.forecast;
   if(forecast.lastMeasuredAt)card.append(el('p','最後に使用量を確認した日時：'+formatRecordedAt(forecast.lastMeasuredAt),'muted'));
@@ -415,7 +438,8 @@ async function send(command){
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
-  pending=null;await load();message(errors[data.code]||'保存できませんでした：'+data.code);return;
+  // サーバーが明示的に拒否した保存は未確定ではない。続くREADの失敗と混同しない。
+  pending=null;try{await load();}catch{view=null;}message(errors[data.code]||'保存できませんでした。',data.code||'UNAVAILABLE');return;
  }
  saved=true;
  if(pending.type==='SAVE_ITEM'){catalogSelection=pending.itemId;catalogFilter=pending.catalog.status==='RETIRED'?'RETIRED':'CURRENT';}
@@ -424,10 +448,10 @@ async function send(command){
  pending=null;
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
- $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。');
+ $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
  }catch{
-  if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。');}
-  else{message('保存結果が不明です。同じ操作を再確認してください。');$('recovery').hidden=false;}
+  if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。','SAVE_VIEW_FAILED');}
+  else{message('保存結果が不明です。同じ操作を再確認してください。','SAVE_UNKNOWN');$('recovery').hidden=false;}
  }finally{lock(false);}
 }
 /** 仕入品フォームはタブを開くまで構築しない。DOMのみ保持し、端末保存はしない。 */
@@ -551,7 +575,7 @@ function renderCatalog(){
 $('receipt').onsubmit=e=>{e.preventDefault();const lines=[...$('lines').children].map(r=>r.requestLine());if(!lines.length){message('先に仕入品を登録して、入荷する品目を追加してください。');return;}send({type:'RECEIVE',receivedOn:$('day').value,lines,completeCaseId:$('complete').value||null});};
 $('retry').onclick=()=>send();
 const readErrors={STORE_SELECTION_REQUIRED:'店舗を選択するか、新しい店舗を作成・招待コードで参加してください。',OWNER_AUTHORIZATION_REQUIRED:'サービス所有者のGoogle連携認可が必要です。',AUTH_REQUIRED:'LINEでログインしてください。',AUTH_UNAVAILABLE:'TLHアカウントの照合に接続できません。',LOGIN_UNAVAILABLE:'LINEログインの準備に失敗しました。',OFFLINE:'オンライン接続が必要です。',NOT_CONFIGURED:'在庫サービスの接続設定が未完了です。管理者に連絡してください。',FORBIDDEN:'TLHアカウントと店舗への参加権限を確認してください。',SCHEMA_MISMATCH:'在庫データを読み取れません。管理者に連絡してください。',LEDGER_REVIEW_REQUIRED:'保存原簿の整合性を確認する必要があります。',RPC_TIMEOUT:'Googleから応答がありません。もう一度読み込んでください。',RPC_FAILED:'Googleへの接続に失敗しました。もう一度読み込んでください。'};
-const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('認証の有効期限が切れました。LINEでログインし直してください。'):message('在庫を読み込めません。'+(readErrors[e?.message]||'Googleの認可・試験用Sheetへのアクセスを確認し、もう一度読み込んでください。'));
+const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('認証の有効期限が切れました。LINEでログインし直してください。','AUTH_REQUIRED'):message('在庫を読み込めません。'+(readErrors[e?.message]||'通信状態を確認し、もう一度読み込んでください。'),Object.hasOwn(readErrors,e?.message)||Object.hasOwn(statusGuides,e?.message)?e.message:'UNAVAILABLE');
 /** 初回失敗からの復旧時も入力行を用意する。読取の度に入力中の行を増やさない。 */
 async function refresh(){
  if(busy)return;if(TlhInventory.requiresLogin()){view=null;message('LINEでログインして在庫を開いてください。');lock(false);return;}lock(true);message('在庫を読み込んでいます…');

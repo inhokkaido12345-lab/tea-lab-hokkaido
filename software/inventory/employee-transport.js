@@ -50,9 +50,9 @@
       if (global.liff.isLoggedIn()) global.liff.logout();
       global.liff.login({redirectUri: global.location.origin + global.location.pathname});
     } catch (error) {
-      document.getElementById('status').textContent = error?.message==='LOGIN_POPUP_BLOCKED'
+      status(error?.message==='LOGIN_POPUP_BLOCKED'
         ? 'LINE本人確認の画面を開けません。このサイトのポップアップを許可して、もう一度ログインしてください。'
-        : 'LINEログインを開始できません。通信状態を確認して再読み込みしてください。';
+        : 'LINEログインを開始できません。通信状態を確認して再読み込みしてください。',error?.message==='LOGIN_POPUP_BLOCKED'?'LOGIN_POPUP_BLOCKED':'LOGIN_UNAVAILABLE');
     }
   };
 
@@ -139,7 +139,7 @@
   let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false;
   const contextHost=()=>document.getElementById('inventory-stores');
   const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
-  const status=text=>{document.getElementById('status').textContent=text;};
+  const status=(text,code='')=>{if(global.TlhInventoryStatus)global.TlhInventoryStatus.show(text,code);else document.getElementById('status').textContent=text;};
   function clearStoreView(){
     for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview'])document.getElementById(id)?.replaceChildren();
   }
@@ -185,7 +185,7 @@
       }else{clearStoreView();document.getElementById('refresh').click();}
     }catch{
       uncertainTenant=true;
-      status('店舗操作の結果を確認できません。同じ操作を確認するまで、作成や参加を繰り返さないでください。');
+      status('店舗操作の結果を確認できません。同じ操作を確認するまで、作成や参加を繰り返さないでください。','TENANT_SAVE_UNKNOWN');
       const retry=node('button','同じ店舗操作の結果を確認');
       retry.onclick=async()=>{try{const reply=await request('TENANT',command);if(!reply.ok){status('操作を確認できませんでした。');return;}uncertainTenant=false;storeContext=reply.value;selectedStore=reply.value.storeId||selectedStore;renderStores();if(invitationCode)contextHost()?.appendChild(node('p','招待コード：'+invitationCode));else{clearStoreView();document.getElementById('refresh').click();}}catch{status('接続を確認して、同じ操作をもう一度確認してください。');}};
       contextHost()?.appendChild(retry);

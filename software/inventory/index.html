@@ -4,14 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
+<script>
+// 本体が起動しない場合も、例外全文を公開せず固定コードだけを表示する。
+(function(){
+ function report(code){var n=document.getElementById('status');if(!n)return;
+  if(window.TlhInventoryStatus)window.TlhInventoryStatus.show('画面処理を続けられません。',code);
+  else{n.className='status-needs-action';n.textContent='画面処理を開始できません。確認コード：'+code+'。画面を開き直してください。';}
+ }
+ window.addEventListener('error',function(e){if(!e.error)return;var codes={SyntaxError:'JS_SYNTAX',ReferenceError:'JS_REFERENCE',TypeError:'JS_TYPE'};report(codes[e.error.name]||'JS_START_FAILED');});
+ window.addEventListener('unhandledrejection',function(){report('JS_START_FAILED');});
+})();
+</script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css"><script src="config.js" defer></script><script src="employee-login.js?v=login-return-3" defer></script><script src="employee-transport.js?v=auth-start-1" defer></script><script src="app.js?v=auth-start-1" defer></script>
+<link rel="stylesheet" href="style.css?v=45a77efe7a9e"><script src="config.js" defer></script><script src="employee-login.js?v=45a77efe7a9e" defer></script><script src="employee-transport.js?v=45a77efe7a9e" defer></script><script src="app.js?v=45a77efe7a9e" defer></script>
 <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/workforce/">TLH Work Timeへ</a></header>
 <main>
 <aside>TLHアカウントでログインし、参加している店舗を選んで利用します。新しく使い始める品目は、規格を確認して棚卸または初回入荷を登録してください。<details><summary>ホーム画面への追加</summary><p>iPhoneはSafariの共有→ホーム画面に追加。AndroidはChromeのメニュー→ホーム画面に追加／アプリをインストール。オンライン接続が必要です。</p></details></aside><div id="inventory-stores" class="store-context"></div><button id="line-login" class="primary wide" hidden>LINEでログインして在庫を開く</button><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
 <div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
+<div id="status-detail" class="status-resolution" role="alert" hidden></div>
 <section id="stock">
 <div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
 <div id="overview" class="overview" aria-label="在庫の概況"></div>

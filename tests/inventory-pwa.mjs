@@ -28,7 +28,7 @@ test('在庫PWAに独自の端末保存・オフライン送信・未認証の�
 
 test('計測は単発で閉じ、次袋を自動開始しない',()=>{
  const app=read('app.js');
- assert.match(app,/この1袋・1ケースの使用開始を記録/);assert.match(app,/START_MEASUREMENT/);assert.match(app,/UPDATE_MEASUREMENT/);assert.match(app,/measurementAmountField/);
+ assert.match(app,/この1袋・1ケースの使用開始を記録/);assert.match(app,/START_MEASUREMENT/);assert.match(app,/UPDATE_MEASUREMENT/);assert.doesNotMatch(app,/measurementAmountField/);
  assert.match(app,/FINISH_SAMPLE/);assert.match(app,/CANCEL_SAMPLE/);
  assert.doesNotMatch(app,/使い切って次を開封/);
 });
@@ -68,4 +68,12 @@ test('共通カテゴリと品名検索を備え、カテゴリは既存保存AP
  const app=read('app.js');assert.match(app,/const productCategories=/);assert.match(app,/シロップ・ソース/);assert.match(app,/包材・容器・消耗品/);
  assert.match(app,/category:category.value/);assert.match(app,/matchesItem/);assert.match(app,/normalize\('NFKC'\)/);
  assert.match(app,/stockCards.clear\(\)/);assert.match(read('index.html'),/id="stock-item-filters"/);assert.match(read('style.css'),/\.item-filters/);
+});
+
+test('WorkTimeと同じ要確認表示に固定コードと対処操作を添える',()=>{
+ const app=read('app.js'),html=read('index.html'),css=read('style.css');
+ assert.match(html,/id="status-detail"/);assert.match(html,/role="alert"/);
+ assert.match(app,/statusGuides/);assert.match(app,/確認コード：/);assert.match(app,/TENANT_SAVE_UNKNOWN/);
+ assert.match(app,/同じ操作を再確認/);assert.match(css,/\.status-needs-action/);assert.match(css,/⚠ 要確認/);
+ assert.match(html,/app\.js\?v=[a-f0-9]{12}/);assert.match(html,/JS_START_FAILED/);
 });
