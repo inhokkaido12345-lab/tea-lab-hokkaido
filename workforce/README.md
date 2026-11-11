@@ -82,3 +82,5 @@ node --test tests/*.mjs
 共有表・PDFは共有DTOの許可欄だけ。本人の用事/非公開メモはアプリ下の本人限定欄へ残し、希望理由や他人の私的情報は出力しません。CSVは従来の詳細列を保持します。通信・保存・認可の契約は不変。
 
 魔改造MAP：純粋な表model/時刻表記はschedule-view.js、共通table renderer/印刷はschedule-report.js、画面への組込みはschedule.js。氏名幅・週境界・A4横の寸法はschedule.css。HTML変更後は二つの同期scriptを実行し、node --test tests/*.mjsで検査します。前半/後半・2月末・未公開・非公開除外はschedule-matrix.test.mjs等で検査します。架空の表示見本はprototypes/shift-matrix-preview.html（?print=1で印刷CSS相当）。
+
+祝日の表示: アプリとPDFの表は公表済み2026・2027年の祝日・振替休日を日曜と同じ赤で表示する。土曜より祝日を優先し、自由入力の共有イベントから祝日を推測しない。追加年はschedule-view.jsとGASのScheduleInputSheet.gsを同時確認する。表示色は労務計算に使わない。

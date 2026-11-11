@@ -96,6 +96,8 @@
 .schedule-matrix [data-weekday="6"] { border-right:3px solid #495C63; }
 .schedule-matrix thead [data-weekday="0"] { color:#8E3F35; }
 .schedule-matrix thead [data-weekday="6"] { color:#285E94; }
+/* 祝日は土曜日の青より優先。印刷も同じ見出しを使う。 */
+.schedule-matrix thead [data-holiday="true"] { color:#8E3F35; }
 .schedule-matrix .matrix-event { background:#FFF7DF; font-size:10px; min-height:20px; font-weight:400; }
 .schedule-matrix .matrix-time { display:block; font-weight:600; font-size:14px; line-height:1.4; }
 .schedule-matrix .matrix-rest { display:block; font-size:10px; color:#495C63; }
