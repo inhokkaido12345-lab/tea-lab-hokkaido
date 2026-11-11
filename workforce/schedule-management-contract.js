@@ -54,5 +54,11 @@ function sheet(value,month,command){
  if(value.authority&&!validAuthority(value.authority,value.snapshot))return false;
  return command!=='sheetRead'||value.snapshot.halves.FIRST.inputMode==='SHEET'&&!!value.authority;
 }
-global.TlhScheduleManagementContract=Object.freeze({days,validate,sheet,validAuthority});
+/** 管理者READの診断は署名検証後でも許可型を検査。自由文/入力値/内部IDは受け付けない。 */
+function inputIssues(value,month){
+ return !!value&&Object.keys(value).sort().join(',')==='inputIssues,issueCount,month,version'&&value.version===1&&value.month===month
+  &&Number.isSafeInteger(value.issueCount)&&value.issueCount>0&&value.issueCount<=31000&&Array.isArray(value.inputIssues)&&value.inputIssues.length===Math.min(20,value.issueCount)
+  &&value.inputIssues.every(v=>v&&Object.keys(v).sort().join(',')==='cell,kind'&&/^[A-Z]{1,2}[1-9]\d{0,3}$/.test(v.cell)&&['WORK_FORMAT','PLAN_RULE'].includes(v.kind));
+}
+global.TlhScheduleManagementContract=Object.freeze({days,validate,sheet,validAuthority,inputIssues});
 })(window);

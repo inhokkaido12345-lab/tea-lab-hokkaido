@@ -124,7 +124,8 @@
       const reply=event.data,expected=JSON.parse(request.input);let value=null;
       if(reply.code==='LINE_VERIFY_REJECTED'&&READS.has(request.command)&&reply.data===''){finish();clear();flow=null;failed=true;login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;controls();return;}
       if(reply.data){try{value=JSON.parse(reply.data);}catch(_e){return;}
-        if(['sheetRead','sheetCreate'].includes(request.command)){if(!contract.sheet(value,expected.month,request.command))return;}
+        if(request.command==='sheetRead'&&reply.code==='SCHEDULE_INVALID'){if(!contract.inputIssues(value,expected.month))return;}
+        else if(['sheetRead','sheetCreate'].includes(request.command)){if(!contract.sheet(value,expected.month,request.command))return;}
         else if(['batchRead','sheetImport','monthPublish','deadlineRange'].includes(request.command)){if(!contract.validate(value,expected.month))return;}
         else if(!global.TlhSchedule.validate(value,expected.month,true,expected.period))return;
       }
@@ -132,7 +133,11 @@
       if(!SUCCESS.has(reply.code)){
         failed=true;if(!READS.has(request.command)&&unknownCodes.has(reply.code))uncertain={command:request.command,input:request.input,operationId:request.operationId};
         else{uncertain=null;flow=null;}
-        if(reply.code==='SCHEDULE_PERMISSION_REQUIRED')clear();finish();n.status.textContent=messages[reply.code];return;
+        if(reply.code==='SCHEDULE_PERMISSION_REQUIRED')clear();finish();
+        if(request.command==='sheetRead'&&reply.code==='SCHEDULE_INVALID'&&value){
+          const format=value.inputIssues.filter(v=>v.kind==='WORK_FORMAT').map(v=>v.cell),rule=value.inputIssues.filter(v=>v.kind==='PLAN_RULE').map(v=>v.cell);
+          n.status.textContent='入力シートに修正が必要な箇所が'+value.issueCount+'件あります。'+(format.length?' 時刻の書式：'+format.join('、')+'。09:00-18:00/60 の形式で入力してください（最後は休憩分数）。':'')+(rule.length?' 勤務条件：'+rule.join('、')+'。出退勤の順序・勤務の重複・休憩分数・休暇との重複・備考の長さを確認してください。':'')+(value.issueCount>20?' 先頭20件を表示しています。':'')+' シートを直してから、もう一度「下書きを公開する／シートの変更を反映する」を押してください。今回は取込み・公開していません。';
+        }else n.status.textContent=messages[reply.code];return;
       }
       uncertain=null;failed=false;finish();
       if(['sheetRead','sheetCreate'].includes(request.command)){

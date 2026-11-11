@@ -6,7 +6,7 @@
      理由/予定/本人情報はURL・Storage・ログに出さず、返信は署名検査後にtextContentへ。 -->
 <html lang="ja"><head><meta charset="utf-8">
 <script src="/workforce/worktime-url.js"></script><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>月間シフト・希望の提出 | TLH Work Time</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261110-hierarchy1"><link rel="stylesheet" href="schedule.css?v=20261110-hierarchy1">
+<title>月間シフト・希望の提出 | TLH Work Time</title><link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261111-status1"><link rel="stylesheet" href="schedule.css?v=20261110-hierarchy1">
 <script defer src="current-workplace.js?v=20261105-store2"></script>
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script><script defer src="schedule-view.js?v=20261104-periods"></script><script defer src="schedule-report.js?v=20261110-range-month1"></script><script defer src="schedule.js?v=20261110-input-binding1" data-bootstrap="true"></script>
 </head><body class="secondary-page schedule-page" data-audience="employee"><header><strong>TLH Work Time</strong><a class="button secondary" href="index.html#schedule">シフトタブへ戻る</a></header>
@@ -37,4 +37,4 @@
 <iframe id="schedule-frame" name="tlhScheduleFrame" title="シフトの署名付き応答" hidden></iframe>
 <!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
 <section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。空欄・予定未設定は公休や0時間を意味しません。</p><table><thead><tr><th>日付・曜日</th><th>社員番号</th><th>氏名</th><th>勤務予定（日本時間）</th><th>予定休憩（分）</th><th>予定実働（分）</th><th>休暇</th><th>公開特記事項</th><th>共有イベント</th></tr></thead><tbody id="schedule-report-rows"></tbody></table></section>
-</main></body></html>
+</main><script src="status-guidance.js?v=20261111-status1"></script></body></html>
