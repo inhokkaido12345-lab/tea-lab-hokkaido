@@ -120,3 +120,9 @@ textarea { box-sizing: border-box; width: 100%; min-height: 80px; padding: 10px;
 nav button { min-width: 0; }
 
 .store-context { max-width: 1000px; margin: 12px auto; padding: 16px; border: 1px solid var(--line); border-radius: 8px; overflow-wrap: anywhere; }
+
+/* カテゴリと検索は狭い端末では縦に並び、既存の操作領域を隠さない。 */
+.item-filters { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); gap:12px; margin-bottom:16px; }
+.item-filters label { margin:0; }
+.item-filters select,.item-filters input { display:block; margin-top:6px; }
+@media(max-width:600px) { .item-filters { grid-template-columns:1fr; } }

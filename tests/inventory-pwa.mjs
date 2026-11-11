@@ -63,3 +63,9 @@ test('在庫サービスは店舗作成・参加・店舗選択と仕入品情�
 test('現行品の管理と仕入情報の連動・変更履歴・容量/本数を備える',()=>{
  const app=read('app.js');assert.match(app,/使用終了のみ/);assert.match(app,/CATALOG_REFERENCE_CHANGED/);assert.match(app,/manufacturerSourceItemId/);assert.match(app,/suppliersSourceItemId/);assert.match(app,/品目の状態/);assert.match(app,/在庫の基準単位/);
 });
+
+test('共通カテゴリと品名検索を備え、カテゴリは既存保存APIへ渡す',()=>{
+ const app=read('app.js');assert.match(app,/const productCategories=/);assert.match(app,/シロップ・ソース/);assert.match(app,/包材・容器・消耗品/);
+ assert.match(app,/category:category.value/);assert.match(app,/matchesItem/);assert.match(app,/normalize\('NFKC'\)/);
+ assert.match(app,/stockCards.clear\(\)/);assert.match(read('index.html'),/id="stock-item-filters"/);assert.match(read('style.css'),/\.item-filters/);
+});
