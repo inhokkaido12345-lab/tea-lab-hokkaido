@@ -75,18 +75,6 @@ node --test tests/*.mjs
 
 シフトは署名済み管理者READのセル番地を表示します。修正後に公開操作から差分確認をやり直します。保存結果不明時は送信を重ねず、同じ操作で確認します。検査は `node --test tests/status-guidance.test.mjs tests/schedule-management.test.mjs`、全体は `node --test tests/*.mjs`。HTML変更後は既存の二つの同期スクリプトを実行してください。
 
-## 社員×日付のシフト表（2026-11-11・公開済み）
+## 確定シフトの共有出力
 
-従業員の確定シフトと印刷/PDFは、氏名を縦、日付を横にした同じ表で表示します。月全体を1〜15日／16〜月末の二表へ分けるのは表示上の分割で、月全体公開・任意期間の希望締切は変えません。時刻は9–18のように00分だけ短縮し、30分単位・中抜け・翌日は保持します。勤務日数はその表の期間内の勤務予定日数で、実績や給与用の日数ではありません。休は予定休憩です。公休・予定未設定・未公開を区別します。
-
-共有表・PDFは共有DTOの許可欄だけ。本人の用事/非公開メモはアプリ下の本人限定欄へ残し、希望理由や他人の私的情報は出力しません。CSVは従来の詳細列を保持します。通信・保存・認可の契約は不変。
-
-魔改造MAP：純粋な表model/時刻表記はschedule-view.js、共通table renderer/印刷はschedule-report.js、画面への組込みはschedule.js。氏名幅・週境界・A4横の寸法はschedule.css。HTML変更後は二つの同期scriptを実行し、node --test tests/*.mjsで検査します。前半/後半・2月末・未公開・非公開除外はschedule-matrix.test.mjs等で検査します。架空の表示見本はprototypes/shift-matrix-preview.html（?print=1で印刷CSS相当）。
-
-祝日の表示: アプリとPDFの表は公表済み2026・2027年の祝日・振替休日を日曜と同じ赤で表示する。土曜より祝日を優先し、自由入力の共有イベントから祝日を推測しない。追加年はschedule-view.jsとGASのScheduleInputSheet.gsを同時確認する。表示色は労務計算に使わない。
-
-PNG出力: 従業員シフトの「PNG保存」はPDFと同じ共有matrixを端末内のCanvasで画像化する。外部サービス・新通信・保存先の書換えなし。氏名/時刻/休憩/公開備考を表示し、「共有事項：」の接頭辞は省く。画像が端末の安全上限を超える場合はPDFを案内。再読取・退場中の生成結果は破棄する。見た目の改造はschedule-report.jsのdrawPng、画面/PDFはrenderMatrixとschedule.cssを確認。共有情報の選別はbuild/matrixを維持する。
-
-確定シフトの公休表示: アプリ/PDFはSVG、PNGはCanvasの斜線で表示。読み上げには公休の文字を残す。休暇・予定未設定・未公開・勤務0時間を公休へ変換しない。CSVと保存区分は従来どおり「公休」。公開備考も保持する。
-
-共有出力の配色: PNGも画面と同じ日付/曜日 #E5EBE9、イベント #FFF7DF、公休 #EFF1EF、勤務 #FFFDFA、未設定/未公開・氏名/日数 #F3EFE7 を使用する。備考の斜線マスクもセルの色を維持。PDFはprint-color-adjust:exactを指定するが、印刷環境で背景が消える場合は「背景のグラフィック」をONにする。PNGは印刷設定に依存しない。改造時はschedule.cssとdrawPngを同時確認する。
+社員×日付の二表、祝日色、公休斜線、PDF/PNG/CSVと配色・画像上限・魔改造箇所は[SHIFT-EXPORT](SHIFT-EXPORT.md)へ集約しました。保存や原打刻とは別の表示処理です。

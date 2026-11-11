@@ -2,9 +2,9 @@
  * 確定シフト専用の印刷/PDF・PNG・CSV。schedule.jsの署名/DTO検査後→共有欄だけの表→明示出力。
  * 削除影響: シフトの出力だけ停止。予定/打刻/公開版は保存先に残る。
  * 概念: allowlist projection / presentation model。管理者の下書きや本人の秘密を渡さない。
- * 魔改造: 列はheaders/buildとHTMLのthead/print CSS、連結テストを同時更新する。
+ * 魔改造: CSV列はheaders/build、表はrenderMatrix、PNGはdrawPng、配色はschedule.cssと連動。
  * 境界: 通信/自動送信/外部PDFサービス/Storageなし。取得済みの共有版を出力する。
- * 検証: 実DTO→出力、非公開欄の除外、未公開/再読取/退場で無効、数式CSVの無害化。
+ * 検証: schedule-report.test.mjsと固定UI連結。計測はscripts/measure-shift-png.mjs（架空データのみ）。
  */
 (function(global){'use strict';
  const headers=['日付・曜日','社員番号','氏名','勤務予定（日本時間）','予定休憩（分）','予定実働（分）','休暇','公開特記事項','共有イベント'];
@@ -45,6 +45,19 @@
   }
   return{month:s.month,period:s.period||'MONTH',rangeStart:range.start,rangeEnd:range.end,publishedAt:s.publishedAt,rows,matrix:global.TlhScheduleView.matrix(s)};
  }
+ /** 公休の装飾線だけを作る。背景印刷OFFでも残るSVGを使用する。
+  * 読み上げ文字と備考は呼出元renderMatrixが残す。線の座標変更はPNGのpaintも確認。 */
+ function appendOffLine(parent){
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg'),line=document.createElementNS(ns,'line');
+  svg.setAttribute('viewBox','0 0 100 100');
+  svg.setAttribute('preserveAspectRatio','none');
+  svg.setAttribute('aria-hidden','true');
+  svg.classList.add('matrix-off-line');
+  const attributes={x1:'0',y1:'100',x2:'100',y2:'0',stroke:'currentColor','stroke-width':'1','vector-effect':'non-scaling-stroke'};
+  for(const [key,value] of Object.entries(attributes))line.setAttribute(key,value);
+  svg.appendChild(line);parent.appendChild(svg);
+ }
  /** アプリとPDFが同じ表を使う表示部品。全てtextContentで入れ、共有欄以外を渡さない。
   * 削除影響: 社員×日付の表示だけ停止。CSVの列/通信/正本シート/打刻は不変。
   * 魔改造: 列幅/週線/印刷サイズはschedule.css。表の順序変更は両半月/スクリーンリーダー試験も確認。 */
@@ -63,7 +76,7 @@
     el('td',String(person.workDays),tr).className='matrix-count';
     person.cells.forEach((cell,i)=>{const td=el('td',undefined,tr);td.dataset.weekday=String(block.days[i].weekday);td.dataset.state=cell.state;
       // 斜線は表示記号だけ。公休の文字は読み上げ用に残し、備考/保存区分を消さない。
-      if(cell.state==='off'){const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg'),line=document.createElementNS(ns,'line');svg.setAttribute('viewBox','0 0 100 100');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('aria-hidden','true');svg.classList.add('matrix-off-line');for(const [k,v] of Object.entries({x1:'0',y1:'100',x2:'100',y2:'0',stroke:'currentColor','stroke-width':'1','vector-effect':'non-scaling-stroke'}))line.setAttribute(k,v);svg.appendChild(line);td.appendChild(svg);}
+      if(cell.state==='off')appendOffLine(td);
       el('span',cell.text,td).className=cell.state==='off'?'matrix-off-label':'matrix-time';if(cell.rest)el('small',cell.rest,td).className='matrix-rest';if(cell.note)el('small',cell.note,td).className='matrix-public-note';
     });
    }
@@ -78,8 +91,24 @@
  function drawPng(canvas,r){
   const ctx=canvas.getContext('2d');if(!ctx)throw Error('PNG_UNAVAILABLE');
   const width=1200,pad=20,person=144,count=36,font='"IBM Plex Sans JP", sans-serif';
+  // 1枚を作る間だけ、同じ文字/幅/サイズの折返しを再利用する。
+  // 9–18・休60分などを人数×日数ぶん測り直さない。別の出力や本人へ持ち越さない。
+  const wrapCache=new Map();
   function lines(value,w,size){
-   ctx.font=size+'px '+font;const out=[];for(const part of String(value).split('\n')){let line='';for(const c of part){if(line&&ctx.measureText(line+c).width>w){out.push(line);line='';}line+=c;}out.push(line);}return out;
+   const label=String(value),key=JSON.stringify([label,w,size]);
+   if(wrapCache.has(key))return wrapCache.get(key);
+   ctx.font=size+'px '+font;
+   const out=[];
+   for(const part of label.split('\n')){
+    let line='';
+    for(const character of part){
+     if(line&&ctx.measureText(line+character).width>w){out.push(line);line='';}
+     line+=character;
+    }
+    out.push(line);
+   }
+   wrapCache.set(key,out);
+   return out;
   }
   const text=(value,size,bold=false,color='#252829')=>({value:String(value),size,bold,color});
   function row(cells,widths,backgrounds){
