@@ -77,3 +77,51 @@
 .schedule-sheet-actions { display:flex; gap:12px; flex-wrap:wrap; margin:24px 0; }
 #schedule-management-confirm { margin-top:24px; padding:20px; }
 #schedule-management-question { font-size:var(--type-subhead); margin-bottom:16px; }
+
+/* 社員×日付の共有表。画面とPDFで同じDOMを使い、集計や認可は変更しない。
+   魔改造MAP: 氏名幅→matrix-person、日付幅→table min-width、紙→下のprint専用。
+   前後半は表示の分割だけ。希望締切・公開単位・正本シートの仕様は別。 */
+.schedule-matrix-calendar { display:block; min-width:0; margin-top:16px; }
+.schedule-matrix-scroll { max-width:100%; overflow-x:auto; margin-bottom:28px; padding-bottom:8px; }
+.schedule-matrix { border-collapse:collapse; table-layout:fixed; width:100%; min-width:1240px; font-size:12px; background:var(--paper,#fff); }
+.schedule-matrix caption { text-align:left; font-size:18px; font-weight:600; padding:12px 0; color:var(--ink,#252829); }
+.schedule-matrix th,.schedule-matrix td { border:1px solid #7C908E; padding:7px 4px; text-align:center; vertical-align:middle; white-space:pre-line; overflow-wrap:anywhere; }
+.schedule-matrix thead { background:#E5EBE9; }
+.schedule-matrix thead th { padding:4px; font-weight:600; }
+.schedule-matrix .matrix-person { width:142px; position:sticky; left:0; z-index:1; background:#F3EFE7; text-align:left; padding-left:9px; border-right:2px solid #495C63; }
+.schedule-matrix .matrix-person strong { display:block; font-size:14px; }
+.schedule-matrix .matrix-person small { display:block; font-size:9px; color:#495C63; font-weight:400; }
+.schedule-matrix .matrix-count { width:40px; background:#F3EFE7; font-size:11px; }
+.schedule-matrix [data-weekday="0"] { border-left:3px solid #495C63; }
+.schedule-matrix [data-weekday="6"] { border-right:3px solid #495C63; }
+.schedule-matrix thead [data-weekday="0"] { color:#8E3F35; }
+.schedule-matrix thead [data-weekday="6"] { color:#285E94; }
+.schedule-matrix .matrix-event { background:#FFF7DF; font-size:10px; min-height:20px; font-weight:400; }
+.schedule-matrix .matrix-time { display:block; font-weight:600; font-size:14px; line-height:1.4; }
+.schedule-matrix .matrix-rest { display:block; font-size:10px; color:#495C63; }
+.schedule-matrix .matrix-public-note { display:block; margin-top:4px; font-size:10px; color:#2F5452; line-height:1.4; }
+.schedule-matrix [data-state="off"] { background:#EFF1EF; }
+.schedule-matrix [data-state="off"] .matrix-time { font-weight:400; color:#495C63; }
+.schedule-matrix [data-state="unset"],.schedule-matrix [data-state="unpublished"] { background:#F3EFE7; color:#495C63; }
+.schedule-matrix [data-state="unset"] .matrix-time,.schedule-matrix [data-state="unpublished"] .matrix-time { font-size:11px; font-weight:400; }
+.schedule-matrix .matrix-own>.matrix-person { border-left:4px solid #2F5452; background:#E5EBE9; }
+@media(max-width:600px){ .schedule-matrix .matrix-person { width:112px; } .schedule-matrix .matrix-person strong { font-size:13px; } }
+@media print{
+ @page { size:A4 landscape; margin:8mm; }
+ #schedule-report .schedule-matrix-scroll { overflow:visible; margin:0 0 5mm; padding:0; }
+ #schedule-report table.schedule-matrix { width:100%; min-width:0; table-layout:fixed; font-size:8pt; }
+ #schedule-report .schedule-matrix caption { font-size:10pt; padding:2mm 0; }
+ #schedule-report .schedule-matrix th,#schedule-report .schedule-matrix td { padding:1mm .6mm; border-color:#687A78; white-space:pre-line; }
+ #schedule-report .schedule-matrix .matrix-person { position:static; width:30mm; padding-left:1.5mm; }
+ #schedule-report .schedule-matrix .matrix-person strong { font-size:8pt; }
+ #schedule-report .schedule-matrix .matrix-person small { font-size:5.5pt; }
+ #schedule-report .schedule-matrix .matrix-count { width:9mm; font-size:6.5pt; }
+ #schedule-report .schedule-matrix .matrix-time { font-size:8pt; line-height:1.2; }
+ #schedule-report .schedule-matrix .matrix-rest { font-size:6pt; line-height:1.2; }
+ #schedule-report .schedule-matrix .matrix-public-note { font-size:6pt; line-height:1.2; margin-top:.5mm; }
+ #schedule-report .schedule-matrix .matrix-event { font-size:6pt; }
+ #schedule-report .schedule-matrix [data-weekday="0"] { border-left:1.2pt solid #495C63; }
+ #schedule-report .schedule-matrix [data-weekday="6"] { border-right:1.2pt solid #495C63; }
+ #schedule-report .schedule-matrix thead { display:table-header-group; }
+ #schedule-report .schedule-matrix tr { break-inside:avoid; }
+}

@@ -12,8 +12,8 @@ test('second-half report contains only its days and identifies the exact range i
 test('PDF table and CSV include only complete shared plans, dates, public notes and release date; formula cells are escaped',async()=>{
  const h=scheduleUiHarness('admin'),s=shared(h),r=h.window.TlhScheduleReport.build(s),csv=h.window.TlhScheduleReport.csv(r);assert.equal(r.rows.length,30);assert.ok(csv.startsWith('\uFEFF'));assert.match(csv,/23:00–01:00（翌日）/);assert.match(csv,/"'=架空社員"/);assert.match(csv,/帰省,/);assert.doesNotMatch(csv,/PRIVATE_MARKER/);assert.match(csv,/2026年11月5日/);
  await h.api.read();await h.reply(h.sent[0],s);assert.equal(h.n('print').disabled,false);assert.equal(h.n('report').hidden,true);assert.equal(h.n('report-rows').children.length,0);
- h.events.beforeprint();h.events.beforeprint();assert.equal(h.n('report').hidden,false);assert.equal(h.n('report-rows').children.length,30);assert.match(text(h.n('report-rows')),/全員へ共有/);assert.doesNotMatch(text(h.n('report-rows')),/PRIVATE_MARKER/);
- h.events.afterprint();assert.equal(h.n('report-rows').children.length,0);h.events.beforeprint();assert.equal(h.n('report-rows').children.length,30);
+ h.events.beforeprint();h.events.beforeprint();assert.equal(h.n('report').hidden,false);assert.equal(h.n('report-rows').children.length,2);assert.match(text(h.n('report-rows')),/全員へ共有/);assert.doesNotMatch(text(h.n('report-rows')),/PRIVATE_MARKER/);
+ h.events.afterprint();assert.equal(h.n('report-rows').children.length,0);h.events.beforeprint();assert.equal(h.n('report-rows').children.length,2);
 });
 test('printing never writes or sends messages; unverified, unpublished, refresh and departure cannot export',async()=>{
  const h=scheduleUiHarness();let printed=0;h.window.print=()=>printed++;h.click('print');assert.equal(printed,0);await h.api.read();await h.reply(h.sent[0],h.snapshot());h.click('print');assert.equal(printed,0);

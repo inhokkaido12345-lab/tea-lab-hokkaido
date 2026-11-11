@@ -174,6 +174,18 @@
 
     /** 日別索引はこの描画中だけ有効。本人用の索引は共有出力へ渡さない。 */
     function renderCalendar(s){
+      if(!admin){
+        const range=global.TlhScheduleView.periodRange(s.month,s.period),unpublishedDays=[];
+        if(s.phase!=='PUBLISHED')for(let i=Number(range.start.slice(8));i<=Number(range.end.slice(8));i++)unpublishedDays.push(s.month+'-'+String(i).padStart(2,'0'));
+        const shared=wholeMonth()?sharedMonth():{month:s.month,period:s.period,plans:s.plans,events:s.events,unpublishedDays};
+        n.calendar.className='schedule-calendar schedule-month-calendar schedule-matrix-calendar';
+        global.TlhScheduleReport.renderMatrix(n.calendar,global.TlhScheduleView.matrix(shared),s.employeeCode);
+        el('p','時刻は日本時間。休は予定休憩。勤務日数は表の期間内の勤務予定日数です。公休・予定未設定・未公開は別です。横にスクロールして確認できます。',n.calendar).className='footnote';
+        // 本人限定の用事/非公開メモは共有表の外へ。印刷用modelには渡さない。
+        const own=monthSnapshots?['FIRST','SECOND'].flatMap(k=>monthSnapshots[k].ownPlans):s.ownPlans;
+        if(own.length){const details=el('details',undefined,n.calendar);details.className='tool-help';el('summary','自分の用事・特記事項（本人限定）',details);for(const p of own){if(p.employeeCode!==s.employeeCode)continue;el('h3',p.day,details);el('p',planText(p.plan),details);}}
+        return;
+      }
       const parts=monthSnapshots&&s.period!=='MONTH'?[monthSnapshots.FIRST,monthSnapshots.SECOND]:[s],range=global.TlhScheduleView.periodRange(s.month,parts.length===2?'MONTH':s.period),first=Number(range.start.slice(8)),count=Number(range.end.slice(8)),source=parts.flatMap(part=>admin?part.drafts:part.plans);
       n.calendar.className='schedule-calendar'+(parts.length===2?' schedule-month-calendar':'');
       const plansByDay=global.TlhScheduleView.groupByDay(source);

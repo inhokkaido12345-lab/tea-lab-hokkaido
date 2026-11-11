@@ -14,7 +14,7 @@ test('manager can select pre-registered staff with an unlinked marker; older res
 
 test('period-bound employee form displays availability and sends selected half without a second open-page action',async()=>{
  const h=scheduleUiHarness(),s={...h.snapshot(),period:'FIRST',rangeStart:'2026-11-01',rangeEnd:'2026-11-15'};h.n('scope').value='FIRST';await h.api.read();await h.reply(h.sent[0],s);
- assert.equal(h.n('save').disabled,false);assert.match(h.n('availability').textContent,/送信できます/);assert.equal(h.n('calendar').children.filter(n=>n.className==='schedule-day').length,15);
+ assert.equal(h.n('save').disabled,false);assert.match(h.n('availability').textContent,/送信できます/);assert.equal(h.calendarDays().length,15);
  h.n('day').value='2026-11-16';h.n('reason').value='希望';h.click('save');assert.equal(h.sent.length,1);assert.match(h.n('status').textContent,/期間に含まれる/);
  h.n('day').value='2026-11-05';h.click('save');assert.equal(JSON.parse(h.sent[1].input).period,'FIRST');
 });
@@ -28,7 +28,7 @@ test('unconfigured months accept wishes, while configured deadlines close ordina
 test('a signed reply for another half is ignored and second-half calendar starts on the sixteenth',async()=>{
  const h=scheduleUiHarness();h.n('scope').value='SECOND';await h.api.read();const s={...h.snapshot(),period:'FIRST',rangeStart:'2026-11-01',rangeEnd:'2026-11-15'};
  await h.reply(h.sent[0],s);assert.equal(h.n('editor').disabled,true);await h.reply(h.sent[0],{...s,period:'SECOND',rangeStart:'2026-11-16',rangeEnd:'2026-11-30'});
- assert.equal(h.n('day').min,'2026-11-16');assert.equal(h.n('day').value,'2026-11-16');assert.equal(h.n('calendar').children.filter(n=>n.className==='schedule-day').length,15);
+ assert.equal(h.n('day').min,'2026-11-16');assert.equal(h.n('day').value,'2026-11-16');assert.equal(h.calendarDays().length,15);
 });
 
 test('admin can compose first draft with no collection; public/private notes stay distinct through submission and departure',async()=>{
@@ -46,7 +46,7 @@ test('verified publication date is displayed in Japan time and invalid timestamp
  await h.api.read();await h.reply(h.sent[0],s);assert.match(h.n('published-at').textContent,/2026年11月5日.*03:30/);h.events.pagehide();assert.equal(h.n('published-at').textContent,'');
 });
 test('no write on initialization; signed role-bound read renders 30 correct November dates without treating unset days as holidays',async()=>{
- const h=scheduleUiHarness();assert.equal(h.sent.length,0);assert.equal(h.n('editor').disabled,true);await h.api.read();await h.reply(h.sent[0],h.snapshot());assert.equal(h.n('editor').disabled,false);assert.equal(h.n('calendar').children.filter(c=>c.className==='schedule-day').length,30);assert.equal(h.n('calendar').children.filter(c=>c.className==='schedule-blank').length,0);
+ const h=scheduleUiHarness();assert.equal(h.sent.length,0);assert.equal(h.n('editor').disabled,true);await h.api.read();await h.reply(h.sent[0],h.snapshot());assert.equal(h.n('editor').disabled,false);assert.equal(h.calendarDays().length,30);assert.equal(h.n('calendar').children.filter(c=>c.className==='schedule-blank').length,0);
  assert.match(h.n('summary').textContent,/希望受付/);
 });
 test('another frame, altered HMAC, wrong role/month and private roster in employee DTO are ignored',async()=>{

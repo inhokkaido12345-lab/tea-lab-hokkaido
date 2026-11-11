@@ -35,5 +35,29 @@
     return {start:month+(period==='SECOND'?'-16':'-01'),end:month+'-'+String(period==='FIRST'?15:last).padStart(2,'0')};
   }
 
-  global.TlhScheduleView=Object.freeze({groupByDay,workText,periodRange});
+  /** 人が追う時刻だけ短くする。00分以外・翌日・中抜けを省略せず、計算値は変えない。 */
+  function compactWorkText(intervals,day){return workText(intervals,day,'\n').replace(/(^|\n|–)(\d{2}):(\d{2})/g,(_m,p,h,m)=>p+Number(h)+(m==='00'?'':':'+m));}
+
+  /** 共有確定DTO→社員×日付。私的plan/申請/希望理由は読まない。空欄を休日へ推測しない。
+   * 改造: 前半/後半は見やすさだけの分割で、締切・公開範囲・保存キーを変えない。
+   * O(予定数+人数×日数)の一時索引。別の要求やアカウントへ持ち越さない。 */
+  function matrix(s){
+    const range=periodRange(s.month,s.period),unpublished=new Set(s.unpublishedDays||[]),people=new Map(),byPersonDay=new Map(),events=groupByDay(s.events);
+    for(const p of s.plans){people.set(p.employeeCode,p.employeeName);byPersonDay.set(p.employeeCode+'|'+p.day,p);}
+    const employees=[...people].sort((a,b)=>a[0].localeCompare(b[0])),blocks=[];
+    for(const part of ['FIRST','SECOND']){
+      const half=periodRange(s.month,part),start=half.start>range.start?half.start:range.start,end=half.end<range.end?half.end:range.end;if(start>end)continue;
+      const days=[];for(let n=Number(start.slice(8));n<=Number(end.slice(8));n++){const day=s.month+'-'+String(n).padStart(2,'0');days.push({day,number:n,weekday:new Date(day+'T00:00:00Z').getUTCDay(),event:(events.get(day)||[]).map(e=>e.title+(e.note?'：'+e.note:'')).join('\n')});}
+      blocks.push({title:Number(s.month.slice(0,4))+'年'+Number(s.month.slice(5))+'月 '+Number(start.slice(8))+'〜'+Number(end.slice(8))+'日',unpublished:days.every(d=>unpublished.has(d.day)),days,employees:employees.map(([employeeCode,employeeName])=>{
+        let workDays=0;const cells=days.map(({day})=>{const p=byPersonDay.get(employeeCode+'|'+day);
+          if(unpublished.has(day))return{day,text:'未公開',rest:'',note:'',state:'unpublished'};
+          if(!p||p.plannedMinutes===null)return{day,text:'予定未設定',rest:'',note:p?.publicNote||'',state:'unset'};
+          const work=compactWorkText(p.workIntervals,day);if(work)workDays++;
+          return{day,text:work||({PUBLIC_OFF:'公休',LEAVE:'休暇'}[p.leaveType]||'勤務区間なし'),rest:work?'休'+p.periods.reduce((n,q)=>n+q.breakMinutes,0)+'分':'',note:p.publicNote||'',state:work?'work':p.leaveType==='PUBLIC_OFF'?'off':'leave'};
+        });return{employeeCode,employeeName,workDays,cells};
+      })});
+    }
+    return{month:s.month,blocks};
+  }
+  global.TlhScheduleView=Object.freeze({groupByDay,workText,periodRange,compactWorkText,matrix});
 })(window);

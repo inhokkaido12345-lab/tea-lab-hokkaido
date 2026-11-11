@@ -43,7 +43,30 @@
     ]);
    }
   }
-  return{month:s.month,period:s.period||'MONTH',rangeStart:range.start,rangeEnd:range.end,publishedAt:s.publishedAt,rows};
+  return{month:s.month,period:s.period||'MONTH',rangeStart:range.start,rangeEnd:range.end,publishedAt:s.publishedAt,rows,matrix:global.TlhScheduleView.matrix(s)};
+ }
+ /** アプリとPDFが同じ表を使う表示部品。全てtextContentで入れ、共有欄以外を渡さない。
+  * 削除影響: 社員×日付の表示だけ停止。CSVの列/通信/正本シート/打刻は不変。
+  * 魔改造: 列幅/週線/印刷サイズはschedule.css。表の順序変更は両半月/スクリーンリーダー試験も確認。 */
+ function renderMatrix(container,model,ownCode=''){
+  container.replaceChildren();const el=(tag,text,parent)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;parent?.appendChild(n);return n;};
+  for(const block of model.blocks){
+   const wrap=el('div',undefined,container);wrap.className='schedule-matrix-scroll';wrap.setAttribute('tabindex','0');wrap.setAttribute('aria-label',block.title+'のシフト表。横にスクロールできます');
+   const table=el('table',undefined,wrap);table.className='schedule-matrix';el('caption',block.title,table);
+   const head=el('thead',undefined,table),dates=el('tr',undefined,head),weekdays=el('tr',undefined,head),eventRow=el('tr',undefined,head);
+   const name=el('th','氏名',dates);name.setAttribute('rowspan','3');name.setAttribute('scope','col');name.className='matrix-person';
+   const count=el('th','勤務\n日数',dates);count.setAttribute('rowspan','3');count.setAttribute('scope','col');count.className='matrix-count';
+   for(const d of block.days){for(const [row,label] of [[dates,String(d.number)],[weekdays,'日月火水木金土'[d.weekday]],[eventRow,d.event]]){const th=el('th',label,row);th.dataset.weekday=String(d.weekday);th.setAttribute('scope','col');if(row===dates)th.dataset.day=d.day;if(row===eventRow)th.className='matrix-event';}}
+   const body=el('tbody',undefined,table);
+   for(const person of block.employees){const tr=el('tr',undefined,body);if(person.employeeCode===ownCode)tr.className='matrix-own';
+    const label=el('th',undefined,tr);label.className='matrix-person';label.setAttribute('scope','row');el('strong',person.employeeName,label);el('small',person.employeeCode+(person.employeeCode===ownCode?' / 自分':''),label);
+    el('td',String(person.workDays),tr).className='matrix-count';
+    person.cells.forEach((cell,i)=>{const td=el('td',undefined,tr);td.dataset.weekday=String(block.days[i].weekday);td.dataset.state=cell.state;
+      el('span',cell.text,td).className='matrix-time';if(cell.rest)el('small',cell.rest,td).className='matrix-rest';if(cell.note)el('small','共有事項：'+cell.note,td).className='matrix-public-note';
+    });
+   }
+   if(!block.employees.length){const td=el('td',block.unpublished?'この期間は未公開です。':'この期間に表示できる確定従業員情報はありません。予定未設定です。',el('tr',undefined,body));td.setAttribute('colspan',String(block.days.length+2));}
+  }
  }
  // CSVは引用符だけでは数式実行を防げない。氏名/公開メモにも式の開始文字が入り得る。
  function cell(v){let s=String(v);if(/^[\s\uFEFF]*[=+\-@]/u.test(s))s="'"+s;return'"'+s.replaceAll('"','""')+'"';}
@@ -56,16 +79,12 @@
   function clearTable(){tableReady=false;n.report.hidden=true;n['report-rows'].replaceChildren();}
   function setEnabled(yes){enabled=yes===true&&!stopped&&!!report;n.print.disabled=!enabled;n.csv.disabled=!enabled;if(!enabled)clearTable();}
   function clear(){report=null;setEnabled(false);clearTable();n['report-title'].textContent='';n['report-meta'].textContent='';if(url){URL.revokeObjectURL(url);url=null;}n['export-status'].textContent='確定シフトの取得後に出力できます。';}
-  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);n['report-title'].textContent='TLH 確定シフト '+report.month+' '+({FIRST:'前半',SECOND:'後半',MONTH:'月全体'}[report.period]);n['report-meta'].textContent='対象期間：'+report.rangeStart+'〜'+report.rangeEnd+'／最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
+  function setShared(s){clear();if(stopped||s.phase!=='PUBLISHED'||!s.publishedAt)return;report=build(s);n['report-title'].textContent='TLH Work Time｜確定シフト '+report.month+' '+({FIRST:'前半',SECOND:'後半',MONTH:'月全体'}[report.period]);n['report-meta'].textContent='対象期間：'+report.rangeStart+'〜'+report.rangeEnd+'／最終更新：'+stamp(report.publishedAt)+'（日本時間）／勤務予定。実際の出退勤記録ではありません。';
    setEnabled(true);n['export-status'].textContent='確定公開済みの共有情報だけを出力します。PDF・CSVを保存してLINEやメールへ添付できます。';
   }
   function preparePrint(){
    if(!enabled||tableReady)return;
-   for(const row of report.rows){
-    const tr=document.createElement('tr');
-    for(const value of row){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}
-    n['report-rows'].appendChild(tr);
-   }
+   renderMatrix(n['report-rows'],report.matrix);
    tableReady=true;n.report.hidden=false;
   }
   // ボタンとブラウザの印刷メニューの両方に対応。二重beforeprintでも表を増殖させない。
@@ -75,5 +94,5 @@
   n.csv.addEventListener('click',()=>{if(!enabled)return;try{if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(new Blob([csv(report)],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='shift_'+report.month+(report.period==='MONTH'?'':'_'+report.period)+'.csv';document.body.appendChild(a);a.click();a.remove();n['export-status'].textContent='CSVの保存を開始しました。保存先と内容を確認してください。';}catch(_e){n['export-status'].textContent='CSVを保存できません。印刷・PDF保存を試してください。';}});
   global.addEventListener('pagehide',()=>{stopped=true;clear();});clear();return Object.freeze({clear,setShared,setEnabled});
  }
- global.TlhScheduleReport=Object.freeze({init,build,csv});
+ global.TlhScheduleReport=Object.freeze({init,build,csv,renderMatrix});
 })(window);

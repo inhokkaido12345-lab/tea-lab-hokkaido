@@ -35,7 +35,7 @@
   -->
 
   <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261111-status1">
-<link rel="stylesheet" href="schedule.css?v=20261110-management1">
+<link rel="stylesheet" href="schedule.css?v=20261111-matrix1">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>Work Time</span></a><span class="account-label">LINEログイン<span>勤怠・シフト管理</span></span></header>
@@ -100,7 +100,7 @@
      タブが見えることは認可ではない。削除/移動前に既存idと共通staff-statusの参照を探す。 -->
 <!-- schedule-workspace:start -->
 <div id="schedule-work-panel" data-workforce-pane="schedule" role="tabpanel" aria-labelledby="schedule-tab" hidden>
-<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">月間カレンダー</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><p id="schedule-draft-notice" class="footnote" role="status" hidden></p>
+<div class="page-heading"><div><p class="eyebrow">シフト・希望</p><h1>月間シフト・希望</h1></div></div><nav class="schedule-task-nav" aria-label="シフトの作業"><a class="button secondary" href="#schedule-calendar">全員のシフト表</a><a class="button secondary" href="#schedule-request-deadline">希望休・変更申請</a></nav><p id="schedule-draft-notice" class="footnote" role="status" hidden></p>
 <button id="schedule-login" type="button" hidden>LINEログイン</button>
 <div class="filters"><label>表示する月<input id="schedule-month" type="month" disabled></label><label id="schedule-legacy-picker" hidden>過去のシフト表示<select id="schedule-scope" disabled><option value="FIRST">現在の月間シフト</option><option value="SECOND" hidden>現在の月間シフト（互換）</option><option id="schedule-legacy-option" value="MONTH" hidden>従来の月全体データ</option></select></label><button id="schedule-refresh" type="button" hidden disabled>最新の状態に更新</button><button id="schedule-workspace-refresh" type="button" disabled>シフトを更新</button></div>
 <p class="footnote">カレンダー・申請一覧・共有出力は1日〜月末の月全体です。希望の日付から申請先を自動で選びます。スマホではカレンダーを横にスクロールできます。</p>
@@ -109,7 +109,7 @@
 <button id="schedule-retry" type="button" hidden disabled>同じ操作で保存結果を再確認</button>
 <p class="footnote">時刻は日本時間。希望の提出だけでは予定は確定しません。未設定の日を公休や0時間とみなしません。勤務予定は実際の打刻とは別です。</p>
 <section class="management-section" hidden><h2>期間の受付と確定公開</h2><fieldset id="schedule-month-form" disabled><label>この期間の希望締切（日本時間）<input id="schedule-deadline" type="datetime-local"></label><button id="schedule-month-save" type="button">この期間の希望受付・締切を設定</button></fieldset><button id="schedule-publish" type="button" disabled>この期間の下書きを確定公開</button><p class="footnote">締切後に公開できます。確定後の勤務変更は本人の申請または同意を経て承認します。未設定の日が残っている場合は確認してください。</p></section>
-<section class="management-section"><h2>全員の確定シフト</h2><p class="footnote">全員向けには確定した勤務区間と休暇の表示を共有します。「全員に公開する特記事項」も共有します。希望理由・非公開メモ・用事の名称や場所は共有しません。</p><div class="schedule-calendar-scroll" tabindex="0" role="region" aria-label="月全体のシフトカレンダー"><div id="schedule-calendar" class="schedule-calendar"></div></div></section>
+<section class="management-section"><h2>全員の確定シフト</h2><p class="footnote">全員向けには確定した勤務区間と休暇の表示を共有します。「全員に公開する特記事項」も共有します。希望理由・非公開メモ・用事の名称や場所は共有しません。</p><div class="schedule-calendar-scroll" tabindex="0" role="region" aria-label="全員の確定シフト表"><div id="schedule-calendar" class="schedule-calendar"></div></div></section>
 <section class="management-section"><h2>自分の希望・変更申請</h2><p id="schedule-request-deadline" class="schedule-deadline-banner" role="status" aria-live="polite">希望休の締切を確認しています。</p><p id="schedule-availability" role="status" aria-live="polite">受付状態を確認しています。</p><fieldset id="schedule-editor" disabled>
 <label hidden>対象の従業員<select id="schedule-employee"></select></label>
 <label>勤務開始日・希望の日<input id="schedule-day" type="date"></label>
@@ -125,7 +125,7 @@
 <section class="management-section"><h2>自分の申請・本人同意の確認</h2><div id="schedule-requests" class="record-list"></div></section>
 <iframe id="schedule-frame" name="tlhScheduleFrame" title="シフトの署名付き応答" hidden></iframe>
 <!-- 印刷対象は共有DTOから作る専用表だけ。入力/本人限定DTO/下書きを印刷CSSで転用しない。 -->
-<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。空欄・予定未設定は公休や0時間を意味しません。</p><table><thead><tr><th>日付・曜日</th><th>社員番号</th><th>氏名</th><th>勤務予定（日本時間）</th><th>予定休憩（分）</th><th>予定実働（分）</th><th>休暇</th><th>公開特記事項</th><th>共有イベント</th></tr></thead><tbody id="schedule-report-rows"></tbody></table></section>
+<section id="schedule-report" class="schedule-print-only" hidden><h1 id="schedule-report-title"></h1><p id="schedule-report-meta"></p><p>全員向けの確定情報です。時刻は日本時間、休は予定休憩です。勤務日数は各表の期間内の勤務予定日数です。公休・予定未設定・未公開は別です。</p><div id="schedule-report-rows"></div></section>
 </div>
 <!-- schedule-workspace:end -->
 <div id="manager-tools-panel" data-workforce-pane="manager" role="tabpanel" aria-labelledby="manager-tab" hidden><div class="page-heading"><div><p class="eyebrow">管理者用</p><h1>管理 <span data-approval-badge class="approval-badge" hidden></span></h1><p class="subtle">勤務記録・申請の承認・従業員情報を管理します。</p></div></div>
@@ -437,9 +437,9 @@
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261110-read-priority1"></script>
   <script src="account-info.js?v=20261105-more1"></script>
-  <script src="schedule-view.js?v=20261104-periods"></script>
-  <script src="schedule-report.js?v=20261110-range-month1"></script>
-  <script src="schedule.js?v=20261110-input-binding1"></script>
+  <script src="schedule-view.js?v=20261111-matrix1"></script>
+  <script src="schedule-report.js?v=20261111-matrix1"></script>
+  <script src="schedule.js?v=20261111-matrix1"></script>
   <script src="schedule-management-contract.js?v=20261111-issues1"></script>
   <script src="schedule-management.js?v=20261111-issues1"></script>
   <script src="schedule-workspace.js?v=20261110-lazy-init1"></script>
