@@ -2,6 +2,8 @@
 
 # TLH Work Timeと公式サイト
 
+未公開候補：[同じ日の訂正申請](workforce/LATEST-DAY-REVIEW.md)。最新申請の審査と日単位の明示更新を追加し、旧申請は履歴へ残します。新commandのため公開順はGAS→画面です。
+
 従業員向けアプリは[最新状態](workforce/CURRENT-STATUS.md)、[利用・保守手順](workforce/README.md)、[説明書索引](workforce/DOCUMENTS.md)へ。運営画面は公開済み・専用台帳未設定です。
 
 # ティーラボラトリー北海道 公式Webサイト

@@ -84,3 +84,11 @@ test('overlapping extra shifts or half a break are identified without any reques
  h.n('out').value='2026-11-01T12:00';h.n('break-start').value='';h.n('break-end').value='';fields[3].value='';h.click('preview');assert.equal(h.sent.length,0);assert.match(h.n('status').textContent,/休憩終了/);
  fields[3].value='2026-11-01T16:30';h.click('preview');await h.reply(h.sent[0]);h.click('commit');[...h.timers.values()][0]();h.click('add-session');assert.equal(h.n('sessions').children.length,1);assert.equal(h.sent.length,2);
 });
+
+test('latest review commits only after signed preview and confirmation; unknown outcome keeps the exact source request',async()=>{
+ const h=dayChangeHarness({audience:'admin'});h.editor.setAdminAllowed(true);h.editor.selectRequest('EMP030','chg_'+'e'.repeat(32));
+ assert.equal(h.sent[0].command,'latestPreview');await h.reply(h.sent[0]);assert.equal(h.n('commit').disabled,false);
+ h.window.confirm=()=>false;h.click('commit');assert.equal(h.sent.length,1);h.window.confirm=()=>true;h.click('commit');assert.equal(h.sent[1].command,'latestCommit');
+ [...h.timers.values()][0]();assert.equal(h.n('employee').disabled,true);assert.equal(h.editor.selectRequest('EMP030','chg_'+'f'.repeat(32)),false);
+ h.click('preview');assert.equal(h.sent[2].command,'latestPreview');assert.equal(h.sent[2].groupId,h.sent[0].groupId);await h.reply(h.sent[2],'CHANGE_APPLIED');assert.equal(h.n('commit').disabled,true);
+});

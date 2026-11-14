@@ -12,7 +12,7 @@
   const config=Object.freeze({liffId:'2011940133-JXUDzLnG',gasUrl:'https://script.google.com/macros/s/AKfycbz12iRGRd1FSnmYLmfYR7ZhxNvt37LM7dXjKIqnVIaJ_Bw0B6N_YZIYIVxabp92E7PG7w/exec'});
   const TYPE='TLH_BRIDGE_ATTENDANCE_DAY_CHANGE',ACTION='bridgeAttendanceDayChangeV2';
   const messages=Object.freeze({CHANGE_READY:'内容を確認してください。',CHANGE_REQUESTED:'訂正申請を保存しました。管理者の承認待ちです。',CHANGE_APPLIED:'訂正を反映しました。日別記録を読み直してください。',
-    CHANGE_INVALID:'日付・出退勤・休憩・理由を確認してください。',CHANGE_NOT_FOUND:'指定した申請を確認できません。',CHANGE_DAY_CHANGED:'確認後に記録が変わりました。内容を確認し直してください。',
+    CHANGE_INVALID:'日付・出退勤・休憩・理由を確認してください。',CHANGE_NOT_FOUND:'指定した申請を確認できません。',CHANGE_DAY_CHANGED:'確認中に記録が更新されました。内容を確認し直し、最新の記録を確認してから実行してください。',CHANGE_NEWER_REQUEST:'同じ日の新しい申請が届いています。「承認待ちを更新」から最新の申請を選んでください。',
     CHANGE_REVIEW_REQUIRED:'記録の確認が必要です。操作を止めて管理者に知らせてください。',CHANGE_BUSY:'別の処理中です。',CHANGE_EMPLOYEE_REQUIRED:'有効な従業員登録がありません。',
     CHANGE_UNAVAILABLE:'結果を確認できません。操作を繰り返さず、内容の確認で結果を読み直してください。',WRITE_REVIEW_REQUIRED:'保存結果の確認が必要です。操作を止めてください。',
     TLH_ADMIN_REQUIRED:'この操作には管理者権限が必要です。',LINE_VERIFY_REJECTED:'LINE本人確認に失敗しました。',WORK_STATE_ACCOUNT_REQUIRED:'TLHアカウントがありません。',
@@ -40,7 +40,7 @@
   async function verify(d,r){
     if(!d||d.type!==TYPE||d.action!==ACTION||d.nonce!==r.nonce||d.command!==r.command||d.groupId!==r.fields.groupId||typeof d.code!=='string'||!Object.hasOwn(messages,d.code)||
       typeof d.revision!=='string'||typeof d.summary!=='string'||typeof d.mac!=='string'||!/^[a-f0-9]{64}$/.test(d.mac)||
-      (d.code==='CHANGE_READY'?r.command!=='preview'||!/^[a-f0-9]{64}$/.test(d.revision):d.revision!==''||d.summary!==''))return false;
+      (d.code==='CHANGE_READY'?!['preview','latestPreview'].includes(r.command)||!/^[a-f0-9]{64}$/.test(d.revision):d.revision!==''||d.summary!==''))return false;
     const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.key),{name:'HMAC',hash:'SHA-256'},false,['verify']);
     return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode([TYPE,ACTION,d.nonce,d.command,d.groupId,d.code,d.revision,d.summary].join('\n')));
   }
@@ -125,15 +125,16 @@
     function send(command,fields){if(pending||stopped||completed||!adminAllowed||!fields||!modes.includes(fields.mode))return;if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       const r={command,fields:Object.freeze({...fields}),nonce:random(16),key:random(32)};pending=r;clear();controls();n.status.textContent='処理中です。';
-      const unknown=()=>{if(pending!==r)return;if(command==='commit')uncertain=true;clear();n.status.textContent='応答を確認できません。「内容を確認する」で結果を読み直してください。';finish();};r.timer=setTimeout(unknown,30000);
+      const unknown=()=>{if(pending!==r)return;if(['commit','latestCommit'].includes(command))uncertain=true;clear();n.status.textContent='応答を確認できません。「内容を確認する」で結果を読み直してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhDayChangeFrame';form.hidden=true;
       Object.entries({...fields,action:ACTION,command,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const e=document.createElement('input');e.type='hidden';e.name=name;e.value=value;form.appendChild(e);});document.body.appendChild(form);
       try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
     }
     for(const key of ['mode','employee','group','day','in','out','break-start','break-end','reason'])n[key].addEventListener('input',()=>{if(uncertain||pending||completed||stopped)return;n[key].removeAttribute?.('aria-invalid');draft=null;clear();controls();});
-    n.preview.addEventListener('click',()=>{if(pending||completed||stopped)return;clear();try{if(!uncertain)draft=Object.freeze(input());send('preview',draft);}catch(error){
+    // 本人/直接訂正は従来経路。申請承認は最新の当日記録から再計画する別の固定commandを使う。
+    n.preview.addEventListener('click',()=>{if(pending||completed||stopped)return;clear();try{if(!uncertain)draft=Object.freeze(input());send(draft.mode==='REVIEW'?'latestPreview':'preview',draft);}catch(error){
       const detail=inputErrors[error&&error.message];n.status.textContent=(error&&error.session?'勤務 '+error.session+'：':'')+(detail?detail.text:messages.CHANGE_INVALID);if(detail){const field=error.field||n[detail.node];field.setAttribute?.('aria-invalid','true');field.focus?.();}controls();}});
-    n.commit.addEventListener('click',()=>{if(n.commit.disabled||!review||!global.confirm(n.review.textContent+'\nこの内容で'+(draft.mode==='SELF'?'申請':'訂正を反映')+'しますか？'))return;send('commit',{...draft,revision:review.revision});});
+    n.commit.addEventListener('click',()=>{if(n.commit.disabled||!review||!global.confirm(n.review.textContent+'\nこの内容で'+(draft.mode==='SELF'?'申請':'訂正を反映')+'しますか？'))return;send(draft.mode==='REVIEW'?'latestCommit':'commit',{...draft,revision:review.revision});});
     global.addEventListener('message',async e=>{const r=pending;if(!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
       let valid=false;try{valid=await verify(e.data,r);}catch(_e){}if(!valid||pending!==r)return;const d=e.data;
       if(d.code==='CHANGE_READY'){const s=parseSummary(d.summary,r.fields);if(!s)return;
@@ -144,7 +145,9 @@
         if(d.code==='CHANGE_APPLIED'&&typeof options.onApplied==='function')options.onApplied(draft.groupId);
       }
       if(['WRITE_REVIEW_REQUIRED','CHANGE_REVIEW_REQUIRED'].includes(d.code))stopped=true;
-      if(d.code==='CHANGE_UNAVAILABLE'&&r.command==='commit')uncertain=true;
+      // 最新要求の照合で未反映と確定した拒否だけ、別の最新申請を選べる状態へ戻す。
+      if(d.code==='CHANGE_NEWER_REQUEST'){uncertain=false;draft=null;clear();}
+      if(d.code==='CHANGE_UNAVAILABLE'&&['commit','latestCommit'].includes(r.command))uncertain=true;
       n.status.textContent=messages[d.code];finish();
     });
     n.copy.addEventListener('click',async()=>{if(!completed||!draft)return;try{await navigator.clipboard.writeText(draft.groupId);}catch(_e){n.status.textContent='申請番号を選択してコピーしてください。';}});
@@ -155,7 +158,7 @@
       if(!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode)||!/^chg_[a-f0-9]{32}$/.test(groupId))return false;
       completed=false;draft=null;clear();clearExtras();n.receipt.textContent='';n.copy.hidden=true;
       n.mode.value='REVIEW';n.employee.value=employeeCode;n.group.value=groupId;controls();
-      try{draft=Object.freeze(input());send('preview',draft);return true;}catch(_e){return false;}
+      try{draft=Object.freeze(input());send('latestPreview',draft);return true;}catch(_e){return false;}
     }
     function setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){review=null;clear();}controls();}
     return Object.freeze({selectRequest,setAdminAllowed});
