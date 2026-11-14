@@ -1,8 +1,8 @@
-# Work Timeの現在地（2026-11-11）
+# Work Timeの現在地（2026-11-14）
 
 ## 公開済み
 
-公開入口は https://tealabhokkaido.com/software/worktime/ 。画面PR #99/main `f459e86fd3cf68b1295f850b5c625f6655d6272f` まで公開済み。GASはv88（業務ソース最終変更はbackend PR #72）。画面348件・固定連携71件成功、配信38ファイル一致、架空7名の2400×1880 PNG実保存を確認。件数はこの版の結果で、今後の変更へ流用しない。
+公開入口は https://tealabhokkaido.com/software/worktime/ 。画面PR #103/main `d7dc3beba77f384319e0b88f6cff72817f3a9121` まで公開済み。GASはv91（backend PR #86）。backend860件・画面349件・固定連携72件とCI/配布成功。GAS全66ファイル/公開条件、変更した公開4ファイル一致、最新申請の内容確認成功を読取確認。実申請の承認や時刻変更はしていない。[最新申請](LATEST-DAY-REVIEW.md)。シフトPNG等の旧検査は当時の記録。
 
 打刻/休憩/複数勤務・記録・訂正/承認、Sheet正本による月全体シフト公開と希望/変更申請、アカウント情報、PWAを維持。シフトは社員×日付の前後半二表、公休斜線・祝日色・公開備考本文、PDF/PNG/CSVを提供。[出力仕様](SHIFT-EXPORT.md)。
 
