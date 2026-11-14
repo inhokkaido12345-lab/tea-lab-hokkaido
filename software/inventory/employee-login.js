@@ -51,7 +51,7 @@
     if(channel)channel.onmessage=event=>{
      if(event.origin===origin)receive(event.data,current,data=>channel.postMessage(data));
     };
-    try{current.popup=global.open('/workforce/inventory/auth/?request='+nonce+(reauthenticate?'&reauth=1':''),'tlhInventoryLogin','popup,width=480,height=720');}
+    try{current.popup=global.open('/software/worktime/inventory/auth/?request='+nonce+(reauthenticate?'&reauth=1':''),'tlhInventoryLogin','popup,width=480,height=720');}
     catch{finish('LOGIN_POPUP_BLOCKED');return;}
     if(!current.popup){finish('LOGIN_POPUP_BLOCKED');return;}
     current.timer=setTimeout(()=>finish('LOGIN_UNAVAILABLE'),180000);

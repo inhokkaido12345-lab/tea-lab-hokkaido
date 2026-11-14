@@ -9,12 +9,12 @@
  */
 (async function(global){
  'use strict';
- const origin='https://tealabhokkaido.com',path='/workforce/inventory/auth/';
+ const origin='https://tealabhokkaido.com',path='/software/worktime/inventory/auth/';
  const status=document.getElementById('auth-status');
  const nonce=new URLSearchParams(global.location.search||'').get('request');
  const reauthenticate=new URLSearchParams(global.location.search||'').get('reauth')==='1';
  let ready=false,done=false,stopped=false,channel=null,returnTimer=null;
- if(global.location.origin!==origin||global.location.pathname!==path||!/^[a-f0-9]{32}$/.test(nonce||'')){
+ if(global.location.origin!==origin||![path,path+'index.html'].includes(global.location.pathname)||!/^[a-f0-9]{32}$/.test(nonce||'')){
   status.textContent='元の在庫画面を再読み込みし、「LINEでログイン」から開いてください。';return;
  }
  try{if(global.BroadcastChannel)channel=new global.BroadcastChannel('tlh-inventory-login-'+nonce);}catch{}
