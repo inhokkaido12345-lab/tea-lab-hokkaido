@@ -61,7 +61,7 @@
         const page=parse(data.summary);if(!page||page.items.some(row=>seen.has(row.groupId)))return;
         for(const row of page.items){
           const card=document.createElement('article');card.className='record-item';const title=document.createElement('h3');title.textContent=row.employeeName+'（'+row.employeeCode+'）さんから申請が届いています。';card.appendChild(title);
-          const day=document.createElement('p');day.className='subtle';day.textContent='対象日 '+row.day;card.appendChild(day);
+          const day=document.createElement('p');day.className='subtle';day.textContent='対象日 '+row.day+' ／ 申請日時 '+new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(row.submittedAt));card.appendChild(day);
           const button=document.createElement('button');button.type='button';button.textContent=row.canReview?'内容を確認する':'現在の従業員状態では承認できません';button.disabled=!row.canReview;
           button.addEventListener('click',()=>{if(!allowed||stopped)return;if(options.onSelect(row.employeeCode,row.groupId,row.employeeName)===false)n.status.textContent='処理中または結果確認中です。現在の操作を先に確認してください。';});card.appendChild(button);n.list.appendChild(card);seen.add(row.groupId);
         }

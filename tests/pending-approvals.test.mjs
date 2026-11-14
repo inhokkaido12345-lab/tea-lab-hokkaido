@@ -4,7 +4,7 @@ const page={version:1,totalCount:1,items:[item],nextCursor:''};
 test('employee cannot query; signed admin-only cards identify the applicant and selecting requests only a preview',async()=>{
  const editor=dayChangeHarness(),h=pendingApprovalsHarness({onSelect:editor.editor.selectRequest});h.click('load');assert.equal(h.sent.length,0);assert.equal(h.n('section').hidden,true);
  h.api.setAllowed(true);h.click('load');h.click('load');assert.equal(h.sent.length,1);await h.reply(page);
- const card=h.n('list').children[0];assert.match(card.children[0].textContent,/試験スタッフ（EMP030）/);card.children[2].events.click();assert.equal(editor.sent[0].mode,'REVIEW');assert.equal(editor.sent[0].employeeCode,'EMP030');assert.equal(editor.sent[0].groupId,item.groupId);assert.equal(editor.sent[0].command,'preview');assert.equal(editor.n('commit').disabled,true);
+ const card=h.n('list').children[0];assert.match(card.children[0].textContent,/試験スタッフ（EMP030）/);card.children[2].events.click();assert.equal(editor.sent[0].mode,'REVIEW');assert.equal(editor.sent[0].employeeCode,'EMP030');assert.equal(editor.sent[0].groupId,item.groupId);assert.equal(editor.sent[0].command,'latestPreview');assert.equal(editor.n('commit').disabled,true);
 });
 test('forged origin/signature, malformed groups and stale responses never populate the list',async()=>{
  const h=pendingApprovalsHarness();h.api.setAllowed(true);h.click('load');await h.reply(page,{mac:'0'.repeat(64)});await h.reply(page,{}, {source:{}});assert.equal(h.n('list').children.length,0);
