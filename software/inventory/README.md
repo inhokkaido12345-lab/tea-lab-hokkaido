@@ -52,3 +52,11 @@ WorkTimeと同じ褐色の「⚠ 要確認」に、確認コードと次の操�
 コード正本は非公開tlh-inventoryのsrc・web・gas・scripts、説明はそのルートREADMEです。旧仕様・試作をarchiveへ分離し、現在の操作・Google導入・配布・エラー・性能の説明を集約しました。生成物を手で修正せず、build-employee-pwa.mjsから生成します。資産の内容ハッシュをURLに付け、古いキャッシュの残留を抑えます。PWAのid・scopeは/software/inventory/、認証窓口は/workforce/inventory/auth/です。
 
 サーバーは毎要求で本人と店舗所属を確認し、他店舗の情報を返しません。tokenや操作データを端末へ永続保存しません。原簿は全店舗合計10000操作までで、規模拡大前に分割・DB移行が必要です。模擬テスト、公開ファイル一致、本人の実端末操作は別の確認です。
+
+## ログイン後のAUTH_REQUIRED（2026-11-14修正）
+
+AUTH_REQUIREDは本人確認情報の拒否であり、期限切れとは限りません。以前は未登録・Core障害なども同じ表示になっていました。現在はACCOUNT_NOT_REGISTERED（TLH未登録）、ACCOUNT_INACTIVE（停止）、AUTH_SERVICE_ERROR（サービス異常）、AUTH_RESPONSE_INVALID（応答不正）を分けます。
+
+未認証でもエラー欄の「LINEでログイン」は使用できます。サーバー拒否後の明示再ログインは、外部ブラウザーの古いSDK認証を破棄して公式ログインをやり直します。reauthという目印は復帰URLから外すため、ログインを繰り返すループにはなりません。nonce・origin・source・受領確認を維持し、本人情報はURLに置きません。LIFFブラウザーではlogoutせず自動認証を維持します。
+
+模擬テスト、偽tokenを使った公開Core拒否確認、本人のLINEによる在庫READ成功は別の確認です。次は本人の再ログイン後の在庫表示を確認します。

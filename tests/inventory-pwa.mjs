@@ -77,3 +77,11 @@ test('WorkTimeと同じ要確認表示に固定コードと対処操作を添え
  assert.match(app,/同じ操作を再確認/);assert.match(css,/\.status-needs-action/);assert.match(css,/⚠ 要確認/);
  assert.match(html,/app\.js\?v=[a-f0-9]{12}/);assert.match(html,/JS_START_FAILED/);
 });
+
+test('在庫の再ログインを無効化せず、Core失敗を期限切れと断定しない',()=>{
+ const app=read('app.js'),auth=readFileSync(new URL('../workforce/inventory/auth/auth.js',import.meta.url),'utf8');
+ assert.match(app,/button.dataset.recovery=action/);assert.match(app,/b.dataset.recovery/);
+ assert.match(app,/ACCOUNT_NOT_REGISTERED/);assert.match(app,/AUTH_SERVICE_ERROR/);
+ assert.doesNotMatch(app,/認証の有効期限が切れました/);assert.match(read('employee-login.js'),/reauth=1/);
+ assert.match(auth,/liff.logout\(\)/);assert.match(auth,/if\(reauthenticate/);
+});
