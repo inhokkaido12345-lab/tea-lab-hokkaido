@@ -1,5 +1,5 @@
 /**
- * 新Work TimeのLIFF Endpoint内の認証窓口。旧URLは要求の目印だけ保持して互換転送。opener切断後も要求固有BroadcastChannelで元PWAと再接続する。
+ * 共通LIFF Endpoint内の認証窓口。opener切断後も要求固有BroadcastChannelで元PWAと再接続する。
  * SDK初期化→公式ログイン→READY→nonce付き要求→結果→受領確認の順。
  * 削除で本人確認不可。WorkTimeの打刻や業務データは変更しない。
  * 概念: redirect-safe rendezvous / origin isolation / challenge correlation。
@@ -12,6 +12,7 @@
  const origin='https://tealabhokkaido.com',path='/software/worktime/inventory/auth/';
  const status=document.getElementById('auth-status');
  const nonce=new URLSearchParams(global.location.search||'').get('request');
+ const reauthenticate=new URLSearchParams(global.location.search||'').get('reauth')==='1';
  let ready=false,done=false,stopped=false,channel=null,returnTimer=null;
  if(global.location.origin!==origin||![path,path+'index.html'].includes(global.location.pathname)||!/^[a-f0-9]{32}$/.test(nonce||'')){
   status.textContent='元の在庫画面を再読み込みし、「LINEでログイン」から開いてください。';return;
@@ -42,6 +43,12 @@
  try{
   await global.liff.init({liffId:'2011940133-JXUDzLnG'});
   if(stopped)return;
+  // サーバーに拒否された後の明示再ログイン。SDKに残った認証をそのまま返さない。
+  // redirect先からreauthを外すので、OAuth復帰後にlogout/loginを繰り返さない。
+  if(reauthenticate&&!global.liff.isInClient()){
+   if(global.liff.isLoggedIn())global.liff.logout();
+   global.liff.login({redirectUri:origin+path+'?request='+nonce});return;
+  }
   if(!global.liff.isLoggedIn()){
    // 要求の目印だけを維持。ID tokenやLINE subをredirectUriに載せない。
    global.liff.login({redirectUri:origin+path+'?request='+nonce});return;

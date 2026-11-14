@@ -7,13 +7,14 @@
  */
 (function(global){
  'use strict';
- let token=null,pending=null,stopped=false;
+ let token=null,pending=null,stopped=false,reauthenticate=false;
  const origin='https://tealabhokkaido.com';
  const finish=(error,value)=>{
   const current=pending;if(!current)return;
   pending=null;clearTimeout(current.timer);
   if(!error){
    token=value;
+   reauthenticate=false;
    try{current.channel?.postMessage({type:'TLH_INVENTORY_LOGIN_ACK',nonce:current.nonce});}catch{}
   }
   current.channel?.close();
@@ -37,7 +38,7 @@
  });
  global.TlhInventoryLogin=Object.freeze({
   getToken:()=>stopped?null:token,
-  clearToken:()=>{token=null;},
+  clearToken:()=>{token=null;reauthenticate=true;},
   login(){
    if(stopped)return Promise.reject(Error('PAGE_CLOSED'));
    if(pending?.popup?.closed)finish('LOGIN_UNAVAILABLE');
@@ -50,7 +51,7 @@
     if(channel)channel.onmessage=event=>{
      if(event.origin===origin)receive(event.data,current,data=>channel.postMessage(data));
     };
-    try{current.popup=global.open('/workforce/inventory/auth/?request='+nonce,'tlhInventoryLogin','popup,width=480,height=720');}
+    try{current.popup=global.open('/software/worktime/inventory/auth/?request='+nonce+(reauthenticate?'&reauth=1':''),'tlhInventoryLogin','popup,width=480,height=720');}
     catch{finish('LOGIN_POPUP_BLOCKED');return;}
     if(!current.popup){finish('LOGIN_POPUP_BLOCKED');return;}
     current.timer=setTimeout(()=>finish('LOGIN_UNAVAILABLE'),180000);

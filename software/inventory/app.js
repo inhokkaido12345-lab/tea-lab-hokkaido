@@ -72,7 +72,11 @@ const calendarDate = value => value ? calendarFormatter.format(new Date(value)) 
  * 例外全文・token・入力値を診断欄へ出さない。保存結果不明では再送IDを維持する。
  */
 const statusGuides={
- AUTH_REQUIRED:['LINEでログインし直し、元の在庫画面へ戻ってください。','login'],
+ AUTH_REQUIRED:['本人確認情報が受け付けられませんでした。LINEでログインし直してください。','login'],
+ AUTH_SERVICE_ERROR:['認証サービスの処理に問題があります。再ログインを繰り返さず、管理者へ確認コードを伝えてください。'],
+ AUTH_RESPONSE_INVALID:['認証サービスの応答を確認できません。管理者へ確認コードを伝えてください。'],
+ ACCOUNT_NOT_REGISTERED:['LINEの本人確認はできましたが、TLHアカウントへの登録が確認できません。管理者に登録・紐付けを確認してください。'],
+ ACCOUNT_INACTIVE:['TLHアカウントが停止されています。管理者へ有効状態を確認してください。'],
  LOGIN_POPUP_BLOCKED:['このサイトのポップアップを許可し、「LINEでログイン」を押してください。','login'],
  LOGIN_UNAVAILABLE:['通信状態を確認してLINEログインをやり直してください。','login'],
  STORE_SELECTION_REQUIRED:['上部で店舗を選ぶか、作成・招待コードで参加してください。'],
@@ -105,14 +109,14 @@ function message(text,code=''){
  if(!guide)return;
  details.append(el('p',guide[0]),el('p','確認コード：'+(unresolved?'SAVE_UNKNOWN':safe),'diagnostic-code'));
  const action=guide[1],labels={login:'LINEでログイン',retry:'同じ操作を再確認',refresh:'最新の記録を読む',sync:'一覧シートへ再同期'};
- if(action){const button=el('button',labels[action]);button.type='button';
+ if(action){const button=el('button',labels[action]);button.type='button';button.dataset.recovery=action;
   button.onclick=()=>{if(busy)return;if(action==='login')$('line-login')?.onclick?.();else if(action==='retry')send();else if(action==='sync')send({type:'SYNC_CATALOG'});else refresh();};details.append(button);
  }
 }
 globalThis.TlhInventoryStatus=Object.freeze({show:message});
 /** 通信中・読込未完了・結果不明を分ける。失敗後の再読取は必ず押せるようにする。 */
 function lock(value){busy=value;$('status').setAttribute('aria-busy',String(value));for(const b of document.querySelectorAll('button,input,select,textarea')){
- const recovery=['retry','refresh','line-login'].includes(b.id);
+ const recovery=['retry','refresh','line-login'].includes(b.id)||['login','retry','refresh'].includes(b.dataset.recovery);
  b.disabled=value||(!view&&!recovery&&!b.dataset.tab&&!b.dataset.tenant)||(Boolean(pending)&&!recovery);
 }}
 function tab(name){activeTab=name;if(name==='catalog'&&view)renderCatalog();for(const s of document.querySelectorAll('main section'))s.hidden=s.id!==name;for(const b of document.querySelectorAll('nav button')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}if(name==='history'&&view&&historyDirty)renderHistory();}
@@ -574,8 +578,8 @@ function renderCatalog(){
 
 $('receipt').onsubmit=e=>{e.preventDefault();const lines=[...$('lines').children].map(r=>r.requestLine());if(!lines.length){message('先に仕入品を登録して、入荷する品目を追加してください。');return;}send({type:'RECEIVE',receivedOn:$('day').value,lines,completeCaseId:$('complete').value||null});};
 $('retry').onclick=()=>send();
-const readErrors={STORE_SELECTION_REQUIRED:'店舗を選択するか、新しい店舗を作成・招待コードで参加してください。',OWNER_AUTHORIZATION_REQUIRED:'サービス所有者のGoogle連携認可が必要です。',AUTH_REQUIRED:'LINEでログインしてください。',AUTH_UNAVAILABLE:'TLHアカウントの照合に接続できません。',LOGIN_UNAVAILABLE:'LINEログインの準備に失敗しました。',OFFLINE:'オンライン接続が必要です。',NOT_CONFIGURED:'在庫サービスの接続設定が未完了です。管理者に連絡してください。',FORBIDDEN:'TLHアカウントと店舗への参加権限を確認してください。',SCHEMA_MISMATCH:'在庫データを読み取れません。管理者に連絡してください。',LEDGER_REVIEW_REQUIRED:'保存原簿の整合性を確認する必要があります。',RPC_TIMEOUT:'Googleから応答がありません。もう一度読み込んでください。',RPC_FAILED:'Googleへの接続に失敗しました。もう一度読み込んでください。'};
-const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('認証の有効期限が切れました。LINEでログインし直してください。','AUTH_REQUIRED'):message('在庫を読み込めません。'+(readErrors[e?.message]||'通信状態を確認し、もう一度読み込んでください。'),Object.hasOwn(readErrors,e?.message)||Object.hasOwn(statusGuides,e?.message)?e.message:'UNAVAILABLE');
+const readErrors={STORE_SELECTION_REQUIRED:'店舗を選択するか、新しい店舗を作成・招待コードで参加してください。',OWNER_AUTHORIZATION_REQUIRED:'サービス所有者のGoogle連携認可が必要です。',AUTH_REQUIRED:'本人確認情報を確認できません。LINEでログインし直してください。',ACCOUNT_NOT_REGISTERED:'TLHアカウントの登録が確認できません。',ACCOUNT_INACTIVE:'TLHアカウントが停止されています。',AUTH_SERVICE_ERROR:'認証サービスで問題が発生しています。',AUTH_RESPONSE_INVALID:'認証サービスの応答を確認できません。',AUTH_UNAVAILABLE:'TLHアカウントの照合に接続できません。',LOGIN_UNAVAILABLE:'LINEログインの準備に失敗しました。',OFFLINE:'オンライン接続が必要です。',NOT_CONFIGURED:'在庫サービスの接続設定が未完了です。管理者に連絡してください。',FORBIDDEN:'TLHアカウントと店舗への参加権限を確認してください。',SCHEMA_MISMATCH:'在庫データを読み取れません。管理者に連絡してください。',LEDGER_REVIEW_REQUIRED:'保存原簿の整合性を確認する必要があります。',RPC_TIMEOUT:'Googleから応答がありません。もう一度読み込んでください。',RPC_FAILED:'Googleへの接続に失敗しました。もう一度読み込んでください。'};
+const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('本人確認情報が受け付けられませんでした。LINEでログインし直してください。','AUTH_REQUIRED'):message('在庫を読み込めません。'+(readErrors[e?.message]||'通信状態を確認し、もう一度読み込んでください。'),Object.hasOwn(readErrors,e?.message)||Object.hasOwn(statusGuides,e?.message)?e.message:'UNAVAILABLE');
 /** 初回失敗からの復旧時も入力行を用意する。読取の度に入力中の行を増やさない。 */
 async function refresh(){
  if(busy)return;if(TlhInventory.requiresLogin()){view=null;message('LINEでログインして在庫を開いてください。');lock(false);return;}lock(true);message('在庫を読み込んでいます…');
