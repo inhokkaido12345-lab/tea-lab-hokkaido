@@ -192,8 +192,12 @@
     }finally{contextBusy=false;}
   }
   async function readView(){
-    if(!storeContext){const reply=await request('ACCOUNT');if(!reply.ok)return reply;storeContext=reply.value;
-      selectedStore=storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();}
+    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true});if(!reply.ok)return reply;
+      // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
+      const initialView=reply.value.view;
+      const {view:_view,...context}=reply.value;storeContext=context;
+      selectedStore=storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();
+      if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
     if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
     const result=await request('READ',{storeId:selectedStore});
     if(result.code==='FORBIDDEN'){storeContext=null;selectedStore=null;clearStoreView();}
