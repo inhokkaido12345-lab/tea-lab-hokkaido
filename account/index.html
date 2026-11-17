@@ -28,21 +28,21 @@
 <script defer src="service-shell/signed-workflow-writer.js?v=c23eab11a91fbadb"></script>
 <script defer src="service-shell/signed-workflow-status.js?v=9a07b8f5ea126df0"></script>
 <script defer src="service-shell/workflow-discovery-view.js?v=8b77e7df7ce28ec9"></script>
-<script defer src="service-shell/workflow-records-view.js?v=86cfb3cff429b585"></script>
+<script defer src="service-shell/workflow-records-view.js?v=683ffb42a88e7063"></script>
 <script defer src="service-shell/workflow-receipt.js?v=a8e0c466326a4a06"></script>
 <script defer src="service-shell/workflow-confirmation.js?v=41eb3126089af285"></script>
-<script defer src="service-shell/workflow-panel.js?v=f48260781f285882"></script>
+<script defer src="service-shell/workflow-panel.js?v=008e4d1aace964de"></script>
 <script src="service-shell/verified-overview-scopes.js?v=dae5f1ab2ee29ad8" defer></script>
 <script src="service-shell/service-management.js?v=b29976af05ff28a9" defer></script>
 <script src="service-shell/compatibility-launchers.js?v=633e5f797c56e013" defer></script>
-<script src="service-shell/account-service-category.js?v=c5d07af46ea56872" defer></script>
+<script src="service-shell/account-service-category.js?v=42bb4811c8100714" defer></script>
 <script src="account.js?v=9944564ef454a25a" defer></script>
-<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=2337be15aa61cc2a">
+<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=9b9a2043d6e036cb">
 </head>
 <body class="account-category-shell"><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
 <section id="account-login-section" aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
-<p id="account-login-intro">招待を受け取るには、LINEでログインしてください。</p>
+<p id="account-login-intro">利用を始めるには、LINEでログインしてください。</p>
 <button id="account-login" type="button">LINEでログイン</button>
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <button id="account-read-retry" type="button" hidden>登録状態を再読込</button>
@@ -52,7 +52,7 @@
 <select id="account-mobile-category" aria-label="表示する項目"><option value="self">アカウント基本情報</option><option value="services">サービス管理</option><option value="manage">店舗管理</option><option value="company">社内管理</option><option value="platform">TLH管理</option></select><nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-services" type="button" role="tab" aria-selected="false">サービス管理</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
 <section id="account-service-panel" data-account-panel="services" hidden><h2>サービス管理</h2><div id="account-service-content"></div><iframe id="account-service-frame" name="tlhServiceRegistryFrame" title="サービス利用状態の応答" hidden></iframe></section>
 <section id="account-managed-store-panel" data-account-panel="manage" hidden><h2>管理する店舗</h2><div id="account-managed-stores"></div></section>
-<section id="activation-section" data-inventory-management="true" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
+<section id="activation-section" data-inventory-management="true" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">利用を始める</h2><div data-account-panel="self"><div id="account-signup" hidden>
 <p>このLINEでアカウントを作成します。</p>
 <button id="account-create" type="button">アカウントを作成して続ける</button>
 <p id="account-create-status" role="status" aria-live="polite"></p>

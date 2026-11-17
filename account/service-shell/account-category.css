@@ -27,3 +27,7 @@
 .workflow-panel input[type=checkbox] { display:inline-block; width:auto; margin-left:12px; }
 
 .account-procedure-entry { background:transparent; color:#2f5452; border-color:transparent; text-decoration:underline; }
+
+/* Procedure DOM order is intentional; do not inherit registry-list button order. */
+.workflow-panel > [role=status],.workflow-panel > button { order:0; }
+.workflow-panel > .workflow-secondary { order:3; }

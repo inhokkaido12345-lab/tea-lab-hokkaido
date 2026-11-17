@@ -1,0 +1,67 @@
+/** Closed normal-path journey only: fake LINE/Core/approval, actual current UI.
+ * This is NOT live OAuth, grant persistence, recovery, or physical-device evidence.
+ * Other suites cover signed GAS writes, UNKNOWN, and account-switch recovery. */
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import http from 'node:http';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {createHmac} from 'node:crypto';
+import {fixtureReply,replyHTML} from './account-visual-fixtures.mjs';
+const root=path.resolve(new URL('..',import.meta.url).pathname),out=path.join(root,'qa-artifacts/account-request-journey');
+const {chromium}=createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE||path.join(root,'.qa-tools/node_modules/playwright'));
+await fs.rm(out,{recursive:true,force:true});await fs.mkdir(out,{recursive:true});
+const server=http.createServer(async(q,r)=>{try{
+ let p=new URL(q.url,'http://localhost').pathname;if(p.endsWith('/'))p+='index.html';
+ const base=process.env.INVENTORY_QA_ROOT&&p.startsWith('/software/inventory/')?path.resolve(process.env.INVENTORY_QA_ROOT):root;
+ const file=path.resolve(base,base===root?'.'+p:p.slice('/software/inventory/'.length));if(!file.startsWith(base+path.sep))throw Error('path');
+ r.setHeader('Content-Type',p.endsWith('.js')?'text/javascript':p.endsWith('.css')?'text/css':'text/html');r.end(await fs.readFile(file));
+}catch{r.statusCode=404;r.end();}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));
+const origin='http://127.0.0.1:'+server.address().port,browser=await chromium.launch(),reports=[];
+const actor='usr_other',rev='a'.repeat(64),scope={kind:'STORE',id:'storeA'};
+const cap={id:'inventory:read',label:'在庫を見る',description:'会社在庫を確認します'},receive={id:'inventory:receive-only',label:'入荷のみ',description:'入荷を記録します'};
+function core(manager=false){const actor=manager?'usr_company':'usr_other';let registered=manager,approved=false,spec=manager?{capabilities:[cap.id,receive.id],expiresAtUtc:new Date(Date.now()+86400000).toISOString()}:null,requestId=manager?'existing_request':null;return {
+ approveInFixture(){approved=true;},reply(p){let r;
+ if(p.action==='bridgeCreateAccount'){registered=true;return {type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:p.nonce,code:'CREATED'};}
+ if(p.action==='bridgeAccountAccessOverviewV1'){r=fixtureReply(p,registered?'existing':'unregistered');if(registered){const data=JSON.parse(r.data);data.accountId=actor;data.organizations=[];data.operatingRoles=[];r.data=JSON.stringify(data);delete r.mac;}else return r;}
+ else if(p.action==='bridgeServiceRegistryReadV1'){assert.equal(p.phase,'LIST');r={type:'TLH_SERVICE_REGISTRY_READ_V1',phase:p.phase,query:p.query,cursor:p.cursor,serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,nonce:p.nonce,code:'OK',data:JSON.stringify({version:1,actorAccountId:actor,registryRevision:rev,items:[{serviceId:'inventory',displayName:'在庫',status:'ACTIVE',scopeKinds:['STORE'],availableCapabilities:[cap.id,receive.id],capabilityDescriptors:[cap,receive],connectionState:'NOT_VERIFIED'}],nextCursor:''})};}
+ else if(p.action==='bridgeAccessWorkflowDiscoverV1'){r={type:'TLH_ACCESS_WORKFLOW_DISCOVER_V1',serviceId:p.serviceId,nonce:p.nonce,code:'DISCOVER_OK',data:JSON.stringify({version:1,actorAccountId:actor,serviceId:p.serviceId,state:'READY',contexts:manager?[{scope,displayName:'合成会社 / 合成店舗',source:'MANAGEMENT',actions:['QUEUE'],requestCapabilities:[],capabilityRequirements:[]}]:[...(spec?[{scope,displayName:'合成会社 / 合成店舗',source:'SELF_INBOX',actions:['INBOX'],requestCapabilities:[],capabilityRequirements:[]}]:[]),{scope,displayName:'合成会社 / 合成店舗',source:'PUBLIC_REQUEST',actions:['REQUEST'],requestCapabilities:[cap.id,receive.id],capabilityRequirements:[{capabilityId:receive.id,requires:[cap.id]}]}],snapshotRevision:rev,nextCursor:'',currentAccess:'NOT_EVALUATED'})};}
+ else if(p.action==='bridgeInventoryGranularReadinessV2'){r={type:'TLH_INVENTORY_GRANULAR_READINESS_V2',action:p.action,version:2,serviceId:'inventory',scopeKind:'STORE',scopeId:p.scopeId,nonce:p.nonce,code:'READ_OK',data:JSON.stringify({version:2,actorAccountId:actor,serviceId:'inventory',scope:{kind:'STORE',id:p.scopeId},allowedGranularCapabilities:[receive.id],authority:'FEATURE_ONLY',currentAccess:'NOT_EVALUATED'})};}
+ else if(p.action==='bridgeAccessWorkflowWriteV1'){assert.equal(p.command,manager?'APPROVE':'REQUEST');if(p.phase==='COMMIT'){if(manager)approved=true;else{assert.equal(spec,null,'single request only');spec=JSON.parse(p.specification);requestId=p.requestId;}}
+ r={type:'TLH_ACCESS_WORKFLOW_WRITE_V1',phase:p.phase,command:p.command,serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,requestId:p.requestId,operationId:p.operationId,nonce:p.nonce,code:p.phase==='PREVIEW'?'PREVIEW_READY':'WRITE_SAVED',data:JSON.stringify(p.phase==='PREVIEW'?{state:'PREVIEW_READY',revision:rev,recordStatus:manager?'READY':'REQUESTED',capabilities:manager?spec.capabilities:JSON.parse(p.specification).capabilities,expiresAtUtc:manager?spec.expiresAtUtc:JSON.parse(p.specification).expiresAtUtc,subjectLabel:{label:'合成本人',nameSource:'LINE_SELF_SET'}}:{state:manager?'APPLIED':'RECORDED',operationId:p.operationId,requestId:p.requestId,recordStatus:manager?'APPLIED':'REQUESTED',currentAccess:'NOT_EVALUATED',retryWithNewOperation:false})};}
+ else if(p.action==='bridgeAccessWorkflowStatusV1'){assert.ok(spec);r={type:'TLH_ACCESS_WORKFLOW_STATUS_V1',serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,operationId:p.operationId,nonce:p.nonce,code:'READ_OK',data:JSON.stringify({version:1,actorAccountId:actor,state:'SAVED',operationId:p.operationId,requestId,recordStatus:manager?'APPLIED':'REQUESTED',currentAccess:'NOT_EVALUATED',retryWithNewOperation:false})};}
+ else if(p.action==='bridgeAccessWorkflowReadV1'){assert.equal(p.phase,manager?'QUEUE':'INBOX');assert.ok(spec);r={type:'TLH_ACCESS_WORKFLOW_READ_V1',phase:p.phase,serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,nonce:p.nonce,code:'READ_OK',data:JSON.stringify({version:1,actorAccountId:actor,snapshotRevision:approved?'c'.repeat(64):rev,items:[{requestId,source:'SELF_REQUEST',subjectAccountId:'usr_other',managerAccountId:approved?'usr_company':'',serviceId:'inventory',scope,capabilities:spec.capabilities,expiresAtUtc:spec.expiresAtUtc,status:approved?'APPLIED':'REQUESTED',revision:approved?3:1,approvalMode:'REQUIRES_APPROVAL',subjectLabel:{label:'合成本人',nameSource:'LINE_SELF_SET'}}],nextCursor:''})};}
+ else throw Error('UNEXPECTED_ACTION:'+p.action);
+ r.mac=createHmac('sha256',p.responseKey).update(Object.values(r).join('\n')).digest('hex');return r;
+ }};}
+let failed=false;
+try{for(const width of[390,1280])for(const manager of[false,true]){
+ const ctx=await browser.newContext({viewport:{width,height:width===390?844:900},serviceWorkers:'block'}),fake=core(manager),requests=[],errors=[],stages=[];let page;
+ try{
+  ctx.on('page',p=>{p.on('pageerror',e=>errors.push(e.message));p.on('dialog',dialog=>{assert.match(dialog.message(),/このLINEにTLHアカウントを作成/);void dialog.accept();});});
+  await ctx.route('**/*',async route=>{const q=route.request(),u=new URL(q.url());
+   if(u.origin===origin){
+    if(u.pathname==='/software/inventory/employee-login.js')return route.fulfill({contentType:'text/javascript',body:"window.TlhInventoryLogin={clearToken(){},login:async()=>{},getToken:()=>location.pathname==='/account/'?'synthetic.fixture.proof':null};"});
+    if(u.pathname==='/software/inventory/employee-transport.js'){const source=await fs.readFile(process.env.INVENTORY_QA_ROOT?path.join(process.env.INVENTORY_QA_ROOT,'employee-transport.js'):path.join(root,u.pathname),'utf8'),guard="global.location.origin !== 'https://tealabhokkaido.com'";assert.equal(source.split(guard).length,2);return route.fulfill({contentType:'text/javascript',body:source.replace(guard,'global.location.origin !== '+JSON.stringify(origin))});}
+    return route.continue();
+   }
+   if(u.origin==='https://script.google.com'&&q.method()==='POST'){try{const p=Object.fromEntries(new URLSearchParams(q.postData()));requests.push(p);return route.fulfill({contentType:'text/html',body:replyHTML(fake.reply(p),origin)});}catch(e){errors.push(e.message);return route.abort();}}
+   errors.push('EXTERNAL_REQUEST:'+u.origin);return route.abort();
+  });
+  async function snap(stage){await page.screenshot({path:path.join(out,`${width}-${manager?'manager-':''}${stage}.png`)});stages.push(stage);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
+  page=await ctx.newPage();if(manager){await page.goto(origin+'/account/');await page.locator('#account-login').click();await page.waitForFunction(()=>document.getElementById('account-status').textContent.includes('登録済み'));if(width===390)await page.locator('#account-mobile-category').selectOption('services');else await page.locator('#account-tab-services').click();await page.getByRole('button',{name:'在庫',exact:true}).click();await page.getByRole('button',{name:'申請・招待を確認',exact:true}).click();await page.getByRole('button',{name:'承認待ち',exact:true}).click();await page.getByRole('button',{name:'申請を確認',exact:true}).click();await page.getByRole('button',{name:'承認する',exact:true}).waitFor();assert.match(await page.locator('.workflow-panel').textContent(),/既存の権限は削除・縮小しません/);await snap('preview');await page.getByRole('button',{name:'承認する',exact:true}).click();await page.getByText('承認した内容を保存しました。利用状態は本人がアプリで確認します。',{exact:true}).waitFor();const text=await page.locator('.workflow-panel').textContent();for(const value of ['合成会社 / 合成店舗','合成本人','usr_other','在庫を見る','入荷のみ'])assert.ok(text.includes(value),value);assert.match(text,/追加した操作/);assert.equal(await page.getByRole('link',{name:'在庫で確認する',exact:true}).count(),0);assert.ok(await page.getByRole('button',{name:'申請・招待を確認',exact:true}).evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}));await snap('result');assert.equal(requests.filter(p=>p.phase==='COMMIT').length,1);assert.deepEqual(errors,[]);reports.push({width,mode:'manager',passed:true,stages,synthetic:true,realGrant:false});continue;}await page.goto(origin+'/software/inventory/');await page.locator('.entry-primary').waitFor();await snap('inventory');
+  const popup=ctx.waitForEvent('page');await page.locator('.entry-primary').click();page=await popup;await page.waitForLoadState('domcontentloaded');
+  await page.locator('#account-login').click();await page.locator('#account-create').waitFor({state:'visible'});await snap('unregistered');await page.locator('#account-create').click();
+  await page.locator('#account-request-entry').waitFor({state:'visible'});assert.equal(await page.locator('#account-create').isVisible(),false);await snap('registered');
+  await page.locator('#account-request-entry').click();await page.getByRole('button',{name:'在庫',exact:true}).click();await page.getByRole('button',{name:'申請・招待を確認',exact:true}).click();await page.getByRole('button',{name:'利用を申請',exact:true}).click();
+  await page.getByRole('checkbox',{name:'入荷のみ',exact:true}).check();const before=requests.length;await page.getByRole('button',{name:'確認へ',exact:true}).click();await page.getByText('「在庫を見る」も選んでください。選択した操作に必要です。',{exact:true}).waitFor();assert.equal(requests.length,before);assert.equal(await page.getByRole('checkbox',{name:'在庫を見る',exact:true}).isChecked(),false);
+  await page.getByRole('checkbox',{name:'在庫を見る',exact:true}).check();await page.getByRole('button',{name:'確認へ',exact:true}).click();await page.getByRole('button',{name:'利用を申請する',exact:true}).waitFor();await snap('preview');await page.getByRole('button',{name:'利用を申請する',exact:true}).click();
+  await page.getByText('申請しました。管理者の承認待ちです。',{exact:true}).waitFor();await snap('request-result');assert.ok(await page.getByRole('button',{name:'承認状況を確認',exact:true}).evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'pending next action must be above fold');await page.getByRole('button',{name:'承認状況を確認',exact:true}).click();await page.getByText('承認待ち',{exact:true}).waitFor();await snap('waiting');
+  const writes=requests.filter(p=>p.phase==='COMMIT').length;fake.approveInFixture();await page.getByRole('button',{name:'再確認',exact:true}).click();await page.getByText('保存結果を確認済み',{exact:true}).waitFor();assert.equal(requests.filter(p=>p.phase==='COMMIT').length,writes);
+  const open=page.getByRole('link',{name:'在庫で確認する',exact:true});assert.equal(await open.getAttribute('href'),'/software/inventory/');await snap('approved');assert.ok(await open.evaluate(e=>{const r=e.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}),'app return must be above fold');await open.click();await page.waitForURL(origin+'/software/inventory/');await page.locator('#line-login').waitFor({state:'visible'});await snap('inventory-return');
+  assert.equal(requests.filter(p=>p.action==='bridgeCreateAccount').length,1);assert.equal(writes,1);assert.deepEqual(errors,[]);
+  reports.push({width,passed:true,stages,requestWrites:writes,synthetic:true,realOAuth:false,realGrant:false,approval:'fixture state change only'});
+ }catch(e){failed=true;reports.push({width,manager,passed:false,error:e.stack,errors,stages});if(page)await page.screenshot({path:path.join(out,`${width}-FAIL.png`)}).catch(()=>{});}finally{await ctx.close();}
+}}finally{await browser.close();server.close();await fs.writeFile(path.join(out,'report.json'),JSON.stringify(reports,null,2));}
+if(failed)process.exitCode=1;
