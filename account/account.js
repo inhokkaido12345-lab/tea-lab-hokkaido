@@ -13,6 +13,16 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
+ // A fixed presentation hint only: never authorization or a redirect destination.
+ // Compatibility catalog only, not the general service registry. Query is display-only.
+ const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');
+ const personalPurpose=!!purposeMatch;
+ const matches=personalPurpose?(global.TlhActivationServices||[]).filter(x=>x.serviceId===purposeMatch[1]):[];
+ // Same strict relative-path grammar as the activation return link; no URL decoding.
+ const destination=matches.length===1&&typeof matches[0].path==='string'&&!/[\x00-\x20\x7f]/.test(matches[0].path)&&/^\/(?:[a-z0-9-]+\/)+$/.test(matches[0].path)?matches[0]:null;
+ if(destination){$('account-personal-return').setAttribute('href',destination.path);$('account-personal-return').textContent=destination.label+'へ戻る';}
+ if(personalPurpose){$('account-reload').setAttribute('href',destination?'?purpose=personal&service='+destination.serviceId:'?purpose=personal');$('account-login-intro').textContent='個人利用のアカウント作成・確認。所属・利用開始コードは不要です。';$('activation-heading').textContent='アカウント作成・任意の招待';}
+ $('account-personal-return').addEventListener('click',event=>{if(!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave())event.preventDefault();});
  const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。利用開始コードがあれば、続けて受け取れます。',
   ALREADY_REGISTERED:'登録済みの応答を受け取りました。最新の本人情報を再確認しています。',
   SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
@@ -38,6 +48,8 @@
   login.disabled=stopped||loggingIn||ready;$('account-login-section').setAttribute('data-authenticated',String(ready&&!stopped));
   $('account-read-retry').hidden=selfReadState!=='error';$('account-read-retry').disabled=!ready||!global.TlhAccountNavigation.canLeave();status.setAttribute('aria-busy',String(selfReadState==='checking'));
   $('account-apps').hidden=!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  $('account-personal-ready').hidden=!personalPurpose||!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;
   create.disabled=!!activation?.busy()||(!unregistered&&!request)||!!operations?.busy()||stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
   enrollment.disabled=!!activation?.busy()||!!operations?.busy()||stopped||!ready||!!request||!!common?.busy()||!!grants?.busy();
@@ -66,7 +78,7 @@
    grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!activation?.busy()||!!operations?.busy()||!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'grant')});
    operations=global.TlhAccountOperations?.init({liff:proof,blocked:()=>!!activation?.busy()||!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy(),onState:controls});
    activation=global.TlhServiceActivation?.init({gasUrl:endpoint,liff:proof,services:global.TlhActivationServices,singleRegistration:true,registrationState:()=>unregistered?'unregistered':registrationConfirmed?'registered':'unknown',onRegister:submitRegistration,blocked:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy(),onState:controls,onSuccess:refreshSelf});
-   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:(d,state)=>{selfReadState=d?'registered':state==='not_registered'?'unregistered':state==='error'?'error':'checking';unregistered=!d&&state==='not_registered';registrationConfirmed=!!d;activation?.syncRegistration?.();if(!d){managementChecked=false;tabs?.management(state==='error'?'error':'checking','overview');}if(unregistered)tabs?.management('denied','overview');if(d)status.textContent='登録済みのアカウントを確認しました。';else if(unregistered)status.textContent='このLINEのアカウントは未登録です。';else if(state==='error')status.textContent='登録状態を確認できませんでした。再読込してください。';else status.textContent='登録状態を確認しています…';controls();if(d&&!managementChecked){managementChecked=true;const managed=d.operatingRoles.some(r=>r.effective&&(r.role==='ORGANIZATION_OPERATOR'||r.role==='STORE_SERVICE_ADMIN'&&r.serviceId==='INVENTORY'));if(managed)checkManagement();else tabs?.management('denied','overview');}if(!d)operations?.invalidate();tabs?.roles(d||(unregistered?{operatingRoles:[]}:null),state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
+   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:(d,state)=>{selfReadState=d?'registered':state==='not_registered'?'unregistered':state==='error'?'error':'checking';unregistered=!d&&state==='not_registered';registrationConfirmed=!!d;activation?.syncRegistration?.();if(!d){managementChecked=false;tabs?.management(state==='error'?'error':'checking','overview');}if(unregistered)tabs?.management('denied','overview');if(d)status.textContent='登録済みのアカウントを確認しました。'+(personalPurpose&&!destination?' 利用先を確認できません。元のアプリから開き直してください。':'');else if(unregistered)status.textContent='このLINEのアカウントは未登録です。';else if(state==='error')status.textContent='登録状態を確認できませんでした。再読込してください。';else status.textContent='登録状態を確認しています…';controls();if(d&&!managementChecked){managementChecked=true;const managed=d.operatingRoles.some(r=>r.effective&&(r.role==='ORGANIZATION_OPERATOR'||r.role==='STORE_SERVICE_ADMIN'&&r.serviceId==='INVENTORY'));if(managed)checkManagement();else tabs?.management('denied','overview');}if(!d)operations?.invalidate();tabs?.roles(d||(unregistered?{operatingRoles:[]}:null),state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
    ready=true;tabs?.ready();$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
    status.textContent='LINEから本人確認情報を受け取りました。登録状態を確認しています。';access?.load();
   }catch{
