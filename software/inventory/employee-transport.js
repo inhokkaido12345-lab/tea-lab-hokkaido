@@ -100,26 +100,30 @@
         Uint8Array.from(data.mac.match(/../g), byte => parseInt(byte, 16)), encoder.encode(text));
       if (!valid || stopped || pending !== current) return;
       if (data.code === 'AUTH_REQUIRED') {
-        global.TlhInventoryLogin?.clearToken?.();storeContext=null;selectedStore=null;
+        global.TlhInventoryLogin?.clearToken?.();recovery?.observeAccount(null);storeContext=null;selectedStore=null;
         clearStoreView();contextHost()?.replaceChildren();showLogin();
       }
       if (data.code !== 'OK') {
         if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN')invalidateStoreContext();
-        finish(null, {ok: false, code: data.code}); return;
+        let rejection;
+        if(current.command==='COMMAND'&&data.data!==''){try{rejection=JSON.parse(data.data);}catch{}}
+        finish(null, {ok: false, code: data.code,...(rejection?{rejection}:{})}); return;
       }
-      finish(null, {ok: true, value: JSON.parse(data.data)});
+      const value=JSON.parse(data.data);if(current.command==='ACCOUNT')recovery?.observeAccount(current.identitySession===(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())?value.actorAccountId:null);
+      finish(null, {ok: true, value});
     } catch (_error) { /* 未検証の結果は表示せず、元の期限で失敗にする。 */ }
   });
 
-  async function request(command, input = {}) {
+  async function wireRequest(command, input = {}, expectedSession = null) {
     await ready;
     if (stopped) throw Error('PAGE_CLOSED');
     if (navigator.onLine === false) {invalidateStoreContext();throw Error('OFFLINE');}
-    if (!['ACCOUNT','TENANT','READ','COMMAND'].includes(command) || pending) throw Error('BUSY');
+    if (!['ACCOUNT','TENANT','READ','COMMAND','STATUS'].includes(command) || pending) throw Error('BUSY');
     const idToken = global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff.getIDToken();
+    if(expectedSession!==null&&idToken!==expectedSession)throw Error('AUTH_REQUIRED');
     if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {invalidateStoreContext();showLogin(); throw Error('AUTH_REQUIRED');}
     return new Promise((resolve, reject) => {
-      const current = {command, nonce: random(16), responseKey: random(32), resolve, reject};
+      const current = {command, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
       pending = current;
       current.timer = setTimeout(() => finish('RPC_TIMEOUT'), 45000);
       const form = document.createElement('form');
@@ -131,6 +135,12 @@
       document.body.appendChild(form);
       try {form.submit();} catch (_error) {finish('RPC_FAILED');} finally {form.remove();}
     });
+  }
+
+  const recovery=config?.recoveryRequired===true?global.TlhInventoryOperationRecovery?.create(wireRequest,()=>global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken()):null;
+  async function request(command,input={}){
+    if(command==='COMMAND'&&config?.recoveryRequired===true)return recovery?recovery.execute(input):{ok:false,code:'RECOVERY_UNAVAILABLE'};
+    return wireRequest(command,input);
   }
 
   global.addEventListener('pagehide', () => {
@@ -218,5 +228,5 @@
 
   // 未ログインは通常の開始状態。画面はこの時点ではACCOUNT/READを送らない。
   const requiresLogin=()=>Boolean(global.TlhInventoryLogin&&!global.TlhInventoryLogin.getToken());
-  global.TlhInventory = Object.freeze({request,readView,requiresLogin});
+  global.TlhInventory = Object.freeze({request,readView,requiresLogin,hasPendingReceipt:()=>recovery?.hasPendingReceipt()===true});
 })(window);

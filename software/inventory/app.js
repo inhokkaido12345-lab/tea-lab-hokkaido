@@ -59,7 +59,9 @@ const stockCards=new Map();
 let itemsById = new Map();
 // Transport clears cached private data when access is lost or a context changes.
 // Keep an uncertain operation ID for explicit result checking, never as authority.
-globalThis.TlhInventoryView=Object.freeze({invalidate(){
+globalThis.TlhInventoryView=Object.freeze({recoveryResolved(){
+ pending=null;view=null;$('recovery').hidden=true;lock(busy);
+},invalidate(){
  view=null;renderedStoreId=null;itemsById.clear();stockWorkspaces.clear();stockCards.clear();
  historyDirty=true;catalogDirty=true;catalogSelection='new';
  for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview','stock-item-filters'])$(id)?.replaceChildren();
@@ -93,6 +95,10 @@ const statusGuides={
  COMMON_ACCOUNT_INACTIVE:['TLHアカウントが停止されています。管理者に確認してください。勤怠登録や別アカウント作成は不要です。'],
  FORBIDDEN:['利用するアカウントと店舗を確認し、店舗管理者へ所属・権限の確認を依頼してください。'],
  OWNER_AUTHORIZATION_REQUIRED:['サービス管理者がGoogle連携の認可を確認する必要があります。'],
+ RECOVERY_SAVED:['保存済みを確認しました。操作は再送せず、最新の記録を読み直してください。','refresh'],
+ RECOVERY_UNKNOWN:['保存済みか未確認です。復旧欄で結果だけ確認し、新しい同じ操作をしないでください。'],
+ RECOVERY_LOCK_UNAVAILABLE:['保存の重複を防止できないブラウザです。対応ブラウザで開いてください。ログイン・読取はできます。'],
+ RECOVERY_STORAGE_UNAVAILABLE:['復旧情報を安全に保存できないため、保存を停止しています。ブラウザの保存設定を確認してください。'],
  SAVE_UNKNOWN:['新しい保存を重ねず、「同じ操作を再確認」で保存済みか確認してください。','retry'],
  TENANT_SAVE_UNKNOWN:['店舗の作成や参加を繰り返さず、画面の「同じ店舗操作の結果を確認」を押してください。'],
  SAVE_VIEW_FAILED:['保存は完了しています。再登録せず、最新の記録を読み直してください。','refresh'],
@@ -130,9 +136,11 @@ function message(text,code=''){
  }
 }
 globalThis.TlhInventoryStatus=Object.freeze({show:message});
+// Common navigation receives a boolean only, never receipt, payload or identity.
+globalThis.TlhInventoryNavigation=Object.freeze({canLeave:()=>!busy&&!pending&&globalThis.TlhInventory?.hasPendingReceipt?.()!==true});
 /** 通信中・読込未完了・結果不明を分ける。失敗後の再読取は必ず押せるようにする。 */
 function lock(value){busy=value;$('status').setAttribute('aria-busy',String(value));for(const b of document.querySelectorAll('button,input,select,textarea')){
- const recovery=['retry','refresh','line-login'].includes(b.id)||['login','retry','refresh'].includes(b.dataset.recovery);
+ const recovery=['retry','refresh','line-login'].includes(b.id)||['login','retry','refresh','command-status'].includes(b.dataset.recovery);
  b.disabled=value||(!view&&!recovery&&!b.dataset.tab&&!b.dataset.tenant)||(Boolean(pending)&&!recovery);
 }}
 function tab(name){activeTab=name;if(name==='catalog'&&view)renderCatalog();for(const s of document.querySelectorAll('main section'))s.hidden=s.id!==name;for(const b of document.querySelectorAll('nav button')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}if(name==='history'&&view&&historyDirty)renderHistory();}
@@ -454,7 +462,7 @@ async function send(command){
  try {
  const result = await TlhInventory.request('COMMAND', pending);
  const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code};
- const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE'].includes(data.code) ? 503 : 403};
+ const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE','RECOVERY_UNKNOWN','RECOVERY_ACTOR_MISMATCH','RECOVERY_STORAGE_UNAVAILABLE','RECOVERY_LOCK_UNAVAILABLE','RECOVERY_IDENTITY_UNAVAILABLE','RECOVERY_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
