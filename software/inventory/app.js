@@ -7,12 +7,13 @@ const inventoryOperationPermission = Object.freeze({
  OPEN_PACK:'inventory.consumption',FINISH_PACK:'inventory.consumption',NEXT_PACK:'inventory.consumption',
  START_SAMPLE:'inventory.consumption',FINISH_SAMPLE:'inventory.consumption',CANCEL_SAMPLE:'inventory.consumption',
  START_MEASUREMENT:'inventory.consumption',RECORD_MEASUREMENT:'inventory.consumption',UPDATE_MEASUREMENT:'inventory.consumption',CANCEL_MEASUREMENT:'inventory.consumption',
- MARK_ORDERED:'inventory.order',CANCEL_ORDERED:'inventory.order'
+ LINK_RECEIPT_TO_ORDER:'inventory.order',MARK_ORDERED:'inventory.order',CANCEL_ORDERED:'inventory.order'
 });
 const inventoryKnownPermissions=Object.freeze([...new Set([...Object.values(inventoryOperationPermission),'inventory.receive','inventory.manage'])]);
 function inventoryCanOperate(permissions,type,request={}){
  if(!Array.isArray(permissions)||!Object.hasOwn(inventoryOperationPermission,type))return false;
  const needed=inventoryOperationPermission[type];
+ if(type==='LINK_RECEIPT_TO_ORDER'&&!permissions.includes('inventory.read'))return false;
  const broad=permissions.includes('inventory.receive')&&!['inventory.read','inventory.order'].includes(needed);
  if(!broad&&!permissions.includes(needed))return false;
  if(!broad&&needed!=='inventory.order'&&needed!=='inventory.read'&&!permissions.includes('inventory.read'))return false;
@@ -241,6 +242,20 @@ function renderOrderBuffer(container, item) {
 }
 
 /** 基準単位/日へ統一した予測と根拠を表示する。g・mL・本数を混ぜない。 */
+/** Explicit historical association only. Receipt selection never adds stock. */
+function renderReceiptLink(card,item,order){
+ if(!canOperate('LINK_RECEIPT_TO_ORDER')||!order.orderOperationId)return;
+ const details=el('details','');details.append(el('summary','登録済みの入荷と照合（在庫は増やさない）'));
+ const candidates=(view.history||[]).filter(h=>h.type==='RECEIVE'&&h.receiptOperationId&&h.lines.some(l=>l.itemId===item.id));
+ if(!order.plannedLine||!candidates.length){details.append(el('p','予定量がある注文と、表示中の入荷履歴1件だけを照合できます。分納・合算は未対応です。','muted'));card.append(details);return;}
+ const choose=el('select','');choose.setAttribute('aria-label','照合する登録済み入荷');choose.append(new Option('入荷記録を選ぶ',''));
+ for(const h of candidates){const line=h.lines.find(l=>l.itemId===item.id);choose.append(new Option((h.receivedOn||'日付不明')+' ／ '+item.name+' ／ '+quantities(line.amount,item.baseUnit)+' ／ 記録 '+formatRecordedAt(h.at),h.receiptOperationId));}
+ const preview=el('p',''),label=el('label',''),checked=el('input','');checked.type='checkbox';label.append(checked,el('span','この入荷が、この注文の全量であると確認した'));
+ choose.onchange=()=>{checked.checked=false;validation.textContent='';const h=candidates.find(h=>h.receiptOperationId===choose.value);preview.textContent=h?'注文：'+formatRecordedAt(order.at)+' ／ '+item.name+' ／ '+quantities(order.plannedLine.amount,item.baseUnit)+'。入荷：'+h.receivedOn+' ／ '+quantities(h.lines.find(l=>l.itemId===item.id).amount,item.baseUnit):'';};
+ const validation=el('p','','muted');validation.setAttribute('role','status');
+ const save=el('button','照合して注文を完了');save.onclick=()=>{if(busy||pending)return;if(!choose.value){validation.textContent='入荷記録を選んでください。';return;}if(!checked.checked){validation.textContent='注文の全量であることを確認し、チェックしてください。';return;}validation.textContent='';send({type:'LINK_RECEIPT_TO_ORDER',caseId:order.id,orderOperationId:order.orderOperationId,receiptOperationId:choose.value,confirmAssociation:true});};
+ details.append(choose,preview,el('p','数量一致だけでは同じ注文と断定できません。伝票等で確認してください。分納・合算は未対応。入荷の再登録は不要です。','muted'),label,save,validation);card.append(details);
+}
 function renderConsumption(card, item) {
   const forecast = item.forecast;
   card.append(el('p', forecastMessages[forecast.status] || forecast.status,
@@ -484,6 +499,7 @@ function renderStockCards(){
  c.append(el('p',order.actor+'が発注済み'+(order.at?' '+formatRecordedAt(order.at) :'')));
  if(!order.plannedLine)c.append(el('p','発注数量：未記入'));
  c.append(el('p','到着予定日：'+(order.expectedOn||'不明')));
+ renderReceiptLink(c,item,order);
  if(order.plannedLine)c.append(el('p','発注数量 '+order.plannedLine.quantity+' '+(item.units.find(u=>u.id===order.plannedLine.unitId)?.label||order.plannedLine.unitId)+'（'+quantities(order.plannedLine.amount,item.baseUnit)+'）'));
  }
  if(view.permissions.includes('inventory.order')){
@@ -537,13 +553,14 @@ function addLine(itemId,container=$('lines'),ordering=false){
  if(itemId)item.value=itemId;
  const count=el('input','');count.type='number';count.min='1';count.max='1000';count.step='1';count.value=ordering?'':'1';count.required=!ordering;count.placeholder=ordering?'未記入でも可':'';count.setAttribute('aria-label',ordering?'発注数量（任意）':'入荷数量');
  const unit=el('select','');unit.setAttribute('aria-label','入荷単位');const hint=el('p','','muted');
- const updateHint=()=>{const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);if(ordering&&count.value===''){hint.textContent='発注数量：未記入';return;}hint.textContent='1'+u.label+' '+quantities(u.baseQuantity,i.baseUnit)+(ordering?' ／発注量 ':' ／加算 ')+quantities(Number(count.value)*u.baseQuantity,i.baseUnit);};
+ const orderNotice=el('p','','muted');orderNotice.setAttribute('role','status');
+ const updateHint=()=>{const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);orderNotice.textContent=!ordering&&canOperate('RECEIVE')&&!canOperate('RECEIVE',{completeCaseId:'selection'})&&i.orders?.length?'入荷のみ記録し、注文は未完了のままです。注文との照合は発注権限のある担当者へ。入荷を重ねて登録しないでください。':'';if(ordering&&count.value===''){hint.textContent='発注数量：未記入';return;}hint.textContent='1'+u.label+' '+quantities(u.baseQuantity,i.baseUnit)+(ordering?' ／発注量 ':' ／加算 ')+quantities(Number(count.value)*u.baseQuantity,i.baseUnit);};
  const updateUnit=()=>{const i=itemsById.get(item.value);unit.replaceChildren();for(const u of i.units)unit.append(new Option(u.label,u.id));updateHint();};
  item.onchange=updateUnit;unit.onchange=updateHint;count.oninput=updateHint;updateUnit();
  const remove=el('button','この行を削除');remove.type='button';remove.onclick=()=>row.remove();
- row.append(item,count,unit,hint);if(!ordering)row.append(remove);row.requestLine=()=>{if(ordering&&count.value.trim()==='')return null;const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);return {itemId:i.id,quantity:Number(count.value),unitId:u.id,conversionVersion:u.version};};container.append(row);return row;
+ row.append(item,count,unit,hint,orderNotice);if(!ordering)row.append(remove);row.requestLine=()=>{if(ordering&&count.value.trim()==='')return null;const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);return {itemId:i.id,quantity:Number(count.value),unitId:u.id,conversionVersion:u.version};};container.append(row);return row;
 }
-const errors={INVALID_CATALOG_REFERENCE:'参照元は同じ店舗の商品を選んでください。自身への参照や循環参照は保存できません。',BASE_UNIT_CHANGED:'在庫の履歴がある品目の基準単位は変更できません。別品目として登録してください。',INVALID_CATALOG:'品名・URL・文字数など、仕入品情報の入力を確認してください。',INVALID_UNIT_GRAPH:'包装の数量・単位名・つながりを確認してください。循環や基準単位の整数に換算できない設定は保存できません。',CATALOG_CHANGED:'別の端末で規格が更新されました。最新の記録を読み直してください。',INVALID_MEASUREMENT:'量と単位を確認してください。袋数0では使いかけ分を計れません。',FUTURE_MEASUREMENT:'未来の日時は記録できません。',MEASUREMENT_OVERLAP:'同じ品目の計測期間が重複しています。現在の計測を更新するか、期間を確認してください。',MEASUREMENT_NOT_FOUND:'対象の計測が見つかりません。最新の記録を読んでください。',MEASUREMENT_CHANGED:'他の操作で計測が更新されています。最新の記録を読んでください。',MEASUREMENT_CLOSED:'この計測は既に終了・取消されています。',ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
+const errors={LINK_QUANTITY_UNSUPPORTED:'分納・数量違い・予定量未記入の注文は、この照合では完了できません。入荷を重ねて登録しないでください。',RECEIPT_NOT_LINKABLE:'この入荷と注文の記録を照合できません。最新の記録を確認してください。',RECEIPT_ALREADY_LINKED:'この入荷は別の注文と照合済みです。再入荷登録しないでください。',INVALID_CATALOG_REFERENCE:'参照元は同じ店舗の商品を選んでください。自身への参照や循環参照は保存できません。',BASE_UNIT_CHANGED:'在庫の履歴がある品目の基準単位は変更できません。別品目として登録してください。',INVALID_CATALOG:'品名・URL・文字数など、仕入品情報の入力を確認してください。',INVALID_UNIT_GRAPH:'包装の数量・単位名・つながりを確認してください。循環や基準単位の整数に換算できない設定は保存できません。',CATALOG_CHANGED:'別の端末で規格が更新されました。最新の記録を読み直してください。',INVALID_MEASUREMENT:'量と単位を確認してください。袋数0では使いかけ分を計れません。',FUTURE_MEASUREMENT:'未来の日時は記録できません。',MEASUREMENT_OVERLAP:'同じ品目の計測期間が重複しています。現在の計測を更新するか、期間を確認してください。',MEASUREMENT_NOT_FOUND:'対象の計測が見つかりません。最新の記録を読んでください。',MEASUREMENT_CHANGED:'他の操作で計測が更新されています。最新の記録を読んでください。',MEASUREMENT_CLOSED:'この計測は既に終了・取消されています。',ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
 /** 通信失敗なら操作IDを保持。成功後は原簿読戻し済みDTOを使用し、旧APIだけ別READする。 */
 async function send(command){
  if(busy||(!view&&!pending))return;
@@ -553,6 +570,7 @@ async function send(command){
  if(command)pending={...command,operationId:crypto.randomUUID(),storeId:view.storeId};
  if(!pending)return;
  lock(true);$('recovery').hidden=true;message('保存結果を確認しています…');
+ const receiptLeavesOrders=pending.type==='RECEIVE'&&!pending.completeCaseId&&view?.items?.some(i=>i.orders?.length&&pending.lines.some(l=>l.itemId===i.id))&&!canOperate('RECEIVE',{completeCaseId:'selection'});
  let saved=false;
  try {
  const result = await TlhInventory.request('COMMAND', pending);
@@ -572,6 +590,7 @@ async function send(command){
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
  $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
+ if(receiptLeavesOrders)message('入荷は保存しました。注文は未完了です。発注権限のある担当者に登録済み入荷との照合を依頼してください。再入荷登録は不要です。');
  }catch{
   if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。','SAVE_VIEW_FAILED');}
   else{message('保存結果が不明です。同じ操作を再確認してください。','SAVE_UNKNOWN');$('recovery').hidden=false;}
