@@ -15,6 +15,7 @@
  const endpoint=global.TlhAccountInfo.config.gasUrl;
  const messages=Object.freeze({CREATED:'TLHアカウントを作成しました。利用するアプリへ戻り、LINEログインしてください。',
   ALREADY_REGISTERED:'このLINEのTLHアカウントは登録済みです。利用するアプリへ戻れます。',
+  SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
   SIGNUP_CLOSED:'一般アカウントの新規登録は受付停止中です。従業員の招待コードがある方は、この画面で招待を受け取れます。',
   IDENTITY_REVIEW_REQUIRED:'登録状態の確認が必要です。管理者に連絡してください。',
   INVALID_NONCE:'登録リクエストを確認できませんでした。',INVALID_ID_TOKEN_FORMAT:'本人確認情報を確認できませんでした。',

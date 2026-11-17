@@ -80,3 +80,7 @@ test('all existing enrollment and self-info DOM contracts exist on the standalon
   'account-info-check','account-info-status','account-info-result','account-info-fields','account-info-frame'])assert.ok(ids.has(id),id);
  assert.match(html,/name="tlhStaffFrame"/);assert.match(html,/name="tlhAccountInfoFrame"/);
 });
+test('signup rate limit is a known refusal, shows retry guidance without claiming creation or blocking old invitations',async()=>{
+ const h=harness();await h.login();h.create();h.reply('SIGNUP_RATE_LIMITED');
+ assert.match(h.n('account-create-status').textContent,/新規登録が集中/);assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.sent.length,1);assert.equal(h.n('account-create').disabled,false);
+});
