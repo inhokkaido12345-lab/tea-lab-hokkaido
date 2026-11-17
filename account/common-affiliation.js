@@ -76,7 +76,7 @@
     if(r.phase!=='COMMIT'&&!(draft.command==='CLAIM'&&d.code==='COMMON_INVITATION_ALREADY_CLAIMED'))return;let v;try{v=JSON.parse(d.data);}catch{return;}const keys=d.code==='COMMON_INVITATION_SAVED'?['code','savedRevision','invitationId','status','summary']:d.code==='COMMON_INVITATION_ALREADY_SAVED'?['code','savedRevision','invitationId','status']:['code','invitationId','status'];
     if(!exact(v,keys)||v.code!==d.code||!id(v.invitationId)||!['PENDING','CLAIMED'].includes(v.status)||('savedRevision' in v&&(!Number.isSafeInteger(v.savedRevision)||v.savedRevision<1))||draft.command==='CLAIM'&&v.status!=='CLAIMED'||draft.command==='ISSUE'&&d.code==='COMMON_INVITATION_ALREADY_CLAIMED')return;
     if(v.summary&&!preview(JSON.stringify({revision:draft.revision,summary:v.summary,code:'COMMON_INVITATION_PREVIEW_READY'})))return;
-    const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'所属招待を発行しました。コードと受取りページを本人に個別に渡してください。':'所属招待を受け取りました。業務権限は管理者が別途設定します。';controls();return;
+    const claimed=draft.command==='CLAIM';const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'所属招待を発行しました。コードと受取りページを本人に個別に渡してください。':'所属が完了しました。在庫の利用権限は管理者の設定待ちです。本人のアカウントIDを管理者に伝え、同じIDへの閲覧権限を確認してください。';controls();if(claimed)options.onSuccess?.();return;
    }
    if(d.data!=='')return;
    if(d.code==='COMMON_RESULT_UNKNOWN'){uncertain();return;}

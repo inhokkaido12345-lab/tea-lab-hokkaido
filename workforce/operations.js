@@ -45,21 +45,22 @@
   return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),b=>parseInt(b,16)),enc.encode(JSON.stringify([d.type,d.action,d.nonce,d.phase,d.command,d.code,d.revision,d.payload])));
  }
  function init(options){
-  const n=Object.fromEntries(['status','login','refresh','fields','command','organization','organization-new','store','store-new','name','account','enabled','service','reason','preview','commit','cancel','retry','review','result','frame'].map(k=>[k,document.getElementById('ops-'+k)]));
+  const prefix=options.prefix||'ops-', get=k=>document.getElementById(prefix+k);
+  const n=Object.fromEntries(['status','login','refresh','fields','command','organization','organization-new','store','store-new','name','account','enabled','service','reason','preview','commit','cancel','retry','review','result','frame'].map(k=>[k,get(k)]));
   const view=options.view;let stopped=false,pending=null,catalog=null,draft=null,reviewed=false,uncertain=false,loginRequired=!!options.loginRequired;
   const create=(tag,t)=>{const e=document.createElement(tag);if(t!==undefined)e.textContent=t;return e;};
-  function controls(){const ready=!!catalog&&!pending&&!stopped&&!loginRequired&&!uncertain;
+  function controls(){const blocked=!!options.blocked?.();const ready=!blocked&&!!catalog&&!pending&&!stopped&&!loginRequired&&!uncertain;
    n.fields.disabled=!ready||reviewed;n.preview.disabled=!ready||reviewed;n.refresh.disabled=!!pending||stopped||uncertain||loginRequired;
    n.commit.hidden=!reviewed||uncertain;n.commit.disabled=!ready||!reviewed;
    n.cancel.disabled=!!pending||stopped||uncertain||!draft;n.retry.hidden=!uncertain;n.retry.disabled=!!pending||stopped||loginRequired;
-   n.login.hidden=!loginRequired;n.login.disabled=!!pending||stopped;n.status.setAttribute('aria-busy',String(!!pending));
+   n.login.hidden=!loginRequired;n.login.disabled=!!pending||stopped;n.status.setAttribute('aria-busy',String(!!pending));options.onState?.();
   }
   function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
   function clearDraft(){draft=null;reviewed=false;uncertain=false;n.review.replaceChildren();}
   function clearCatalog(){catalog=null;n.result.replaceChildren();n.command.replaceChildren();n.organization.replaceChildren();n.store.replaceChildren();}
   function chooseOptions(el,rows,label){const previous=el.value;el.replaceChildren();for(const row of rows){const o=create('option',label(row));o.value=row.organizationId||row.storeId;el.appendChild(o);}if(rows.some(r=>(r.organizationId||r.storeId)===previous))el.value=previous;}
   function storeChoices(){if(!catalog)return;const org=n.organization.value;chooseOptions(n.store,catalog.stores.filter(s=>s.organizationId===org).map(s=>({storeId:s.storeId,name:s.name})),s=>s.name+'（'+s.storeId+'）');}
-  function formVisibility(){const cmd=n.command.value,uses=specs[cmd]||[];for(const k of Object.keys(fields)){const row=document.getElementById('ops-row-'+k);if(row)row.hidden=!uses.includes(k);}
+  function formVisibility(){const cmd=n.command.value,uses=specs[cmd]||[];for(const k of Object.keys(fields)){const row=get('row-'+k);if(row)row.hidden=!uses.includes(k);}
    n.organization.hidden=cmd==='CREATE_ORGANIZATION';n['organization-new'].hidden=cmd!=='CREATE_ORGANIZATION';n.store.hidden=cmd==='CREATE_STORE';n['store-new'].hidden=cmd!=='CREATE_STORE';
   }
   function render(data){
@@ -78,23 +79,25 @@
    i.reason=n.reason.value.trim();if(!i.reason||i.reason.length>200||/[\x00-\x1f\x7f]/.test(i.reason))throw Error('input');return i;
   }
   function send(phase){
-   if(stopped||pending||loginRequired)return;if(g!==g.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。画面を直接開いてください。';return;}let proof;try{proof=options.liff.getIDToken();}catch(_e){}
+   if(stopped||pending||loginRequired||options.blocked?.())return;if(g!==g.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。画面を直接開いてください。';return;}let proof;try{proof=options.liff.getIDToken();}catch(_e){}
+   if(draft?.proof&&draft.proof!==proof){n.status.textContent='本人情報が変わりました。元の操作の結果確認が必要です。';controls();return;}
    if(!proof){loginRequired=true;n.status.textContent=errors.OPERATIONS_AUTH_REQUIRED;controls();return;}
-   const r={phase,command:phase==='READ'?'READ':draft.command,input:phase==='READ'?{}:draft.input,operationId:phase==='READ'?'':draft.operationId,revision:phase==='COMMIT'?draft.revision:'',nonce:random(16),responseKey:random(32)};
+   if(draft&&!draft.proof)draft.proof=proof;
+   const r={proof,phase,command:phase==='READ'?'READ':draft.command,input:phase==='READ'?{}:draft.input,operationId:phase==='READ'?'':draft.operationId,revision:phase==='COMMIT'?draft.revision:'',nonce:random(16),responseKey:random(32)};
    pending=r;controls();n.status.textContent='通信しています。';r.timer=setTimeout(()=>{if(pending!==r)return;if(phase==='COMMIT'){uncertain=true;reviewed=false;n.status.textContent='保存結果が不明です。入力を変えず「同じ操作の保存結果を確認」を押してください。';}else{if(phase==='PREVIEW')clearDraft();n.status.textContent='応答を確認できません。もう一度確認してください。';}finish();},30000);
-   const form=document.createElement('form');form.method='POST';form.action=config.gasUrl;form.target='tlhOperationsFrame';form.hidden=true;
+   const form=document.createElement('form');form.method='POST';form.action=config.gasUrl;form.target=options.frameName||'tlhOperationsFrame';form.hidden=true;
    for(const [name,value]of Object.entries({action:'bridgeOperationsV1',apiVersion:'1',phase:r.phase,view,command:r.command,input:JSON.stringify(r.input),operationId:r.operationId,revision:r.revision,nonce:r.nonce,responseKey:r.responseKey,idToken:proof})){const e=create('input');e.type='hidden';e.name=name;e.value=value;form.appendChild(e);}
    document.body.appendChild(form);try{form.submit();}catch(_e){if(phase==='COMMIT'){uncertain=true;reviewed=false;}else clearDraft();n.status.textContent='通信結果を確認できませんでした。';finish();}finally{form.remove();}
   }
-  n.command.addEventListener('change',()=>{if(draft||pending||stopped)return;formVisibility();});n.organization.addEventListener('change',storeChoices);
+  n.command.addEventListener('change',()=>{if(draft||pending||stopped)return;formVisibility();});n.organization.addEventListener('change',()=>{if(pending||uncertain)return;clearDraft();storeChoices();controls();});
   n.refresh.addEventListener('click',()=>{if(n.refresh.disabled)return;clearDraft();clearCatalog();send('READ');});
   n.preview.addEventListener('click',()=>{if(n.preview.disabled||pending||stopped)return;try{draft={command:n.command.value,input:input(),operationId:random(16),revision:''};reviewed=false;send('PREVIEW');}catch(_e){clearDraft();n.status.textContent='対象・名前・TLHアカウントID・理由を確認してください。';controls();}});
   n.commit.addEventListener('click',()=>{if(!n.commit.disabled&&reviewed&&draft&&!stopped)send('COMMIT');});
   n.retry.addEventListener('click',()=>{if(!n.retry.disabled&&uncertain&&draft&&!stopped)send('COMMIT');});
   n.cancel.addEventListener('click',()=>{if(n.cancel.disabled)return;clearDraft();n.status.textContent='確認を取り消しました。保存はしていません。';controls();});
-  n.login.addEventListener('click',()=>{if(n.login.disabled)return;n.login.disabled=true;try{const redirectUri=g.location.origin+g.location.pathname;if(options.liff.isLoggedIn())options.liff.logout();options.liff.login({redirectUri});}catch(_e){n.login.disabled=false;n.status.textContent='LINEログインを開始できません。';}});
+  n.login.addEventListener('click',()=>{if(n.login.disabled||uncertain||draft||options.blocked?.())return;if(options.embedded){n.status.textContent='保存結果を確認してから、アカウント画面を開き直してLINEで確認してください。';return;}n.login.disabled=true;try{const redirectUri=g.location.origin+g.location.pathname;if(options.liff.isLoggedIn())options.liff.logout();options.liff.login({redirectUri});}catch(_e){n.login.disabled=false;n.status.textContent='LINEログインを開始できません。';}});
   g.addEventListener('message',async event=>{
-   const r=pending;if(!r||stopped||!originAllowed(event.origin)||!related(event.source,n.frame.contentWindow))return;let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r||stopped)return;
+   const r=pending;if(!r||stopped||!originAllowed(event.origin)||!related(event.source,n.frame.contentWindow))return;let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r||stopped||options.liff.getIDToken()!==r.proof)return;
    const d=event.data;let data;try{data=JSON.parse(d.payload);}catch(_e){return;}
    if(r.phase==='READ'&&d.code==='OPERATIONS_READY'){const value=parseCatalog(data,view);if(!value)return;render(value);n.status.textContent='運営情報を読み込みました。';finish();return;}
    if(r.phase==='PREVIEW'&&d.code==='OPERATIONS_PREVIEW_READY'){
@@ -107,12 +110,13 @@
    if(r.phase==='COMMIT'&&['OPERATIONS_SAVED','OPERATIONS_ALREADY_SAVED'].includes(d.code)&&exact(data,['savedRevision'])&&Number.isSafeInteger(data.savedRevision)&&data.savedRevision>0){clearDraft();finish();n.status.textContent='保存しました。最新情報を読み直します。';clearCatalog();send('READ');return;}
    if(['OPERATIONS_READY','OPERATIONS_PREVIEW_READY','OPERATIONS_SAVED','OPERATIONS_ALREADY_SAVED'].includes(d.code))return;
    if(r.phase==='COMMIT'&&['OPERATIONS_RESULT_UNKNOWN','OPERATIONS_REVIEW_REQUIRED','OPERATIONS_UNAVAILABLE'].includes(d.code)){uncertain=true;reviewed=false;n.status.textContent='保存結果の確認が必要です。同じ操作で確認してください。';finish();return;}
-   if(r.phase==='COMMIT'&&['OPERATIONS_BUSY','OPERATIONS_NOT_CONFIGURED'].includes(d.code)){uncertain=true;reviewed=false;}else clearDraft();
+   if(r.phase==='COMMIT'){uncertain=true;reviewed=false;}else clearDraft();
    if(['OPERATIONS_AUTH_REQUIRED','OPERATIONS_ACCESS_DENIED'].includes(d.code)){clearCatalog();if(d.code==='OPERATIONS_AUTH_REQUIRED')loginRequired=true;}
    n.status.textContent=errors[d.code]||'処理を継続できません。情報を読み直してください。';finish();
   });
   g.addEventListener('pagehide',()=>{stopped=true;clearCatalog();clearDraft();for(const k of ['reason','account','name','organization-new','store-new'])n[k].value='';finish();n.status.textContent='運営情報を消去しました。';});
-  controls();if(!loginRequired)send('READ');else n.status.textContent='LINEログインが必要です。';
+  controls();if(!loginRequired&&options.autoLoad!==false)send('READ');else n.status.textContent='LINEログインが必要です。';
+  return Object.freeze({busy:()=>!!pending||!!draft||uncertain,load(){if(stopped||pending||draft||uncertain||options.blocked?.())return;clearCatalog();send('READ');},invalidate(){if(pending&&pending.phase!=='COMMIT')finish();if(!uncertain&&pending?.phase!=='COMMIT')clearDraft();clearCatalog();n.review.replaceChildren();for(const k of ['reason','account','name','organization-new','store-new'])n[k].value='';controls();},sync:controls});
  }
  async function bootstrap(){const script=document.currentScript,view=script?.dataset.view;try{if(!['PLATFORM','COMPANY'].includes(view))return;await g.liff.init({liffId:config.liffId});init({view,liff:g.liff,loginRequired:!g.liff.isLoggedIn()});}catch(_e){document.getElementById('ops-status').textContent='LINEログインを準備できません。画面を開き直してください。';}}
  g.TlhOperations=Object.freeze({init,parseCatalog,verify,labels,config});
