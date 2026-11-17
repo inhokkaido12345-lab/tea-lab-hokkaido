@@ -17,3 +17,6 @@ test('loading indicator contract rejects removed spinner CSS and missing aria-bu
  spinnerContract(css,js);assert.throws(()=>spinnerContract(css.replace(/\.account-tabs \[aria-busy=true\]::after\{[^}]*\}/,''),js));assert.throws(()=>spinnerContract(css,js.replace("setAttribute('aria-busy'","setAttribute('data-unused'")));
  const x=fixture();x.api.ready();x.api.roles(null);assert.equal(x.n('account-tab-company').attributes['aria-busy'],'true');x.api.roles(null,'error');assert.equal(x.n('account-tab-company').attributes['aria-busy'],'false');assert.equal(x.n('account-role-check').hidden,false);x.api.roles(dto());assert.equal(x.n('account-tab-company').attributes['aria-busy'],'false');assert.equal(x.n('account-role-check').hidden,true);
 });
+
+
+test('combined management failures expose one optional retry, not repeated primary actions',()=>{const x=fixture();x.api.ready();x.api.roles(null,'error');x.api.management('error','overview');assert.equal(x.n('account-management-details').hidden,false);assert.equal(x.n('account-management-check').hidden,true);assert.equal(x.n('account-role-check').hidden,false);x.api.roles(dto());x.api.management('denied','overview');assert.equal(x.n('account-management-details').hidden,true);});
