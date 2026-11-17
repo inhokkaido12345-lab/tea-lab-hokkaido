@@ -418,7 +418,7 @@ function renderInformationCoverage(card,item){
   const tiles=el('div','','information-tiles');
   for(const [kind,label,signal,days] of [['count','棚卸',count,countDays],['measurement','消費計測',measurement,measurementDays]]){
    const c=byKind[kind],ongoing=kind==='measurement'&&active,tile=el('div','','information-tile signal-'+(ongoing?'unknown':signal.state));
-   tile.append(el('strong',(ongoing?'◷':signal.symbol)+' '+label),el('span',ongoing?'計測中 · 使い切るまで続ける':signal.label),el('small','最後の記録：'+age(c)),el('small','仮目安 '+days+'日'+(signal.remaining!==null&&!ongoing?' · あと'+signal.remaining+'日':'')));
+   tile.append(el('strong',(ongoing?'◷':signal.symbol)+' '+label),el('span',ongoing?'計測中 · 使い切るまで続ける':signal.label),el('small','最後の記録：'+age(c)),el('small','仮目安 '+days+'日'+(signal.remaining!==null&&!ongoing?(signal.state==='due'?' · '+Math.max(0,c.ageDays-days)+'日超過':' · あと'+signal.remaining+'日'):'')));
    tiles.append(tile);
   }
   display.append(tiles,el('p','由来未確認 · 初期値・試験の記録を含む可能性があります。','information-caution'));
@@ -441,7 +441,7 @@ function renderInformationCoverage(card,item){
  settings.append(el('summary','見直し間隔を調整'));
  const inputs=[];
  for(const [label,value] of [['棚卸の目安（日）',7],['消費計測の目安（日）',30]]){const wrap=el('label',label),input=el('input','');input.type='number';input.min='1';input.max='365';input.step='1';input.value=String(value);wrap.append(input);settings.append(wrap);inputs.push(input);}
- const note=el('p','7日／30日は仮の出発点です。品目・季節・家庭ごとの適切な頻度は未確認。変更はこの表示だけで、最新読込・離脱で元に戻ります。','information-caution'),error=el('p','');error.setAttribute('role','status');
+ const note=el('p','7日／30日は仮の出発点です。品目・季節・家庭ごとの適切な頻度は未確認。変更はこの表示だけで、再読込・画面の再表示で元に戻ります。','information-caution'),error=el('p','');error.setAttribute('role','status');
  const apply=el('button','この表示に適用');apply.onclick=()=>{if(busy||pending||globalThis.TlhInventory?.hasPendingReceipt?.()===true)return;const values=inputs.map(n=>Number(n.value));if(values.some(v=>!Number.isInteger(v)||v<1||v>365)){error.textContent='1〜365日の整数を入力してください。';return;}[countDays,measurementDays]=values;paint();error.textContent='表示の目安だけ変更しました。記録は保存していません。';};
  settings.append(note,apply,error);box.append(display,settings);paint();card.append(box);
 }
