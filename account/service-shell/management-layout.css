@@ -20,7 +20,15 @@
 .service-management form label { grid-column:1/-1; }
 .service-management input,.service-management select { width:100%; border:1px solid #7C908E; border-radius:24px; padding:10px 16px; background:#fff; }
 .service-management button { border:1px solid #7C908E; border-radius:12px; padding:10px 16px; background:#fff; color:#2F5452; cursor:pointer; }
-.service-management > div:has(>button>small) { display:grid; gap:8px; }
+.service-management { display:flex; flex-direction:column; gap:12px; }
+.service-management form { order:0; }
+.service-management > [role=status] { order:2; margin:0; }
+.service-management > button { order:3; }
+.service-management .service-back { order:0; align-self:flex-start; }
+.service-management .service-pager { order:3; display:flex; gap:12px; }
+.service-management .service-list { order:4; display:grid; gap:0; }
+.service-management .service-list button { text-align:left; border-radius:0; border-width:0 0 1px; padding:10px 12px; }
+.service-management section { order:1; }
 .service-management button small { display:block; font-size:12px; font-weight:normal; color:#495C63; }
 .service-management section { padding:16px; border:1px solid #d7d9d0; border-radius:16px; }
 .service-management [hidden] { display:none!important; }
