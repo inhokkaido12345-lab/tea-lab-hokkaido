@@ -35,3 +35,8 @@
 .service-management [aria-busy="true"]::before { content:""; display:inline-block; width:14px; height:14px; margin-right:8px; border:2px solid #d7d9d0; border-top-color:#2F5452; border-radius:50%; animation:service-spin 1s linear infinite; }
 @keyframes service-spin { to { transform:rotate(360deg); } }
 @media(prefers-reduced-motion:reduce){.service-management [aria-busy="true"]::before{animation:none;}}
+
+.account-management-layout { overflow-anchor:none; }
+.service-management button:disabled { color:#7e8986; border-color:#d1d8d4; background:#eee; cursor:default; }
+.service-pager { align-items:center; }
+.service-pager span { font-size:13px; color:#495c63; }
