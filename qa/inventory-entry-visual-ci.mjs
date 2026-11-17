@@ -28,6 +28,8 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   const shellSelectors=['#stock','#refresh','body > nav'];
   for(const selector of shellSelectors)assert.equal(await page.locator(selector).isVisible(),false,'IDLE_SHELL_VISIBLE:'+selector);
   assert.equal(await page.locator('#operation-recovery').isVisible(),false,'EMPTY_RECOVERY_VISIBLE');
+  assert.equal(await page.locator('#inventory-stores').isVisible(),false,'EMPTY_STORE_HOST_VISIBLE');
+  await page.locator('#inventory-stores').evaluate(e=>{const p=document.createElement('p');p.textContent='QA合成：選択した店舗';e.append(p);});assert.equal(await page.locator('#inventory-stores').isVisible(),true,'POPULATED_STORE_HOST_HIDDEN');await page.screenshot({path:path.join(out,viewport.width+'-projected-store-host.png')});await page.locator('#inventory-stores').evaluate(e=>e.replaceChildren());assert.equal(await page.locator('#inventory-stores').isVisible(),false,'EMPTIED_STORE_HOST_VISIBLE');
   const original=await page.evaluate(()=>{const ids=['line-login','status','status-detail','recovery'];return Object.fromEntries(ids.map(id=>{const e=document.getElementById(id);return [id,{hidden:e.hidden,className:e.className,busy:e.getAttribute('aria-busy'),text:id==='status'?e.textContent:null}];}));});
   report.projectedStates=[];
   async function project(state){await page.evaluate(({state,original})=>{
