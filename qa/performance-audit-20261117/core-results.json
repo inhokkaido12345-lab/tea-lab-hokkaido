@@ -1,0 +1,269 @@
+{
+  "kind": "in-memory API invocation counts; local timing is NOT GAS latency",
+  "cases": [
+    {
+      "members": 1,
+      "revisions": 1,
+      "baseline": {
+        "opens": 5,
+        "reads": 8,
+        "cells": 196,
+        "utf8Bytes": 6910,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 2,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 148,
+        "utf8Bytes": 6240,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 1.028,
+        "candidate": 0.751
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    },
+    {
+      "members": 1,
+      "revisions": 10,
+      "baseline": {
+        "opens": 5,
+        "reads": 8,
+        "cells": 295,
+        "utf8Bytes": 19700,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 2,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 247,
+        "utf8Bytes": 19030,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 0.858,
+        "candidate": 0.971
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    },
+    {
+      "members": 10,
+      "revisions": 1,
+      "baseline": {
+        "opens": 14,
+        "reads": 17,
+        "cells": 736,
+        "utf8Bytes": 13669,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 11,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 184,
+        "utf8Bytes": 8004,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 0.626,
+        "candidate": 0.719
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    },
+    {
+      "members": 10,
+      "revisions": 10,
+      "baseline": {
+        "opens": 14,
+        "reads": 17,
+        "cells": 835,
+        "utf8Bytes": 39824,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 11,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 283,
+        "utf8Bytes": 34159,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 1.608,
+        "candidate": 1.387
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    },
+    {
+      "members": 40,
+      "revisions": 1,
+      "baseline": {
+        "opens": 44,
+        "reads": 47,
+        "cells": 7216,
+        "utf8Bytes": 73759,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 41,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 304,
+        "utf8Bytes": 13974,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 2.394,
+        "candidate": 3.257
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    },
+    {
+      "members": 40,
+      "revisions": 10,
+      "baseline": {
+        "opens": 44,
+        "reads": 47,
+        "cells": 7315,
+        "utf8Bytes": 145004,
+        "bySheet": {
+          "Identities": 2,
+          "Users": 41,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "candidate": {
+        "opens": 3,
+        "reads": 6,
+        "cells": 403,
+        "utf8Bytes": 85219,
+        "bySheet": {
+          "Identities": 1,
+          "Users": 1,
+          "OperationsInfo": 1,
+          "OperationsJournal": 1,
+          "CommonAffiliationInfo": 1,
+          "CommonAffiliationJournal": 1
+        },
+        "locks": 1,
+        "writes": 0
+      },
+      "localMockMs": {
+        "baseline": 4.131,
+        "candidate": 4.896
+      },
+      "sameDTO": true,
+      "noWrites": true,
+      "nextRequestGrantRevocation": true,
+      "nextRequestAccountRevocation": true
+    }
+  ]
+}

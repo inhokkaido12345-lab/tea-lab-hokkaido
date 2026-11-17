@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-17",
+  "purpose": "Read-only independent performance audit; synthetic services only",
+  "sources": [
+    {
+      "repository": "inhokkaido12345-lab/tlh-platform",
+      "pinned": "3bce1ac38e5f088f349f7bbc9ca0a0c58a20db1b",
+      "checkedLater": "3bce1ac38e5f088f349f7bbc9ca0a0c58a20db1b"
+    },
+    {
+      "repository": "inhokkaido12345-lab/tlh-inventory",
+      "pinned": "6e555a08f4b2b195847430b0b88086f4b8f6ce07",
+      "checkedLater": "6e555a08f4b2b195847430b0b88086f4b8f6ce07"
+    },
+    {
+      "repository": "inhokkaido12345-lab/tea-lab-hokkaido",
+      "pinned": "13dd60a5716b3de48d18286a5d171da45582227c",
+      "checkedLater": "f2cfc82f62fe920c294f3c439d6ce2ba4265a7d7"
+    }
+  ],
+  "lateChanges": {
+    "publicMain": "f2cfc82f62fe920c294f3c439d6ce2ba4265a7d7",
+    "reviewed": [
+      "account/README.md",
+      "account/account.js",
+      "account/common-affiliation.js",
+      "account/common-grants.js",
+      "account/index.html",
+      "account/management-picker.js",
+      "integration/management-picker.test.mjs",
+      "tests/common-account.test.mjs",
+      "tests/common-affiliation-ui.test.mjs",
+      "tests/helpers/common-affiliation-ui-harness.mjs"
+    ],
+    "effect": "Explicit reauthentication and picker recovery added; viewer.load()/access.load() startup fanout unchanged; initial README deployment caveats superseded by latest main."
+  }
+}

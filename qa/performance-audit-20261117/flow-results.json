@@ -1,0 +1,63 @@
+{
+  "kind": "fake DOM + fake GAS services; actual pinned flow code",
+  "account": {
+    "initial": [
+      {
+        "action": "bridgeCommonAffiliationV1",
+        "phase": "READ_SELF"
+      },
+      {
+        "action": "bridgeCompanyEmploymentV1",
+        "phase": "READ_COMPANIES"
+      },
+      {
+        "action": "bridgeGetAccountInfo",
+        "phase": null
+      },
+      {
+        "action": "bridgeAccountAccessOverviewV1",
+        "phase": "READ_SELF"
+      }
+    ],
+    "manualIdentityRefresh": [
+      {
+        "action": "bridgeCommonAffiliationV1",
+        "phase": "READ_SELF"
+      },
+      {
+        "action": "bridgeCompanyEmploymentV1",
+        "phase": "READ_COMPANIES"
+      },
+      {
+        "action": "bridgeGetAccountInfo",
+        "phase": null
+      }
+    ]
+  },
+  "inventory": [
+    {
+      "commonCatalogStores": 1,
+      "selectedStoreExplicit": true,
+      "coreRequests": 2,
+      "coreRequestsInsideInventoryLock": 1,
+      "ledgerReads": 1,
+      "ledgerRowsWritten": 0
+    },
+    {
+      "commonCatalogStores": 5,
+      "selectedStoreExplicit": true,
+      "coreRequests": 6,
+      "coreRequestsInsideInventoryLock": 5,
+      "ledgerReads": 1,
+      "ledgerRowsWritten": 0
+    },
+    {
+      "commonCatalogStores": 20,
+      "selectedStoreExplicit": true,
+      "coreRequests": 21,
+      "coreRequestsInsideInventoryLock": 20,
+      "ledgerReads": 1,
+      "ledgerRowsWritten": 0
+    }
+  ]
+}
