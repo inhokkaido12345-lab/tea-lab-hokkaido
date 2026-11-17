@@ -11,6 +11,7 @@
  'use strict';
  const $=id=>document.getElementById(id),login=$('account-login'),status=$('account-status');
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
+ let common=null,grants=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
  const messages=Object.freeze({CREATED:'TLHアカウントを作成しました。利用するアプリへ戻り、LINEログインしてください。',
   ALREADY_REGISTERED:'このLINEのTLHアカウントは登録済みです。利用するアプリへ戻れます。',
@@ -26,8 +27,10 @@
  function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;}
  function controls(){
   login.disabled=stopped||loggingIn||ready;
-  create.disabled=stopped||!ready||!!request?.timer;
-  enrollment.disabled=stopped||!ready||!!request;
+  create.disabled=stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
+  enrollment.disabled=stopped||!ready||!!request||!!common?.busy()||!!grants?.busy();
+  $('common-lock').disabled=stopped||!ready||!!request||!!grants?.busy();
+  $('grant-lock').disabled=stopped||!ready||!!request||!!common?.busy();
   createStatus.setAttribute('aria-busy',String(!!request?.timer));
  }
  login.addEventListener('click',async()=>{
@@ -39,6 +42,8 @@
    const proof=Object.freeze({getIDToken:()=>stopped?null:global.TlhInventoryLogin.getToken()});
    viewer=global.TlhAccountInfo.init({gasUrl:endpoint,liff:proof});
    global.TlhStaffEnrollment.init({gasUrl:endpoint,liff:proof});
+   common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls});
+   grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls});
    ready=true;$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
    status.textContent='LINE本人確認が完了しました。アカウントの登録・招待の受取ができます。';viewer.load();
   }catch{
@@ -47,7 +52,7 @@
  });
  /** 一般登録だけを明示POST。結果不明時は同じnonceと本人で照会し、他の保存を開始させない。 */
  function submitRegistration(){
-  if(stopped||!ready||request?.timer||$('staff-status').getAttribute('aria-busy')==='true'||global!==global.top)return;
+  if(stopped||!ready||common?.busy()||grants?.busy()||request?.timer||$('staff-status').getAttribute('aria-busy')==='true'||global!==global.top)return;
   const proof=global.TlhInventoryLogin.getToken();if(!proof)return;
   if(!request){
    if(!global.confirm('このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。続けますか？'))return;

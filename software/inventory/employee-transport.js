@@ -74,6 +74,7 @@
     pending = null;
     clearTimeout(current.timer);
     current.responseKey = '';
+    if(error)invalidateStoreContext();
     if (error) current.reject(Error(error)); else current.resolve(value);
   }
 
@@ -102,7 +103,10 @@
         global.TlhInventoryLogin?.clearToken?.();storeContext=null;selectedStore=null;
         clearStoreView();contextHost()?.replaceChildren();showLogin();
       }
-      if (data.code !== 'OK') {finish(null, {ok: false, code: data.code}); return;}
+      if (data.code !== 'OK') {
+        if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN')invalidateStoreContext();
+        finish(null, {ok: false, code: data.code}); return;
+      }
       finish(null, {ok: true, value: JSON.parse(data.data)});
     } catch (_error) { /* 未検証の結果は表示せず、元の期限で失敗にする。 */ }
   });
@@ -110,10 +114,10 @@
   async function request(command, input = {}) {
     await ready;
     if (stopped) throw Error('PAGE_CLOSED');
-    if (navigator.onLine === false) throw Error('OFFLINE');
+    if (navigator.onLine === false) {invalidateStoreContext();throw Error('OFFLINE');}
     if (!['ACCOUNT','TENANT','READ','COMMAND'].includes(command) || pending) throw Error('BUSY');
     const idToken = global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff.getIDToken();
-    if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {showLogin(); throw Error('AUTH_REQUIRED');}
+    if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {invalidateStoreContext();showLogin(); throw Error('AUTH_REQUIRED');}
     return new Promise((resolve, reject) => {
       const current = {command, nonce: random(16), responseKey: random(32), resolve, reject};
       pending = current;
@@ -140,17 +144,26 @@
   const contextHost=()=>document.getElementById('inventory-stores');
   const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
   const status=(text,code='')=>{if(global.TlhInventoryStatus)global.TlhInventoryStatus.show(text,code);else document.getElementById('status').textContent=text;};
+  function invalidateStoreContext(){storeContext=null;selectedStore=null;clearStoreView();contextHost()?.replaceChildren();}
   function clearStoreView(){
+    global.TlhInventoryView?.invalidate?.();
     for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview'])document.getElementById(id)?.replaceChildren();
   }
   function renderStores(){
     const host=contextHost();if(!host||!storeContext)return;host.replaceChildren();
-    const label=node('label','利用する店舗'),select=node('select');select.appendChild(new Option('店舗を選択してください',''));
-    for(const store of storeContext.stores)select.appendChild(new Option(store.name,store.id));select.value=selectedStore||'';label.appendChild(select);host.appendChild(label);
-    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('店舗を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;clearStoreView();document.getElementById('refresh').click();};
-    const details=node('details'),summary=node('summary','店舗を作成・招待コードで参加');details.appendChild(summary);host.appendChild(details);
+    const label=node('label','利用する在庫'),select=node('select');select.appendChild(new Option('在庫を選択してください',''));
+    for(const store of storeContext.stores)select.appendChild(new Option((store.spaceType==='PERSONAL'||store.role==='PERSONAL'?'個人用：':'店舗：')+store.name,store.id));select.value=selectedStore||'';label.appendChild(select);host.appendChild(label);
+    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('在庫を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;storeContext=null;clearStoreView();host.replaceChildren();document.getElementById('refresh').click();};
+    if(storeContext.canCreatePersonal===true){const personal=node('button','自分の在庫を始める');personal.onclick=()=>contextAction({action:'PERSONAL_CREATE'});host.appendChild(personal);host.appendChild(node('p','会社への所属がなくても、自分だけの在庫を使えます。'));}
+    const selected=storeContext.stores.find(s=>s.id===selectedStore);
+    if(selected&&(selected.spaceType==='PERSONAL'||selected.role==='PERSONAL')){host.appendChild(node('p','本人専用の在庫です。会社・店舗とは分かれており、他の人は利用できません。'));return;}
+    if(storeContext.commonUnavailable)host.appendChild(node('p','共通所属の接続を確認できない店舗があります。従来店舗は引き続き利用できます。'));
+    if(storeContext.membershipMode==='COMMON_V1'){host.appendChild(node('p','店舗・所属の変更は管理者に依頼してください。'));return;}
+    const details=node('details'),summary=node('summary',storeContext.canCreateStore===false?'招待コードで参加':'店舗を作成・招待コードで参加');details.appendChild(summary);host.appendChild(details);
+    if(storeContext.canCreateStore!==false){
     const name=node('input');name.placeholder='新しく作る店舗の名前';name.maxLength=100;details.appendChild(name);
     const create=node('button','新しい店舗を作成');create.onclick=()=>{if(!name.value.trim()){status('店舗名を入力してください。');return;}contextAction({action:'CREATE',storeId:'store-'+crypto.randomUUID(),name:name.value});};details.appendChild(create);
+    }
     const code=node('input');code.placeholder='管理者から受け取った招待コード';code.maxLength=48;details.appendChild(code);
     const join=node('button','招待された店舗に参加');join.onclick=()=>contextAction({action:'JOIN',code:code.value.trim()});details.appendChild(join);
     const owner=storeContext.stores.find(s=>s.id===selectedStore)?.role==='OWNER';
@@ -192,15 +205,14 @@
     }finally{contextBusy=false;}
   }
   async function readView(){
-    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true});if(!reply.ok)return reply;
+    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true,...(selectedStore?{storeId:selectedStore}:{})});if(!reply.ok)return reply;
       // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
       const initialView=reply.value.view;
       const {view:_view,...context}=reply.value;storeContext=context;
-      selectedStore=storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();
+      selectedStore=storeContext.stores.some(s=>s.id===selectedStore)?selectedStore:storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();
       if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
     if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
     const result=await request('READ',{storeId:selectedStore});
-    if(result.code==='FORBIDDEN'){storeContext=null;selectedStore=null;clearStoreView();}
     return result;
   }
 
