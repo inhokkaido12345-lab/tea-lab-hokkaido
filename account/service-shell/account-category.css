@@ -13,3 +13,6 @@
 
 #account-mobile-category { display:none; }
 @media(max-width:680px){.account-category-shell .account-tabs{display:none;}#account-mobile-category{display:block;width:100%;min-height:48px;padding:10px 14px;border:1px solid #7c908e;border-radius:20px;background:#fff;font:inherit;margin-bottom:16px;}}
+.account-category-shell .service-pager button { width:auto; flex:0 0 auto; margin:0; }
+.account-category-shell .service-pager span { white-space:nowrap; flex-shrink:0; }
+.account-category-shell .service-pager { flex-wrap:wrap; }
