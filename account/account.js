@@ -13,7 +13,7 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
- const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>global.TlhInventoryLogin.getToken()});
+ const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>global.TlhInventoryLogin.getToken(),launchers:global.TlhActivationServices||[],canLeave:()=>global.TlhAccountNavigation?.canLeave()===true});
  // A fixed presentation hint only: never authorization or a redirect destination.
  // Compatibility catalog only, not the general service registry. Query is display-only.
  const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');

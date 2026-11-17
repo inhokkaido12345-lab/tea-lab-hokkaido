@@ -36,8 +36,9 @@
    }
    end(null,data);
   }
-  g.addEventListener('message',message);g.addEventListener('pagehide',()=>{stopped=true;end('CLOSED');});
-  return Object.freeze({read,cancel(){end('CANCELLED');},close(){stopped=true;end('CLOSED');}});
+  function close(){stopped=true;end('CLOSED');g.removeEventListener?.('message',message);g.removeEventListener?.('pagehide',close);}
+  g.addEventListener('message',message);g.addEventListener('pagehide',close);
+  return Object.freeze({read,cancel(){end('CANCELLED');},close});
  }
  g.TlhSignedServiceReader=Object.freeze({create});
 })(globalThis);
