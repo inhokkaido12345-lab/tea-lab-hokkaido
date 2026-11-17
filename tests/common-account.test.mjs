@@ -84,3 +84,4 @@ test('signup rate limit is a known refusal, shows retry guidance without claimin
  const h=harness();await h.login();h.create();h.reply('SIGNUP_RATE_LIMITED');
  assert.match(h.n('account-create-status').textContent,/新規登録が集中/);assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.sent.length,1);assert.equal(h.n('account-create').disabled,false);
 });
+test('BFCache return reloads a clean account page without replaying unresolved registration',async()=>{const h=harness();await h.login();h.create();const count=h.sent.length;h.handlers.pagehide();assert.equal(h.n('account-tools').hidden,true);h.handlers.pageshow({persisted:false});assert.equal(h.window.reloaded,undefined);h.handlers.pageshow({persisted:true});assert.equal(h.window.reloaded,true);assert.equal(h.sent.length,count);assert.equal(h.n('account-tools').hidden,true);});

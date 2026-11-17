@@ -33,6 +33,8 @@
   $('common-lock').disabled=stopped||!ready||!!request||!!grants?.busy();
   $('grant-lock').disabled=stopped||!ready||!!request||!!common?.busy();
   createStatus.setAttribute('aria-busy',String(!!request?.timer));
+  // A sibling operation can finish after this picker discarded an in-flight read.
+  common?.syncPicker?.();grants?.syncPicker?.();
  }
  login.addEventListener('click',async()=>{
   if(stopped||loggingIn||ready||global!==global.top)return;
