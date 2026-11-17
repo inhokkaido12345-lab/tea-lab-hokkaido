@@ -16,3 +16,5 @@
 .account-category-shell .service-pager button { width:auto; flex:0 0 auto; margin:0; }
 .account-category-shell .service-pager span { white-space:nowrap; flex-shrink:0; }
 .account-category-shell .service-pager { flex-wrap:wrap; }
+
+.account-category-shell .service-open { display:block; min-height:44px; padding:10px 14px; margin:12px 0; border-radius:8px; background:#2f5452; color:#fff; text-align:center; text-decoration:none; }
