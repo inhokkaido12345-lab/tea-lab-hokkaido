@@ -29,11 +29,11 @@
   let picker=null;const catalog=options.services||[],permissionInputs=[];
   const service=()=>catalog.find(s=>s.serviceId===n.service.value);
   function renderPermissions(){n.permissions.replaceChildren();permissionInputs.length=0;for(const p of service()?.permissions||[]){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=false;label.appendChild(box);const text=document.createElement('span');text.textContent=p.label;label.appendChild(text);n.permissions.appendChild(label);permissionInputs.push({id:p.id,node:box});}}
-  n.service.replaceChildren();for(const s of catalog){const el=document.createElement('option');el.value=s.serviceId;el.textContent=s.label;n.service.appendChild(el);}n.service.value=catalog[0]?.serviceId||'';renderPermissions();n.service.addEventListener('change',()=>{if(!draft&&!pending)renderPermissions();});
+  n.service.replaceChildren();for(const s of catalog){const el=document.createElement('option');el.value=s.serviceId;el.textContent=s.label;n.service.appendChild(el);}n.service.value=catalog[0]?.serviceId||'';const serviceChoice=document.getElementById('activation-service-choice');if(serviceChoice)serviceChoice.hidden=catalog.length===1;const serviceName=document.getElementById('activation-service-name');if(serviceName){serviceName.hidden=catalog.length!==1;serviceName.textContent=catalog.length===1?catalog[0].label:'';}renderPermissions();n.service.addEventListener('change',()=>{if(!draft&&!pending)renderPermissions();});
   n.register.addEventListener('click',()=>{if(!stopped&&!draft&&!pending&&!options.blocked?.())options.onRegister?.();});
   function controls(){const busy=!!pending||preparing;n.status.setAttribute('aria-busy',String(busy));
    for(const p of permissionInputs)p.node.disabled=stopped||busy||!!draft;
-   n.register.hidden=options.registrationState?.()!=='unregistered';n.register.disabled=stopped||busy||!!draft||!!options.blocked?.();
+   n.register.hidden=options.singleRegistration===true||options.registrationState?.()!=='unregistered';n.claim.hidden=options.singleRegistration===true&&options.registrationState?.()==='unregistered';n.register.disabled=stopped||busy||!!draft||!!options.blocked?.();
    for(const k of ['claim','issue','code','org','store','service'])n[k].disabled=stopped||busy||!!draft;
    n.commit.disabled=stopped||busy||!draft?.revision||unknown;n.retry.hidden=!unknown;n.retry.disabled=stopped||busy;
    for(const k of ['copy-code','copy-page','close-code'])n[k].disabled=stopped||!!draft||!hex(n['issued-code'].value,64);
@@ -60,7 +60,7 @@
    if(stopped||pending||preparing||draft||options.blocked?.()||global!==global.top||!crypto.subtle)return;
    let input,secret='';
    n['issued-code'].value='';n.issued.hidden=true;
-   if(command==='CLAIM'){if(options.registrationState?.()!=='registered'){n.status.textContent=options.registrationState?.()==='unregistered'?'このLINEは未登録です。「Accountを作成して受取りを続ける」で作成後、同じコードをもう一度確認してください。':'本人の登録状態を確認してから受け取ってください。';controls();return;}const inviteCode=n.code.value.trim();if(!hex(inviteCode,64)){n.status.textContent='64桁の利用開始コードを入力してください。';return;}input={inviteCode,reason:'本人が共通所属招待を受け取る'};}
+   if(command==='CLAIM'){if(options.registrationState?.()!=='registered'){n.status.textContent=options.registrationState?.()==='unregistered'?'このLINEは未登録です。アカウントを作成後、同じコードをもう一度確認してください。':'本人の登録状態を確認してから受け取ってください。';controls();return;}const inviteCode=n.code.value.trim();if(!hex(inviteCode,64)){n.status.textContent='64桁の利用開始コードを入力してください。';return;}input={inviteCode,reason:'本人が共通所属招待を受け取る'};}
    else{const organizationId=n.org.value.trim(),storeId=n.store.value.trim(),serviceId=n.service.value;if(!scopeId(organizationId)||!scopeId(storeId)||!service()){n.status.textContent='会社ID・店舗ID・サービスを確認してください。';return;}
     const permissions=permissionInputs.filter(p=>p.node.checked).map(p=>p.id).sort();if(service().requiredPermissions?.some(p=>!permissions.includes(p))){n.status.textContent='利用開始に必要な閲覧権限を選択してください。自動では追加しません。';return;}if(!permissions.length){n.status.textContent='付与する操作権限を選択してください。';return;}
     const gen=++generation;preparing=true;controls();secret=random(32);try{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret));if(stopped||!preparing||generation!==gen)return;
@@ -96,8 +96,8 @@
    wipe();n.status.textContent=messages[d.code];
   });
   async function copyIssued(page){if(stopped||draft||n.issued.hidden||!hex(n['issued-code'].value,64))return;const gen=generation,secret=n['issued-code'].value;
-   try{if(!global.navigator?.clipboard?.writeText)throw Error('COPY_UNAVAILABLE');await global.navigator.clipboard.writeText(page?'https://tealabhokkaido.com/account/':secret);if(stopped||gen!==generation||n['issued-code'].value!==secret)return;n.status.textContent=page?'受取りページをコピーしました。招待コードはURLに含めていません。':'招待コードをコピーしました。本人に個別に渡してください。';}
-   catch{if(stopped||gen!==generation||n['issued-code'].value!==secret)return;if(!page){n['issued-code'].focus?.();n['issued-code'].select?.();}n.status.textContent=page?'コピーできませんでした。受取りページのリンクを長押し、または右クリックしてコピーしてください。':'コピーできませんでした。招待コード欄を選択してコピーしてください。';}
+   try{if(!global.navigator?.clipboard?.writeText)throw Error('COPY_UNAVAILABLE');await global.navigator.clipboard.writeText(page?'https://tealabhokkaido.com/account/':'招待の受取り：https://tealabhokkaido.com/account/\n利用開始コード：'+secret);if(stopped||gen!==generation||n['issued-code'].value!==secret)return;n.status.textContent=page?'受取りページをコピーしました。招待コードはURLに含めていません。':'招待をコピーしました。本人へ送ってください。';}
+   catch{if(stopped||gen!==generation||n['issued-code'].value!==secret)return;if(!page){n['issued-code'].focus?.();n['issued-code'].select?.();}n.status.textContent=page?'コピーできませんでした。受取りページのリンクを長押し、または右クリックしてコピーしてください。':'コピーできませんでした。コード欄を選択してコピーし、このページのURLと一緒に送ってください。';}
   }
   n['copy-code'].addEventListener('click',()=>copyIssued(false));n['copy-page'].addEventListener('click',()=>copyIssued(true));n['close-code'].addEventListener('click',()=>{if(stopped||draft)return;wipe();n.status.textContent='招待コードの表示を消去しました。発行済み招待は取り消されません。';});
   // Browser warning only: force-close/crash recovery is not provided. No secret persistence.

@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>TLH Account｜共通アカウント</title>
-<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=600f0eccb66ed8f3">
+<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=e2e673456b21ba0b">
 <!-- 本人確認だけを既存の認証窓口で共用。Inventoryの業務controller、打刻controller、SDKの重複初期化は読み込まない。 -->
 <script src="/software/inventory/employee-login.js?v=6304a8f02a029d31" defer></script>
 <script src="/workforce/current-workplace.js?v=0c1479b7fa9c1d89" defer></script>
@@ -14,25 +14,41 @@
 <script src="/workforce/staff-enrollment.js?v=44698d443d4e06a7" defer></script>
 <script src="management-picker.js?v=5c747eae4c693a1c" defer></script>
 <script src="activation-services.js?v=4799bd43d2ebd34e" defer></script>
-<script src="service-activation.js?v=0eb0af84e49f1bdb" defer></script>
+<script src="service-activation.js?v=d1d2564e2e3ef43a" defer></script>
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=00a4c7551e1148fe" defer></script>
 <script src="access-overview.js?v=ff277742d27bc34a" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
 <script src="tabs.js?v=ca52759a7110b7b3" defer></script>
-<script src="account.js?v=9acb1246ab12becf" defer></script>
+<script src="account.js?v=dac321300921659d" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
-<section aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
-<p>管理者から利用開始コードを受け取り、同じLINEでログインして内容を確認します。未登録ならここでAccountを作成して続けられます。勤怠の従業員登録は不要です。</p>
+<section id="account-login-section" aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
+<p id="account-login-intro">招待を受け取るには、LINEでログインしてください。</p>
 <button id="account-login" type="button">LINEでログイン</button>
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
 <div id="account-tools" hidden>
 <nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p><p id="account-management-reason" role="status"></p><button id="account-management-check" type="button" disabled>店舗情報を再読込</button><p id="account-company-reason" role="status"></p><p id="account-platform-tab-reason" role="status"></p><button id="account-role-check" type="button" disabled>管理情報を再読込</button>
-<section data-account-panel="self" aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">このアカウントで何ができる？</h2><p>所属・運営ロール・業務権限を分けて確認します。未接続や未確認を「利用可能」とは表示しません。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
+<section data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
+<p>このLINEでアカウントを作成します。</p>
+<button id="account-create" type="button">アカウントを作成して続ける</button>
+<p id="account-create-status" role="status" aria-live="polite"></p>
+<iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
+</div></div><fieldset id="activation-lock" disabled><legend hidden>招待</legend>
+<form data-account-panel="self" id="activation-claim-form"><label>利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">次へ</button></form>
+<div data-account-panel="manage" hidden><h3>招待を作る</h3><form id="activation-issue-form">
+<button id="activation-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="activation-picker-status" role="status" aria-live="polite"></p><label>会社<select id="activation-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="activation-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="activation-picker-frame" name="tlhManagementPickeractivation" title="管理できる範囲の応答" hidden></iframe>
+<p id="activation-service-name" hidden></p><label id="activation-service-choice">対象サービス<select id="activation-service"></select></label><fieldset><legend>付与する操作権限</legend><div id="activation-permissions"></div></fieldset><p>コードは発行から30分有効</p>
+<button id="activation-issue" type="submit">次へ</button></form></div>
+<div id="activation-preview" hidden><p id="activation-summary"></p><button id="activation-commit" type="button">確認して確定</button></div>
+<button id="activation-retry" type="button" hidden>同じ操作の結果を確認</button><button id="activation-cancel" type="button" hidden>やめる</button>
+<div id="activation-issued" hidden><label>招待コード（30分有効）<textarea id="activation-issued-code" rows="2" readonly autocomplete="off" spellcheck="false"></textarea></label><button id="activation-copy-code" type="button" disabled>招待をコピー</button><button id="activation-copy-page" type="button" disabled hidden>受取りページをコピー</button><a href="https://tealabhokkaido.com/account/" hidden>受取りページ</a><button id="activation-close-code" type="button" disabled>コード表示を閉じる</button><p>コードと受取りページを本人へ送ってください。コードはこの画面でのみ確認できます。</p></div>
+<p><a id="activation-open" hidden></a></p><p id="activation-status" role="status" aria-live="polite"></p><iframe id="activation-frame" name="tlhServiceActivationFrame" title="共通所属招待の応答" hidden></iframe>
+</fieldset></section>
+<details id="account-more" data-account-panel="self manage" hidden><summary>アカウント情報・その他の手続き</summary><section data-account-panel="self" aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">このアカウントで何ができる？</h2><p>所属・運営ロール・業務権限を分けて確認します。未接続や未確認を「利用可能」とは表示しません。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
 <section data-account-panel="self" aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
 <button id="account-info-check" type="button" disabled>登録情報を更新</button>
 <p id="account-info-status" role="status" aria-live="polite"></p>
@@ -43,25 +59,8 @@
 <button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
 <iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section></details>
 
-<details id="account-signup" hidden open><summary>TLHアカウントを作る（未登録の方）</summary>
-<p>このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。一般登録の受付が停止中の場合は、その旨を表示します。所属招待はアカウント作成後に受け取ります。受付停止中は管理者へ確認してください。勤怠招待を代替の登録手順には使いません。</p>
-<button id="account-create" type="button">自分のTLHアカウントを作成</button>
-<p id="account-create-status" role="status" aria-live="polite"></p>
-<iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
-</details></section>
-<section data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading">コード1つでサービス利用開始</h2><p data-account-panel="manage" hidden>現在ここで管理できるのは在庫店舗の所属・業務権限です。勤怠・POSだけの店舗管理権限を、在庫の管理権限には置き換えません。</p>
-<p>管理者が確認した会社・店舗の所属とサービス操作権限を一緒に受け取ります。勤怠の従業員登録は不要です。</p>
-<fieldset id="activation-lock" disabled><legend>共通所属</legend>
-<form data-account-panel="self" id="activation-claim-form"><label>利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">招待の内容を確認</button></form>
-<details data-account-panel="manage" hidden><summary>管理者：利用開始コードを発行</summary><form id="activation-issue-form">
-<button id="activation-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="activation-picker-status" role="status" aria-live="polite"></p><label>会社<select id="activation-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="activation-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="activation-picker-frame" name="tlhManagementPickeractivation" title="管理できる範囲の応答" hidden></iframe>
-<label>対象サービス<select id="activation-service"></select></label><fieldset><legend>付与する操作権限</legend><div id="activation-permissions"></div></fieldset><p>有効期限：発行から30分</p>
-<button id="activation-issue" type="submit">発行内容と管理権限を確認</button></form></details>
-<div id="activation-preview" hidden><p id="activation-summary"></p><button id="activation-commit" type="button">確認した内容で確定</button></div>
-<button id="activation-retry" type="button" hidden>同じ操作の結果を確認</button><button id="activation-cancel" type="button" hidden>やめる</button>
-<div id="activation-issued" hidden><label>本人へ個別に渡す招待コード（30分有効）<textarea id="activation-issued-code" rows="2" readonly autocomplete="off" spellcheck="false"></textarea></label><button id="activation-copy-code" type="button" disabled>招待コードをコピー</button><button id="activation-copy-page" type="button" disabled>受取りページをコピー</button><a href="https://tealabhokkaido.com/account/">受取りページ</a><button id="activation-close-code" type="button" disabled>コード表示を閉じる</button><p>コードと受取りページを本人へ個別に渡してください。この画面を閉じるとコードの表示は消えます。コードの表示を閉じても、発行済み招待は取り消されません。</p></div>
-<p><a id="activation-open" hidden></a></p><p id="activation-status" role="status" aria-live="polite"></p><iframe id="activation-frame" name="tlhServiceActivationFrame" title="共通所属招待の応答" hidden></iframe>
-</fieldset></section>
+</section>
+
 <details data-account-panel="self manage" hidden><summary>旧方式：所属のみの招待</summary><section data-account-panel="self manage" hidden aria-labelledby="common-heading"><h2 id="common-heading">会社・店舗の所属招待</h2><p data-account-panel="manage" hidden>現在ここで管理できるのは在庫店舗の所属・業務権限です。勤怠・POSだけの店舗管理権限を、在庫の管理権限には置き換えません。</p>
 <p>所属だけを登録します。社員情報・勤怠登録・アプリの業務権限は作りません。</p>
 <fieldset id="common-lock" disabled><legend>共通所属</legend>
@@ -110,6 +109,7 @@
 </details><p id="staff-status" role="status" aria-live="polite"></p>
 <iframe name="tlhStaffFrame" title="従業員の招待・登録の応答" hidden></iframe>
 </fieldset></section></details>
+</details>
 <section data-account-panel="company" hidden><h2>社内管理</h2><p>管理を委任された法人の店舗・店舗サービス管理者を管理します。既登録のTLHアカウントを対象に、変更前後と理由を確認して任命・停止します。</p><p id="company-ops-status" role="status" aria-live="polite" aria-busy="false">この範囲の最新情報を確認します。</p><div class="operations-actions"><button id="company-ops-login" type="button" hidden disabled>LINEログイン</button><button id="company-ops-refresh" type="button" disabled>最新情報を読み込む</button></div>
 <div class="operations-grid"><section aria-labelledby="company-ops-form-heading"><h2 id="company-ops-form-heading">登録・権限の変更</h2><p>会社名や店舗名と、変更後の有効／停止を確認して保存します。対象者のTLHアカウントIDは、本人の「アカウント基本情報」で確認できます。社員番号・LINEのID・パスワードは入力しません。</p>
 <fieldset id="company-ops-fields" disabled><label for="company-ops-command">操作</label><select id="company-ops-command"><option value="">権限の確認後に表示します</option></select>
@@ -138,7 +138,7 @@
 <iframe id="platform-ops-frame" name="platformOperationsFrame" title="運営APIの確認応答" hidden></iframe><p><span id="account-platform-reason">Platform運営権限は未確認です。会社・店舗の管理権限とは別です。</span> <a id="account-platform-link" href="rollout.html" hidden>Platform運営：共通所属の初期導入・COMMON有効化／停止</a></p><p>会社・店舗の業務管理権限は別途必要です。TLH運営権限だけで会社業務へアクセスできるとは限りません。</p></section>
 </div>
 <section aria-labelledby="apps-heading"><h2 id="apps-heading">アプリへ戻る</h2>
-<p>利用開始コードの受取りが完了したら、会社在庫へ戻ってください。旧方式の場合は所属と閲覧権限の設定完了を確認してください。在庫側でLINE本人確認を求められた場合は、同じLINEでログインし、最新の所属・権限を確認します。勤怠登録は不要です。</p>
+<p>招待を受け取ったら、同じLINEでアプリへ戻れます。</p>
 
 <nav aria-label="TLHアプリ"><a href="/software/inventory/">会社在庫へ戻る（個人用在庫もこちら）</a><a href="/software/worktime/">勤怠・シフトを開く</a></nav></section>
 <noscript>アカウントの登録にはJavaScriptを有効にしてください。</noscript>
