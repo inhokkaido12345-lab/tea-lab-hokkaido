@@ -1,7 +1,7 @@
 name: Account in-app workflow UI QA
 on:
   pull_request:
-    paths: ['account/**', 'qa/account-workflow-visual-ci.mjs', '.github/workflows/test-account-workflow-visual.yml']
+    paths: ['account/**', 'qa/account-workflow-visual-ci.mjs', 'qa/account-request-journey-ci.mjs', '.github/workflows/test-account-workflow-visual.yml']
 permissions:
   contents: read
 jobs:
@@ -17,9 +17,13 @@ jobs:
         run: npm install --prefix .qa-tools --no-save --package-lock=false playwright@1.56.1 && .qa-tools/node_modules/.bin/playwright install --with-deps chromium
       - name: Exercise closed candidate UI
         run: node qa/account-workflow-visual-ci.mjs
+      - name: Exercise new-user request to post-approval return (synthetic only)
+        run: node qa/account-request-journey-ci.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: account-workflow-visual-${{ github.sha }}
-          path: qa-artifacts/account-workflow/
+          path: |
+            qa-artifacts/account-workflow/
+            qa-artifacts/account-request-journey/
           retention-days: 7
