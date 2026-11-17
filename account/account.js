@@ -26,7 +26,7 @@
  // Shared navigation guard exposes no identity or authorization facts. Menu callers must
  // check at the moment of navigation; no cached boolean can authorize leaving a save.
  global.TlhAccountNavigation=Object.freeze({canLeave:()=>!stopped&&!loggingIn&&!request&&!common?.busy()&&!grants?.busy()&&!staff?.busy()&&!operations?.busy()&&!activation?.busy()});
- const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy()||!!activation?.busy(),onSelect:key=>operations?.activate(key),check:()=>checkManagement(),checkRoles:()=>access?.refresh()});
+ const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy()||!!activation?.busy(),onSelect:key=>{operations?.activate(key);activation?.activatePanel?.(key);},check:()=>checkManagement(),checkRoles:()=>access?.refresh()});
  const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
  // GAS応答は入れ子iframeから届く。別iframeの同名メッセージを受け付けない。
  function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;}
@@ -44,7 +44,7 @@
   $('grant-lock').disabled=!!activation?.busy()||!!operations?.busy()||stopped||!ready||!!request||!!common?.busy();
   createStatus.setAttribute('aria-busy',String(!!request?.timer));
   // A sibling operation can finish after this picker discarded an in-flight read.
-  common?.syncPicker?.();grants?.syncPicker?.();tabs?.sync();
+  common?.syncPicker?.();grants?.syncPicker?.();tabs?.sync();activation?.activatePanel?.(['self','manage','company','platform'].find(key=>$('account-tab-'+key).getAttribute('aria-selected')==='true')||'self');
  }
  $('account-details').addEventListener('toggle',()=>{if($('account-details').open&&ready&&!global.TlhAccountNavigation.canLeave())return;if($('account-details').open&&ready)viewer?.load();});
  login.addEventListener('click',async()=>{

@@ -25,23 +25,24 @@
  }
  function init(options){
   const n=Object.fromEntries(['inputs','lock','claim-form','code','claim','issue-form','org','store','service','issue','preview','summary','identifiers','commit','retry','cancel','issued','issued-code','copy-code','copy-page','close-code','status','frame','permissions','register','open','result-links'].map(k=>[k,document.getElementById('activation-'+k)]));
-  let stopped=false,pending=null,draft=null,preparing=false,committed=false,unknown=false,generation=0,completed=false;
+  let stopped=false,pending=null,draft=null,preparing=false,committed=false,unknown=false,generation=0,completed=false,hasPrimaryLink=false,statusCommand=null,activePanel='self';
   n.issued.hidden=true;n.open.hidden=true;
   let picker=null;const catalog=options.services||[],permissionInputs=[];
   const service=()=>catalog.find(s=>s.serviceId===n.service.value);
   function renderPermissions(){n.permissions.replaceChildren();permissionInputs.length=0;for(const p of service()?.permissions||[]){const label=document.createElement('label'),box=document.createElement('input');box.type='checkbox';box.checked=false;label.appendChild(box);const text=document.createElement('span');text.textContent=p.label;label.appendChild(text);n.permissions.appendChild(label);permissionInputs.push({id:p.id,node:box});}}
   n.service.replaceChildren();for(const s of catalog){const el=document.createElement('option');el.value=s.serviceId;el.textContent=s.label;n.service.appendChild(el);}n.service.value=catalog[0]?.serviceId||'';const serviceChoice=document.getElementById('activation-service-choice');if(serviceChoice)serviceChoice.hidden=catalog.length===1;const serviceName=document.getElementById('activation-service-name');if(serviceName){serviceName.hidden=catalog.length!==1;serviceName.textContent=catalog.length===1?catalog[0].label:'';}renderPermissions();n.service.addEventListener('change',()=>{if(!draft&&!pending)renderPermissions();});
   n.register.addEventListener('click',()=>{if(!stopped&&!draft&&!pending&&!options.blocked?.())options.onRegister?.();});
-  function controls(){const busy=!!pending||preparing;n.inputs.hidden=!!draft||preparing||!n.issued.hidden||completed;n.status.setAttribute('aria-busy',String(busy));
+  function renderScope(){const ownCompleted=completed&&activePanel==='self',ownIssued=hex(n['issued-code'].value,64)&&activePanel==='manage';n.inputs.hidden=!!draft||preparing||ownCompleted||ownIssued;n.issued.hidden=!ownIssued;n.open.hidden=!ownCompleted||!hasPrimaryLink;n['result-links'].hidden=!ownCompleted;n.status.hidden=!!statusCommand&&(statusCommand==='CLAIM'?activePanel!=='self':activePanel!=='manage');n.cancel.hidden=!draft&&!preparing&&!ownCompleted;n.cancel.textContent=ownCompleted?'別の招待を受け取る':'入力に戻る';}
+  function controls(){const busy=!!pending||preparing;renderScope();n.status.setAttribute('aria-busy',String(busy));
    for(const p of permissionInputs)p.node.disabled=stopped||busy||!!draft;
    n.register.hidden=options.singleRegistration===true||options.registrationState?.()!=='unregistered';n.claim.hidden=options.singleRegistration===true&&options.registrationState?.()==='unregistered';n.register.disabled=stopped||busy||!!draft||!!options.blocked?.();
    for(const k of ['claim','issue','code','org','store','service'])n[k].disabled=stopped||busy||!!draft;
    n.commit.disabled=stopped||busy||!draft?.revision||unknown;n.retry.hidden=!unknown;n.retry.disabled=stopped||busy;
    for(const k of ['copy-code','copy-page','close-code'])n[k].disabled=stopped||!!draft||!hex(n['issued-code'].value,64);
-   n.cancel.hidden=!draft&&!preparing&&!completed;n.cancel.textContent=completed?'別の招待を受け取る':'入力に戻る';n.cancel.disabled=stopped||committed;n.preview.hidden=!draft?.revision||unknown;
+   n.cancel.disabled=stopped||committed;n.preview.hidden=!draft?.revision||unknown;
    picker?.sync();options.onState?.();
   }
-  function wipe(){completed=false;n['result-links'].replaceChildren();generation++;if(pending)clearTimeout(pending.timer);pending=null;draft=null;preparing=false;committed=false;unknown=false;n.code.value='';n.open.hidden=true;n['issued-code'].value='';n.issued.hidden=true;n.summary.textContent='';n.identifiers.textContent='';controls();}
+  function wipe(){completed=false;hasPrimaryLink=false;n['result-links'].replaceChildren();generation++;if(pending)clearTimeout(pending.timer);pending=null;draft=null;preparing=false;committed=false;unknown=false;n.code.value='';n.open.hidden=true;n['issued-code'].value='';n.issued.hidden=true;n.summary.textContent='';n.identifiers.textContent='';controls();}
   function uncertain(){if(pending)clearTimeout(pending.timer);pending=null;unknown=true;n.status.textContent=messages.COMMON_RESULT_UNKNOWN;controls();}
   function cancel(){if(stopped||committed)return;const code=n.code.value,wasCompleted=completed;wipe();n.code.value=code;n.status.textContent=wasCompleted?'別の利用開始コードを入力してください。':'入力内容を変更できます。保存していません。';}
   function send(phase){
@@ -59,7 +60,7 @@
   }
   async function begin(command){
    if(stopped||pending||preparing||draft||options.blocked?.()||global!==global.top||!crypto.subtle)return;
-   let input,secret='';
+   let input,secret='';statusCommand=command;controls();
    n['issued-code'].value='';n.issued.hidden=true;
    if(command==='CLAIM'){if(options.registrationState?.()!=='registered'){n.status.textContent=options.registrationState?.()==='unregistered'?'このLINEは未登録です。アカウントを作成後、同じコードをもう一度確認してください。':'本人の登録状態を確認してから受け取ってください。';controls();return;}const inviteCode=n.code.value.trim();if(!hex(inviteCode,64)){n.status.textContent='64桁の利用開始コードを入力してください。';return;}input={inviteCode,reason:'本人が共通所属招待を受け取る'};}
    else{const organizationId=n.org.value.trim(),storeId=n.store.value.trim(),serviceId=n.service.value;if(!scopeId(organizationId)||!scopeId(storeId)||!service()){n.status.textContent='会社ID・店舗ID・サービスを確認してください。';return;}
@@ -89,12 +90,12 @@
     if(v.expiresAtUtc!==undefined&&(typeof v.expiresAtUtc!=='string'||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$/.test(v.expiresAtUtc)))return;
     if(v.summary&&draft.summary&&JSON.stringify(v.summary)!==JSON.stringify(draft.summary))return;
     if(v.summary&&!preview(JSON.stringify({revision:draft.revision,summary:v.summary,code:'COMMON_ACTIVATION_PREVIEW_READY'})))return;
-    const claimed=draft.command==='CLAIM',destination=catalog.find(x=>x.serviceId===draft.summary?.serviceId);const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();completed=claimed;if(claimed){const choices=destination?[destination]:catalog;for(const choice of choices){if(!/^\/(?:[a-z0-9-]+\/)+$/.test(choice.path))continue;const label=destination?choice.label+'へ戻る（同じLINEで確認）':'アプリで利用状態を確認（'+choice.label+'）';if(choices.length===1){n.open.href=choice.path;n.open.textContent=label;n.open.hidden=false;}else{const link=document.createElement('a');link.href=choice.path;link.textContent=label;n['result-links'].appendChild(link);}}}n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'利用開始コードを発行しました。30分以内に本人へ個別に渡してください。':d.code==='COMMON_ACTIVATION_ALREADY_CLAIMED'?'この招待は受取済みです。現在利用できるかは、アプリで確認してください。':'所属と指定サービス権限の受取りが完了しました。サービスへ戻ってLINEで最新の利用条件を確認してください。';controls();if(claimed)options.onSuccess?.();return;
+    const claimed=draft.command==='CLAIM',destination=catalog.find(x=>x.serviceId===draft.summary?.serviceId);const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();completed=claimed;if(claimed){const choices=destination?[destination]:catalog;for(const choice of choices){if(!/^\/(?:[a-z0-9-]+\/)+$/.test(choice.path))continue;const label=destination?choice.label+'へ戻る（同じLINEで確認）':'アプリで利用状態を確認（'+choice.label+'）';if(choices.length===1){hasPrimaryLink=true;n.open.href=choice.path;n.open.textContent=label;n.open.hidden=false;}else{const link=document.createElement('a');link.href=choice.path;link.textContent=label;n['result-links'].appendChild(link);}}}n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'利用開始コードを発行しました。30分以内に本人へ個別に渡してください。':d.code==='COMMON_ACTIVATION_ALREADY_CLAIMED'?'この招待は受取済みです。現在利用できるかは、アプリで確認してください。':'所属と指定サービス権限の受取りが完了しました。サービスへ戻ってLINEで最新の利用条件を確認してください。';controls();if(claimed)options.onSuccess?.();return;
    }
    if(d.data!=='')return;
    if(d.code==='COMMON_RESULT_UNKNOWN'){uncertain();return;}
    if(committed&&unknown){uncertain();n.status.textContent=messages[d.code]+' 保存済みかはまだ確認できていません。同じ操作で確認するか、管理者へ確認してください。';return;}
-   wipe();n.status.textContent=messages[d.code];
+   const retainedCode=r.phase==='PREVIEW'&&r.command==='CLAIM'&&['COMMON_INVALID_REQUEST','COMMON_MEMBERSHIP_REQUIRED','COMMON_SERVICE_PERMISSION_REQUIRED','COMMON_SERVICE_NOT_ENABLED','COMMON_REVISION_CONFLICT'].includes(d.code)?n.code.value:'';wipe();n.code.value=retainedCode;n.status.textContent=messages[d.code];
   });
   async function copyIssued(page){if(stopped||draft||n.issued.hidden||!hex(n['issued-code'].value,64))return;const gen=generation,secret=n['issued-code'].value;
    try{if(!global.navigator?.clipboard?.writeText)throw Error('COPY_UNAVAILABLE');await global.navigator.clipboard.writeText(page?'https://tealabhokkaido.com/account/':'招待の受取り：https://tealabhokkaido.com/account/\n利用開始コード：'+secret);if(stopped||gen!==generation||n['issued-code'].value!==secret)return;n.status.textContent=page?'受取りページをコピーしました。招待コードはURLに含めていません。':'招待をコピーしました。本人へ送ってください。';}
@@ -104,7 +105,7 @@
   // Browser warning only: force-close/crash recovery is not provided. No secret persistence.
   global.addEventListener('beforeunload',event=>{if(!stopped&&committed&&!!draft){event.preventDefault();event.returnValue='';}});
   global.addEventListener('pagehide',()=>{stopped=true;wipe();n.status.textContent='画面を離れたためコードを消去しました。保存結果が不明な場合は管理者へ確認してください。';});
-  picker=global.TlhManagementPicker?.init({...options,prefix:'activation',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({checkManagement:()=>picker?.loadScopes(),syncPicker:()=>picker?.sync(),syncRegistration:controls,busy:()=>!!draft||preparing||!!pending});
+  picker=global.TlhManagementPicker?.init({...options,prefix:'activation',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({activatePanel(key){activePanel=key;renderScope();},checkManagement:()=>picker?.loadScopes(),syncPicker:()=>picker?.sync(),syncRegistration:controls,busy:()=>!!draft||preparing||!!pending});
  }
  global.TlhServiceActivation=Object.freeze({init,verify,preview});
 })(window);
