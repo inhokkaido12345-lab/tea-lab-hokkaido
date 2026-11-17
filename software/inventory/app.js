@@ -10,9 +10,10 @@ const inventoryOperationPermission = Object.freeze({
  LINK_RECEIPT_TO_ORDER:'inventory.order',MARK_ORDERED:'inventory.order',CANCEL_ORDERED:'inventory.order'
 });
 const inventoryKnownPermissions=Object.freeze([...new Set([...Object.values(inventoryOperationPermission),'inventory.receive','inventory.manage'])]);
-function inventoryCanOperate(permissions,type,request={}){
+function inventoryCanOperate(permissions,type,request={},access={}){
  if(!Array.isArray(permissions)||!Object.hasOwn(inventoryOperationPermission,type))return false;
  const needed=inventoryOperationPermission[type];
+ if(access.accessModel==='COMMON_AFFILIATION_V1'&&access.receivingEnabled===true&&permissions.includes('inventory.read')&&['RECEIVE','LINK_RECEIPT_TO_ORDER'].includes(type))return true;
  if(type==='LINK_RECEIPT_TO_ORDER'&&!permissions.includes('inventory.read'))return false;
  const broad=permissions.includes('inventory.receive')&&!['inventory.read','inventory.order'].includes(needed);
  if(!broad&&!permissions.includes(needed))return false;
@@ -21,7 +22,7 @@ function inventoryCanOperate(permissions,type,request={}){
  return true;
 }
 
-function canOperate(type,request={}){return inventoryCanOperate(view?.permissions,type,request);}
+function canOperate(type,request={}){return inventoryCanOperate(view?.permissions,type,request,{accessModel:'COMMON_AFFILIATION_V1',receivingEnabled:view?.receivingEnabled===true});}
 /**
  * 連結画面：APIへ送信し、サーバーが保存後に検証した画面DTOを表示。旧APIだけ別READ。
  * 状態はサーバーが正本。DOMの数量を直接加算しない。
@@ -411,6 +412,7 @@ function render(){
  $('complete').replaceChildren(new Option('選択しない',''));
  // 受取完了は注文ごと。一件を完了しても他の未入荷注文を残す。
  for(const i of (canOperate('RECEIVE',{completeCaseId:'selection'})?view.items:[]).filter(i=>i.active!==false))for(const o of (i.orders||(i.order?[i.order]:[])).filter(o=>o.status==='ORDERED'))$('complete').append(new Option(i.name+' ／ '+(o.at?formatRecordedAt(o.at):'発注')+' ／ '+(o.plannedLine?o.plannedLine.quantity+' '+(i.units.find(u=>u.id===o.plannedLine.unitId)?.label||o.plannedLine.unitId):'数量未記入')+' ／ 到着 '+(o.expectedOn||'不明')+' ／ '+o.id,o.id));
+ if($('receiving-association')){$('receiving-association').hidden=view.receivingEnabled!==true;$('receiving-association-confirm').checked=false;}
  if(activeTab==='history')renderHistory();
  if(activeTab==='catalog')renderCatalog();
  showStockAction(stockAction);
@@ -570,7 +572,8 @@ async function send(command){
  if(command)pending={...command,operationId:crypto.randomUUID(),storeId:view.storeId};
  if(!pending)return;
  lock(true);$('recovery').hidden=true;message('保存結果を確認しています…');
- const receiptLeavesOrders=pending.type==='RECEIVE'&&!pending.completeCaseId&&view?.items?.some(i=>i.orders?.length&&pending.lines.some(l=>l.itemId===i.id))&&!canOperate('RECEIVE',{completeCaseId:'selection'});
+ const receiptLeavesOrders=pending.type==='RECEIVE'&&!pending.completeCaseId&&view?.items?.some(i=>i.orders?.length&&pending.lines.some(l=>l.itemId===i.id))&&(view?.receivingEnabled===true||!canOperate('RECEIVE',{completeCaseId:'selection'}));
+ const receiptCanLink=receiptLeavesOrders&&canOperate('LINK_RECEIPT_TO_ORDER');
  let saved=false;
  try {
  const result = await TlhInventory.request('COMMAND', pending);
@@ -578,6 +581,12 @@ async function send(command){
  const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE','RECOVERY_UNKNOWN','RECOVERY_ACTOR_MISMATCH','RECOVERY_STORAGE_UNAVAILABLE','RECOVERY_LOCK_UNAVAILABLE','RECOVERY_IDENTITY_UNAVAILABLE','RECOVERY_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
+  // Recovery transport confirms historical saving; it does not execute another COMMAND.
+  if(data.code==='RECOVERY_SAVED'){
+   saved=true;pending=null;await load();
+   $('lines').replaceChildren();addLine();tab('stock');
+   message('保存済みを確認しました。再送せず、最新の記録を表示しました。','RECOVERY_SAVED');return;
+  }
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
   // サーバーが明示的に拒否した保存は未確定ではない。続くREADの失敗と混同しない。
   pending=null;try{await load();}catch{view=null;}message(errors[data.code]||'保存できませんでした。',data.code||'UNAVAILABLE');return;
@@ -590,7 +599,7 @@ async function send(command){
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
  $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
- if(receiptLeavesOrders)message('入荷は保存しました。注文は未完了です。発注権限のある担当者に登録済み入荷との照合を依頼してください。再入荷登録は不要です。');
+ if(receiptLeavesOrders)message(receiptCanLink?'入荷は保存しました。注文は未完了です。発注済み注文の「登録済みの入荷と照合」で確認してください。再入荷登録は不要です。':'入荷は保存しました。注文は未完了です。発注権限のある担当者に登録済み入荷との照合を依頼してください。再入荷登録は不要です。');
  }catch{
   if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。','SAVE_VIEW_FAILED');}
   else{message('保存結果が不明です。同じ操作を再確認してください。','SAVE_UNKNOWN');$('recovery').hidden=false;}
@@ -714,7 +723,7 @@ function renderCatalog(){
  host.append(el('p','一覧シートはアプリの保存内容から作られます。シートを直接編集してもアプリには反映されません。同期に失敗した場合は、ここから再同期できます。','muted'));lock(busy);
 }
 
-$('receipt').onsubmit=e=>{e.preventDefault();const lines=[...$('lines').children].map(r=>r.requestLine());if(!lines.length){message('先に仕入品を登録して、入荷する品目を追加してください。');return;}send({type:'RECEIVE',receivedOn:$('day').value,lines,completeCaseId:$('complete').value||null});};
+$('receipt').onsubmit=e=>{e.preventDefault();const lines=[...$('lines').children].map(r=>r.requestLine());if(!lines.length){message('先に仕入品を登録して、入荷する品目を追加してください。');return;}const completeCaseId=$('complete').value||null,derived=completeCaseId&&view?.receivingEnabled===true&&!inventoryCanOperate(view.permissions,'RECEIVE',{completeCaseId});let extra={};if(derived){const order=view.items.flatMap(i=>i.orders||[]).find(o=>o.id===completeCaseId);if(!order?.orderOperationId||!order.plannedLine){message('予定量のある注文を選択してください。');return;}if(!$('receiving-association-confirm')?.checked){message('注文の全量であることを確認し、チェックしてください。');return;}extra={orderOperationId:order.orderOperationId,confirmAssociation:true};}send({type:'RECEIVE',receivedOn:$('day').value,lines,completeCaseId,...extra});};
 $('retry').onclick=()=>send();
 const readErrors={STORE_SELECTION_REQUIRED:'店舗を選択するか、新しい店舗を作成・招待コードで参加してください。',OWNER_AUTHORIZATION_REQUIRED:'サービス所有者のGoogle連携認可が必要です。',AUTH_REQUIRED:'本人確認情報を確認できません。LINEでログインし直してください。',ACCOUNT_NOT_REGISTERED:'TLHアカウントの登録が確認できません。',ACCOUNT_INACTIVE:'TLHアカウントが停止されています。',AUTH_SERVICE_ERROR:'認証サービスで問題が発生しています。',AUTH_RESPONSE_INVALID:'認証サービスの応答を確認できません。',AUTH_UNAVAILABLE:'TLHアカウントの照合に接続できません。',LOGIN_UNAVAILABLE:'LINEログインの準備に失敗しました。',OFFLINE:'オンライン接続が必要です。',NOT_CONFIGURED:'在庫サービスの接続設定が未完了です。管理者に連絡してください。',FORBIDDEN:'TLHアカウントと店舗への参加権限を確認してください。',SCHEMA_MISMATCH:'在庫データを読み取れません。管理者に連絡してください。',LEDGER_REVIEW_REQUIRED:'保存原簿の整合性を確認する必要があります。',RPC_TIMEOUT:'Googleから応答がありません。もう一度読み込んでください。',RPC_FAILED:'Googleへの接続に失敗しました。もう一度読み込んでください。'};
 const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('本人確認情報が受け付けられませんでした。LINEでログインし直してください。','AUTH_REQUIRED'):message('在庫を読み込めません。'+(readErrors[e?.message]||'通信状態を確認し、もう一度読み込んでください。'),Object.hasOwn(readErrors,e?.message)||Object.hasOwn(statusGuides,e?.message)?e.message:'UNAVAILABLE');
@@ -748,5 +757,7 @@ $('day').value=new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 refresh();
 
 
+
+$('complete').onchange=()=>{if($('receiving-association-confirm'))$('receiving-association-confirm').checked=false;};
 
 window.addEventListener('pagehide', () => {view = null; pending = null; itemsById.clear();stockWorkspaces.clear();stockCards.clear();document.getElementById('stock-workspaces').replaceChildren();});
