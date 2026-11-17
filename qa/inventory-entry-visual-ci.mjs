@@ -11,9 +11,9 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.
 const browser=await chromium.launch({headless:true}),reports=[];let failed=false;
 try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
  const context=await browser.newContext({viewport,locale:'ja-JP',serviceWorkers:'block'}),page=await context.newPage(),blocked=[],errors=[];
- const report={viewport,realPhone:false,realOAuth:false,externalHttpPolicy:'block-non-local',networkObservation:'Playwright route interception; not packet capture',passed:false};
+ const report={viewport,realPhone:false,realOAuth:false,syntheticOriginAdapter:'employee-transport fixed origin mapped to localhost in test response only',externalHttpPolicy:'block-non-local',networkObservation:'Playwright route interception; not packet capture',passed:false};
  try{
-  await context.route('**/*',route=>{const u=new URL(route.request().url());if(u.origin===origin)return route.continue();blocked.push({origin:u.origin,method:route.request().method()});return route.abort();});
+  await context.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname==='/software/inventory/employee-transport.js'){const source=await fs.readFile(path.join(root,'software/inventory/employee-transport.js'),'utf8'),guard="global.location.origin !== 'https://tealabhokkaido.com'";assert.equal(source.split(guard).length,2,'ORIGIN_FIXTURE_CONTRACT_CHANGED');return route.fulfill({contentType:'application/javascript',body:source.replace(guard,'global.location.origin !== '+JSON.stringify(origin))});}if(u.origin===origin)return route.continue();blocked.push({origin:u.origin,method:route.request().method()});return route.abort();});
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(new URL(r.url()).origin===origin&&r.status()>=400)errors.push('LOCAL_ASSET_MISSING:'+new URL(r.url()).pathname);});
   await page.goto(origin+'/software/inventory/',{waitUntil:'networkidle'});await page.locator('#line-login').waitFor({state:'visible'});await page.evaluate(()=>document.fonts.ready);
   for(const selector of ['.entry-primary','.entry-personal','#line-login'])assert.equal(await page.locator(selector).isVisible(),true,selector+' missing');
