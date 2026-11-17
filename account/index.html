@@ -20,11 +20,11 @@
 <script src="access-overview.js?v=488c4761f4a2b421" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
-<script src="tabs.js?v=896cf9b50b9141e3" defer></script>
+<script src="tabs.js?v=35137a4709f9286e" defer></script>
 <script src="service-shell/signed-service-reader.js?v=46ed80031cb6393f" defer></script>
 <script src="service-shell/verified-overview-scopes.js?v=dae5f1ab2ee29ad8" defer></script>
 <script src="service-shell/service-management.js?v=516b9dba9b32c46c" defer></script>
-<script src="service-shell/account-service-category.js?v=18041271c371b73e" defer></script>
+<script src="service-shell/account-service-category.js?v=b9b272d7f682a296" defer></script>
 <script src="account.js?v=08c4abafef1962c0" defer></script>
 <link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=f29c02f1ed543e1d">
 </head>
@@ -40,7 +40,8 @@
 <div id="account-tools" hidden>
 <select id="account-mobile-category" aria-label="表示する項目"><option value="self">アカウント基本情報</option><option value="services">サービス管理</option><option value="manage">店舗管理</option><option value="company">社内管理</option><option value="platform">TLH管理</option></select><nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-services" type="button" role="tab" aria-selected="false">サービス管理</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
 <section id="account-service-panel" data-account-panel="services" hidden><h2>サービス管理</h2><div id="account-service-content"></div><iframe id="account-service-frame" name="tlhServiceRegistryFrame" title="サービス利用状態の応答" hidden></iframe></section>
-<section id="activation-section" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
+<section id="account-managed-store-panel" data-account-panel="manage" hidden><h2>管理する店舗</h2><div id="account-managed-stores"></div></section>
+<section id="activation-section" data-inventory-management="true" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
 <p>このLINEでアカウントを作成します。</p>
 <button id="account-create" type="button">アカウントを作成して続ける</button>
 <p id="account-create-status" role="status" aria-live="polite"></p>
@@ -56,7 +57,7 @@
 <div id="activation-issued" hidden><label>招待コード（30分有効）<textarea id="activation-issued-code" rows="2" readonly autocomplete="off" spellcheck="false"></textarea></label><button id="activation-copy-code" type="button" disabled>招待をコピー</button><button id="activation-copy-page" type="button" disabled hidden>受取りページをコピー</button><a href="https://tealabhokkaido.com/account/" hidden>受取りページ</a><button id="activation-close-code" type="button" disabled>コード表示を閉じる</button><p>コードと受取りページを本人へ送ってください。コードはこの画面でのみ確認できます。</p></div>
 <p><a id="activation-open" class="activation-primary-link" hidden></a></p><div id="activation-result-links"></div><button id="activation-cancel" type="button" hidden>入力に戻る</button><p id="activation-status" role="status" aria-live="polite"></p><iframe id="activation-frame" name="tlhServiceActivationFrame" title="共通所属招待の応答" hidden></iframe>
 </fieldset></section>
-<details id="account-more" data-account-panel="self manage" hidden><summary>アカウント情報・その他の手続き</summary><section data-account-panel="self" aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">自分の所属・運営ロール</h2><p>サービスの利用状態は「サービス管理」で確認できます。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
+<details id="account-more" data-inventory-management="true" data-account-panel="self manage" hidden><summary>アカウント情報・その他の手続き</summary><section data-account-panel="self" aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">自分の所属・運営ロール</h2><p>サービスの利用状態は「サービス管理」で確認できます。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
 <section data-account-panel="self" aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
 <button id="account-info-check" type="button" disabled>登録情報を更新</button>
 <p id="account-info-status" role="status" aria-live="polite"></p>
