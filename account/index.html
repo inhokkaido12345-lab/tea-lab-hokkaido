@@ -12,6 +12,7 @@
 <script src="/workforce/company-employment-info.js" defer></script>
 <script src="/workforce/account-info.js" defer></script>
 <script src="/workforce/staff-enrollment.js" defer></script>
+<script src="management-picker.js" defer></script>
 <script src="common-affiliation.js" defer></script>
 <script src="common-grants.js" defer></script>
 <script src="access-overview.js" defer></script>
@@ -50,9 +51,8 @@
 <fieldset id="common-lock" disabled><legend>共通所属</legend>
 <form id="common-claim-form"><label>所属招待コード<textarea id="common-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="common-claim" type="submit">招待の内容を確認</button></form>
 <details><summary>管理者：所属招待を発行</summary><form id="common-issue-form">
-<label>会社ID<input id="common-org" required maxlength="80" autocomplete="off"></label>
-<label>店舗ID<input id="common-store" required maxlength="80" autocomplete="off"></label>
-<label>対象サービス<select id="common-service"><option value="INVENTORY">在庫</option><option value="WORKFORCE">勤怠</option><option value="POS">POS</option></select></label>
+<button id="common-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="common-picker-status" role="status" aria-live="polite"></p><label>会社<select id="common-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="common-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="common-picker-frame" name="tlhManagementPickercommon" title="管理できる範囲の応答" hidden></iframe>
+<label>対象サービス<select id="common-service"><option value="INVENTORY">在庫</option></select></label>
 <button id="common-issue" type="submit">発行内容と管理権限を確認</button></form></details>
 <div id="common-preview" hidden><p id="common-summary"></p><button id="common-commit" type="button">確認した内容で確定</button></div>
 <button id="common-retry" type="button" hidden>同じ操作の結果を確認</button><button id="common-cancel" type="button" hidden>やめる</button>
@@ -62,7 +62,8 @@
 <section aria-labelledby="grant-heading"><h2 id="grant-heading">管理者：在庫の業務権限を設定・停止</h2>
 <details><summary>所属招待とは別に、在庫の業務権限を変更する</summary><p>本人の有効な会社・店舗所属が必要です。自分自身への追加はできません。既存権限の削減・停止のみ可能です。社員情報・運営権限・サービス契約は変わりません。</p>
 <fieldset id="grant-lock" disabled><legend>対象と変更内容</legend><form id="grant-form"><fieldset id="grant-fields"><legend>対象の本人・店舗</legend>
-<label>対象TLHアカウントID<input id="grant-account" required maxlength="80" autocomplete="off"></label><label>会社ID<input id="grant-org" required maxlength="128" autocomplete="off"></label><label>店舗ID<input id="grant-store" required maxlength="128" autocomplete="off"></label>
+<button id="grant-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="grant-picker-status" role="status" aria-live="polite"></p><label>会社<select id="grant-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="grant-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="grant-picker-frame" name="tlhManagementPickergrant" title="管理できる範囲の応答" hidden></iframe>
+<label>対象者の選び方<select id="grant-target-mode"><option value="member">この店舗の所属者から選ぶ</option><option value="shared">本人から共有されたIDを貼り付ける</option></select></label><label>対象者<select id="grant-member" disabled><option value="">店舗を先に選択</option></select></label><div id="grant-manual-target" hidden><label>本人から共有されたTLHアカウントID<input id="grant-account" maxlength="80" autocomplete="off" spellcheck="false"></label><p>本人のAccount画面のIDを貼り付けてください。対象店舗への所属がなければ権限は保存されません。</p></div>
 <p>選択した権限で置き換えます。何も選ばない場合、対象店舗の在庫権限をすべて停止します。</p>
 <label><input type="checkbox" id="grant-read">閲覧</label><label><input type="checkbox" id="grant-receive">入荷</label><label><input type="checkbox" id="grant-order">発注</label><label><input type="checkbox" id="grant-manage">管理</label>
 <label>変更理由<input id="grant-reason" required maxlength="200" autocomplete="off"></label></fieldset><button id="grant-preview-button" type="submit">変更前・変更後を確認</button></form>

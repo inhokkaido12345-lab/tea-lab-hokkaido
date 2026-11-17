@@ -1,6 +1,17 @@
 /** Real UI + real GAS chained onboarding. All LINE/Sheets are fake; no network or real people.
  * Run with sibling platform/inventory checkouts or TLH_*_SOURCE_DIR absolute paths.
- * No stage is replaced with a fabricated authorization reply. */
+ * No stage is replaced with a fabricated authorization reply.
+ * Reproduction targets (2026-11-17):
+ *   tlh-platform 7a41fcbffc40a7ce078becc3b273a6f1a5206e79
+ *   tlh-inventory 6e555a08f4b2b195847430b0b88086f4b8f6ce07
+ *   this site: use the candidate commit that contains this test.
+ * Run: TLH_PLATFORM_SOURCE_DIR=/absolute/platform TLH_INVENTORY_SOURCE_DIR=/absolute/inventory
+ *      node --test integration/common-account-onboarding.test.mjs
+ * Local real-source chain passes; imported fixture suites also execute (47 cases total).
+ * This is NOT part of site tests/*.mjs CI: both dependency repositories are private.
+ * Do not vendor private source into this public site or invent a cross-repo secret.
+ * Standard contents:read on this site's GITHUB_TOKEN cannot checkout those repositories.
+ */
 import fs from 'node:fs';import vm from 'node:vm';import test from 'node:test';import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';import path from 'node:path';
 import {harness as accountUi} from '../tests/common-account.test.mjs';
 import {uiHarness} from '../tests/helpers/common-affiliation-ui-harness.mjs';

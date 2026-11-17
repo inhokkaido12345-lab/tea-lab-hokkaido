@@ -25,11 +25,12 @@
  function init(options){
   const n=Object.fromEntries(['lock','claim-form','code','claim','issue-form','org','store','service','issue','preview','summary','commit','retry','cancel','issued','issued-code','status','frame'].map(k=>[k,document.getElementById('common-'+k)]));
   let stopped=false,pending=null,draft=null,preparing=false,committed=false,unknown=false,generation=0;
+  let picker=null;
   function controls(){const busy=!!pending||preparing;n.status.setAttribute('aria-busy',String(busy));
    for(const k of ['claim','issue','code','org','store','service'])n[k].disabled=stopped||busy||!!draft;
    n.commit.disabled=stopped||busy||!draft?.revision||unknown;n.retry.hidden=!unknown;n.retry.disabled=stopped||busy;
    n.cancel.hidden=!draft&&!preparing;n.cancel.disabled=stopped||committed;n.preview.hidden=!draft?.revision||unknown;
-   options.onState?.();
+   picker?.sync();options.onState?.();
   }
   function wipe(){generation++;if(pending)clearTimeout(pending.timer);pending=null;draft=null;preparing=false;committed=false;unknown=false;n.code.value='';n['issued-code'].value='';n.issued.hidden=true;n.summary.textContent='';controls();}
   function uncertain(){if(pending)clearTimeout(pending.timer);pending=null;unknown=true;n.status.textContent=messages.COMMON_RESULT_UNKNOWN;controls();}
@@ -68,7 +69,7 @@
     if(r.phase!=='PREVIEW')return;const p=preview(d.data);if(!p)return;
     if(draft.command==='ISSUE'&&['organizationId','storeId','serviceId'].some(k=>p.summary[k]!==draft.input[k]))return;
     clearTimeout(r.timer);pending=null;unknown=false;draft.revision=p.revision;
-    n.summary.textContent='会社：'+p.summary.organizationId+' ／ 店舗：'+p.summary.storeId+' ／ '+p.summary.serviceId+'。所属のみ。社員情報・勤怠登録・業務権限は追加しません。';n.status.textContent=messages[d.code];controls();return;
+    n.summary.textContent='会社：'+(picker?.label('org',p.summary.organizationId)||p.summary.organizationId)+' ／ 店舗：'+(picker?.label('store',p.summary.storeId)||p.summary.storeId)+' ／ '+p.summary.serviceId+'。所属のみ。社員情報・勤怠登録・業務権限は追加しません。';n.status.textContent=messages[d.code];controls();return;
    }
    if(['COMMON_INVITATION_SAVED','COMMON_INVITATION_ALREADY_SAVED','COMMON_INVITATION_ALREADY_CLAIMED'].includes(d.code)){
     if(r.phase!=='COMMIT'&&!(draft.command==='CLAIM'&&d.code==='COMMON_INVITATION_ALREADY_CLAIMED'))return;let v;try{v=JSON.parse(d.data);}catch{return;}const keys=d.code==='COMMON_INVITATION_SAVED'?['code','savedRevision','invitationId','status','summary']:d.code==='COMMON_INVITATION_ALREADY_SAVED'?['code','savedRevision','invitationId','status']:['code','invitationId','status'];
@@ -82,7 +83,7 @@
    wipe();n.status.textContent=messages[d.code];
   });
   global.addEventListener('pagehide',()=>{stopped=true;wipe();n.status.textContent='画面を離れたためコードを消去しました。保存結果が不明な場合は管理者へ確認してください。';});
-  controls();return Object.freeze({busy:()=>!!draft||preparing||!!pending});
+  picker=global.TlhManagementPicker?.init({...options,prefix:'common',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({busy:()=>!!draft||preparing||!!pending});
  }
  global.TlhCommonAffiliation=Object.freeze({init,verify,preview});
 })(window);
