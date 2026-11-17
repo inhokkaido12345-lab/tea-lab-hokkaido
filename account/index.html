@@ -20,13 +20,13 @@
 <script src="access-overview.js?v=488c4761f4a2b421" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
-<script src="tabs.js?v=8c0b75b3b9e64372" defer></script>
+<script src="tabs.js?v=896cf9b50b9141e3" defer></script>
 <script src="service-shell/signed-service-reader.js?v=062a88b6d0b28651" defer></script>
 <script src="service-shell/verified-overview-scopes.js?v=dae5f1ab2ee29ad8" defer></script>
-<script src="service-shell/service-management.js?v=16d75b53854c9c1c" defer></script>
+<script src="service-shell/service-management.js?v=d3532d29764e3d23" defer></script>
 <script src="service-shell/account-service-category.js?v=87bb4aff69e0fa40" defer></script>
 <script src="account.js?v=439ecb3171f80d45" defer></script>
-<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=2518683eca2ec40a">
+<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=e2b99180778f6b9d">
 </head>
 <body class="account-category-shell"><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
@@ -38,7 +38,7 @@
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
 <section id="account-personal-ready" hidden aria-label="個人利用の次の手順"><p>アカウントの登録を確認しました。</p><a id="account-personal-return" class="activation-primary-link">アプリへ戻る</a><p>戻ったアプリで同じLINEの本人確認を行い、個人利用を始めてください。アカウント登録だけでは業務権限は付きません。</p></section>
 <div id="account-tools" hidden>
-<nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-services" type="button" role="tab" aria-selected="false">サービス管理</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
+<select id="account-mobile-category" aria-label="表示する項目"><option value="self">アカウント基本情報</option><option value="services">サービス管理</option><option value="manage">店舗管理</option><option value="company">社内管理</option><option value="platform">TLH管理</option></select><nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-services" type="button" role="tab" aria-selected="false">サービス管理</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
 <section id="account-service-panel" data-account-panel="services" hidden><h2>サービス管理</h2><div id="account-service-content"></div><iframe id="account-service-frame" name="tlhServiceRegistryFrame" title="サービス利用状態の応答" hidden></iframe></section>
 <section id="activation-section" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
 <p>このLINEでアカウントを作成します。</p>

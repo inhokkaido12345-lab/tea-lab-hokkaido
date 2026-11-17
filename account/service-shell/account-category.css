@@ -1,5 +1,5 @@
 /* Preserve every existing controller/DOM node; only category presentation changes. */
-.account-category-shell .account-tabs { position:static; display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; background:transparent; box-shadow:none; }
+.account-category-shell .account-tabs { position:static; transform:none; left:auto; bottom:auto; width:100%; border-top:0; backdrop-filter:none; display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; background:transparent; box-shadow:none; }
 .account-category-shell .account-tabs button { flex:1 1 140px; min-height:48px; background:transparent; color:#2f5452; border:0; border-radius:24px; text-align:left; }
 .account-category-shell .account-tabs button[aria-selected="true"] { background:#dce9e5; font-weight:700; }
 .account-category-shell .account-tabs button[aria-disabled="true"] { color:#89938f; }
@@ -10,3 +10,6 @@
 }
 .account-category-shell .service-management * { box-sizing:border-box; }
 .account-category-shell [hidden] { display:none!important; }
+
+#account-mobile-category { display:none; }
+@media(max-width:680px){.account-category-shell .account-tabs{display:none;}#account-mobile-category{display:block;width:100%;min-height:48px;padding:10px 14px;border:1px solid #7c908e;border-radius:20px;background:#fff;font:inherit;margin-bottom:16px;}}

@@ -58,11 +58,11 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
    }
   }
   if(scenario==='unknown'){assert.equal(await page.locator('#account-tab-services').isEnabled(),false,'UNKNOWN_CATEGORY_ENABLED');}
-  else{const codeBefore=await page.locator('#activation-code').inputValue();await page.locator('#account-tab-services').click();
+  else{const codeBefore=await page.locator('#activation-code').inputValue();if(viewport.width===390)await page.locator('#account-mobile-category').selectOption('services');else await page.locator('#account-tab-services').click();
    if(scenario==='unregistered'){await page.getByText('本人情報を確認してからサービスを表示します。',{exact:true}).waitFor();assert.equal(requests.some(r=>r.action==='bridgeServiceRegistryReadV1'),false);}
    else {await page.getByText('サービス一覧は未接続です。',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'再確認',exact:true}).isVisible(),true);}
    assert.equal(await page.locator('#activation-section').isVisible(),false);await page.screenshot({path:path.join(output,name+'-services.png')});
-   await page.locator('#account-tab-self').click();assert.equal(await page.locator('#activation-code').inputValue(),codeBefore,'CATEGORY_DESTROYED_P0_STATE');
+   if(viewport.width===390)await page.locator('#account-mobile-category').selectOption('self');else await page.locator('#account-tab-self').click();assert.equal(await page.locator('#activation-code').inputValue(),codeBefore,'CATEGORY_DESTROYED_P0_STATE');
    if(scenario==='success')assert.equal(await page.locator('#activation-open').isVisible(),true,'COMPLETED_CLAIM_LOST');
    if(scenario==='unregistered')assert.equal(await page.locator('#account-create').isVisible(),true);
    assert.equal(requests.filter(r=>r.phase==='COMMIT').length,scenario==='success'?1:0,'CATEGORY_REPLAYED_WRITE');
