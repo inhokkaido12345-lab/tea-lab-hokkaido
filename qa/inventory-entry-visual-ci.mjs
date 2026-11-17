@@ -52,6 +52,21 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   const removed=await page.evaluate(()=>{const out=[];for(const sheet of document.styleSheets){for(let i=sheet.cssRules.length-1;i>=0;i--){const rule=sheet.cssRules[i];if(rule.selectorText?.includes('body:has(#line-login')){out.push({href:sheet.href,index:i,text:rule.cssText});sheet.deleteRule(i);}}}return out;});
   assert.ok(removed.length>0,'IDLE_CSS_RULE_MISSING');await checkProjection('no-has-rule-fallback',true);
   await page.evaluate(rules=>{for(const r of rules.reverse()){const sheet=[...document.styleSheets].find(s=>s.href===r.href);sheet.insertRule(r.text,r.index);}},removed);await checkProjection('restored-idle-rule',false);
+  // Successful-read appearance is a DOM projection, not authenticated service evidence.
+  const savedReadDom=await page.evaluate(()=>({stores:document.getElementById('inventory-stores').innerHTML,overview:document.getElementById('overview').innerHTML}));
+  async function successfulRead(state){
+   await project(state);
+   await page.evaluate(()=>{document.getElementById('line-login').hidden=true;document.getElementById('inventory-stores').innerHTML='<label>QA合成店舗<select><option>合成店舗</option></select></label>';document.getElementById('overview').innerHTML='<div>QA合成：在庫読取後の表示</div>';});
+  }
+  async function checkRead(state,entryVisible){
+   assert.equal(await page.locator('.inventory-entry').isVisible(),entryVisible,state+':ENTRY_VISIBILITY');
+   for(const selector of ['#inventory-stores','#inventory-stores select','#overview','#stock','#refresh','body > nav','#inventory-help','#status'])assert.equal(await page.locator(selector).isVisible(),true,state+':REQUIRED_UI_HIDDEN:'+selector);
+   report.projectedStates.push({state,syntheticDOMOnly:true,entryVisible});await page.screenshot({path:path.join(out,viewport.width+'-projected-'+state+'.png'),fullPage:true});
+  }
+  await successfulRead('idle');await checkRead('successful-read',false);
+  for(const state of ['busy','error','detail','legacy-recovery','receipt','invalid-receipt']){await successfulRead(state);await checkRead('read-then-'+state,true);if(state==='receipt'||state==='invalid-receipt')assert.equal(await page.locator('#operation-recovery').isVisible(),true);}
+  await successfulRead('idle');await page.locator('#line-login').evaluate(e=>e.hidden=false);assert.equal(await page.locator('.inventory-entry').isVisible(),true,'REAUTH_MUST_RESTORE_ENTRY');await page.screenshot({path:path.join(out,viewport.width+'-projected-read-then-reauth.png'),fullPage:true});
+  await page.evaluate(saved=>{document.getElementById('inventory-stores').innerHTML=saved.stores;document.getElementById('overview').innerHTML=saved.overview;},savedReadDom);await project('idle');await checkProjection('unregistered-after-read',false);
   assert.deepEqual(blocked,[],'PROJECTED_STATE_ATTEMPTED_EXTERNAL_REQUEST');assert.deepEqual(errors,[],'PROJECTED_STATE_BROWSER_ERROR');
   await page.screenshot({path:path.join(out,viewport.width+'-viewport.png')});await page.screenshot({path:path.join(out,viewport.width+'-full.png'),fullPage:true});report.passed=true;
  }catch(e){failed=true;report.error=e.message;await page.screenshot({path:path.join(out,viewport.width+'-FAIL.png'),fullPage:true}).catch(()=>{});}finally{report.blockedExternalRequestCount=blocked.length;report.blockedExternalRequests=blocked;report.errors=errors;reports.push(report);await context.close();}
