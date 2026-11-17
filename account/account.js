@@ -13,6 +13,10 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
+ // A fixed presentation hint only: never authorization or a redirect destination.
+ const personalPurpose=/^\?purpose=personal$/.test(global.location.search||'');
+ if(personalPurpose){$('account-reload').setAttribute('href','?purpose=personal');$('account-login-intro').textContent='個人利用のアカウント作成・確認。所属・利用開始コードは不要です。';$('activation-heading').textContent='アカウント作成・任意の招待';}
+ $('account-personal-return').addEventListener('click',event=>{if(!registrationConfirmed||!global.TlhAccountNavigation.canLeave())event.preventDefault();});
  const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。利用開始コードがあれば、続けて受け取れます。',
   ALREADY_REGISTERED:'登録済みの応答を受け取りました。最新の本人情報を再確認しています。',
   SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
@@ -38,6 +42,8 @@
   login.disabled=stopped||loggingIn||ready;$('account-login-section').setAttribute('data-authenticated',String(ready&&!stopped));
   $('account-read-retry').hidden=selfReadState!=='error';$('account-read-retry').disabled=!ready||!global.TlhAccountNavigation.canLeave();status.setAttribute('aria-busy',String(selfReadState==='checking'));
   $('account-apps').hidden=!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  $('account-personal-ready').hidden=!personalPurpose||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;
   create.disabled=!!activation?.busy()||(!unregistered&&!request)||!!operations?.busy()||stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
   enrollment.disabled=!!activation?.busy()||!!operations?.busy()||stopped||!ready||!!request||!!common?.busy()||!!grants?.busy();
