@@ -26,10 +26,13 @@
  // Shared navigation guard exposes no identity or authorization facts. Menu callers must
  // check at the moment of navigation; no cached boolean can authorize leaving a save.
  global.TlhAccountNavigation=Object.freeze({canLeave:()=>!stopped&&!loggingIn&&!request&&!common?.busy()&&!grants?.busy()&&!staff?.busy()&&!operations?.busy()});
- const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy(),onSelect:key=>operations?.activate(key),check:()=>common?.checkManagement(),checkRoles:()=>access?.refresh()});
+ const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy(),onSelect:key=>operations?.activate(key),check:()=>checkManagement(),checkRoles:()=>access?.refresh()});
  const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
  // GAS応答は入れ子iframeから届く。別iframeの同名メッセージを受け付けない。
  function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;}
+ // A blocked or already-pending picker has not accepted this refresh. End the
+ // spinner explicitly; the old request cannot override this newer error source.
+ function checkManagement(){const started=common?.checkManagement?.()===true;if(!started)tabs?.management('error','overview');return started;}
  function refreshSelf(){if(!stopped)access?.refresh();}
  function controls(){
   login.disabled=stopped||loggingIn||ready;
@@ -58,7 +61,7 @@
    common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!operations?.busy()||!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'common')});
    grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!operations?.busy()||!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'grant')});
    operations=global.TlhAccountOperations?.init({liff:proof,blocked:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy(),onState:controls});
-   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:(d,state)=>{unregistered=!d&&state==='not_registered';if(!d){managementChecked=false;tabs?.management(state==='error'?'error':'checking','overview');}if(unregistered)tabs?.management('denied','overview');if(d)status.textContent='登録済みのアカウントを確認しました。';else if(unregistered)status.textContent='このLINEのアカウントは未登録です。';controls();if(d&&!managementChecked){managementChecked=true;const managed=d.operatingRoles.some(r=>r.effective&&(r.role==='ORGANIZATION_OPERATOR'||r.role==='STORE_SERVICE_ADMIN'&&r.serviceId==='INVENTORY'));if(managed)common?.checkManagement?.();else tabs?.management('denied','overview');}if(!d)operations?.invalidate();tabs?.roles(d||(unregistered?{operatingRoles:[]}:null),state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
+   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:(d,state)=>{unregistered=!d&&state==='not_registered';if(!d){managementChecked=false;tabs?.management(state==='error'?'error':'checking','overview');}if(unregistered)tabs?.management('denied','overview');if(d)status.textContent='登録済みのアカウントを確認しました。';else if(unregistered)status.textContent='このLINEのアカウントは未登録です。';controls();if(d&&!managementChecked){managementChecked=true;const managed=d.operatingRoles.some(r=>r.effective&&(r.role==='ORGANIZATION_OPERATOR'||r.role==='STORE_SERVICE_ADMIN'&&r.serviceId==='INVENTORY'));if(managed)checkManagement();else tabs?.management('denied','overview');}if(!d)operations?.invalidate();tabs?.roles(d||(unregistered?{operatingRoles:[]}:null),state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
    ready=true;tabs?.ready();$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
    status.textContent='LINEから本人確認情報を受け取りました。登録状態を確認しています。';access?.load();
   }catch{
