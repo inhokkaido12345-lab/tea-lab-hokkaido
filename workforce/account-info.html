@@ -11,6 +11,7 @@
   <script defer src="current-workplace.js?v=20261105-store2"></script>
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script>
   <script defer src="common-affiliation-info.js"></script>
+<script defer src="company-employment-info.js"></script>
   <script defer src="account-info.js?v=20261105-more1" data-bootstrap="true"></script>
 </head><body class="secondary-page">
 <header><strong>TLH Work Time</strong><a href="./">勤怠画面へ戻る</a></header>
@@ -33,4 +34,8 @@
 <p>雇用情報・勤怠権限とは別です。ここに所属があっても、打刻や在庫の利用許可にはなりません。</p>
 <button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
 <iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section>
+<section aria-labelledby="company-self-heading"><h3 id="company-self-heading">会社別の本人・雇用情報</h3>
+<p>会社を選んで確認します。ここで選んでも、打刻先の店舗や権限は切り替わりません。</p>
+<button id="company-self-check" type="button">会社一覧を更新</button><label>確認する会社<select id="company-self-company" disabled><option value="">会社を選択</option></select></label>
+<p id="company-self-status" role="status" aria-live="polite"></p><div id="company-self-result"></div><iframe id="company-self-frame" name="tlhCompanyEmploymentFrame" title="会社別本人情報の応答" hidden></iframe></section>
 </main><script src="status-guidance.js?v=20261111-status2"></script></body></html>

@@ -55,6 +55,7 @@
   function init(options){
     const n=Object.fromEntries(['check','status','result','fields','frame','login'].map(k=>[k,document.getElementById('account-info-'+k)]));let pending=null,stopped=false,loginPending=false,loginRequired=options.loginRequired===true;
     const common=global.TlhCommonAffiliationInfo?.init(options);
+    const company=global.TlhCompanyEmploymentInfo?.init(options);
     const clear=()=>{n.result.hidden=true;n.fields.replaceChildren();};
     const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending||loginPending));n.check.disabled=!!pending||stopped||loginRequired||loginPending;if(n.login){n.login.hidden=!loginRequired||stopped;n.login.disabled=!!pending||loginPending||stopped;}};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
@@ -74,7 +75,7 @@
       }catch(_e){loginPending=false;n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';controls();}
     });
     function load(){
-      if(pending||stopped||loginRequired||loginPending)return;common?.load();clear();
+      if(pending||stopped||loginRequired||loginPending)return;common?.load();company?.load();clear();
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
       if(!proof){n.status.textContent='LINEログインが必要です。';requireLogin();return;}
@@ -88,7 +89,7 @@
     global.addEventListener('message',async event=>{
       const r=pending;if(!r||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,r);}catch(_e){}if(!valid||pending!==r)return;
-      const d=event.data;if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;common?.setAccount(info.tlhAccountId);render(n.fields,info);n.result.hidden=false;}
+      const d=event.data;if(d.code==='ACCOUNT_INFO_READY'){const info=parseInfo(d.info);if(!info)return;common?.setAccount(info.tlhAccountId);company?.setAccount(info.tlhAccountId);render(n.fields,info);n.result.hidden=false;}
       else clear();if(d.code==='ACCOUNT_INFO_LOGIN_REQUIRED')requireLogin();n.status.textContent=messages[d.code];finish();
     });
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();n.status.textContent='情報を消去しました。再確認する場合はページを開き直してください。';});clear();controls();

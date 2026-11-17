@@ -57,6 +57,14 @@ const stockWorkspaces=new Map();
 const stockCards=new Map();
 // 1回の描画中の品目検索を索引にする。サーバーの在庫の代わりには使わない。
 let itemsById = new Map();
+// Transport clears cached private data when access is lost or a context changes.
+// Keep an uncertain operation ID for explicit result checking, never as authority.
+globalThis.TlhInventoryView=Object.freeze({invalidate(){
+ view=null;renderedStoreId=null;itemsById.clear();stockWorkspaces.clear();stockCards.clear();
+ historyDirty=true;catalogDirty=true;catalogSelection='new';
+ for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview','stock-item-filters'])$(id)?.replaceChildren();
+ lock(busy);
+}});
 // Intlの設定解析を毎回繰り返さず、表示専用フォーマッターを再利用する。
 const quantityFormatter = new Intl.NumberFormat('ja-JP', {maximumFractionDigits: 3});
 const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
@@ -75,11 +83,11 @@ const statusGuides={
  AUTH_REQUIRED:['本人確認情報が受け付けられませんでした。LINEでログインし直してください。','login'],
  AUTH_SERVICE_ERROR:['認証サービスの処理に問題があります。再ログインを繰り返さず、管理者へ確認コードを伝えてください。'],
  AUTH_RESPONSE_INVALID:['認証サービスの応答を確認できません。管理者へ確認コードを伝えてください。'],
- ACCOUNT_NOT_REGISTERED:['LINEの本人確認はできましたが、TLHアカウントへの登録が確認できません。管理者に登録・紐付けを確認してください。'],
+ ACCOUNT_NOT_REGISTERED:['LINEの本人確認はできました。TLHアカウントを作成すると、自分の在庫を使えます。会社への所属・勤怠登録は不要です。','signup'],
  ACCOUNT_INACTIVE:['TLHアカウントが停止されています。管理者へ有効状態を確認してください。'],
  LOGIN_POPUP_BLOCKED:['このサイトのポップアップを許可し、「LINEでログイン」を押してください。','login'],
  LOGIN_UNAVAILABLE:['通信状態を確認してLINEログインをやり直してください。','login'],
- STORE_SELECTION_REQUIRED:['上部で店舗を選ぶか、作成・招待コードで参加してください。'],
+ STORE_SELECTION_REQUIRED:['上部で在庫を選ぶか、「自分の在庫を始める」を押してください。会社・店舗の在庫は管理者からの案内で参加できます。'],
  FORBIDDEN:['利用するアカウントと店舗を確認し、店舗管理者へ所属・権限の確認を依頼してください。'],
  OWNER_AUTHORIZATION_REQUIRED:['サービス管理者がGoogle連携の認可を確認する必要があります。'],
  SAVE_UNKNOWN:['新しい保存を重ねず、「同じ操作を再確認」で保存済みか確認してください。','retry'],
@@ -109,6 +117,10 @@ function message(text,code=''){
  if(!guide)return;
  details.append(el('p',guide[0]),el('p','確認コード：'+(unresolved?'SAVE_UNKNOWN':safe),'diagnostic-code'));
  const action=guide[1],labels={login:'LINEでログイン',retry:'同じ操作を再確認',refresh:'最新の記録を読む',sync:'一覧シートへ再同期'};
+ if(action==='signup'){
+  const link=el('a','TLHアカウントを作成する');link.href='/account/';details.append(link);
+  details.append(el('p','登録後はアカウント画面の「在庫管理を開く」から戻ってください。'));return;
+ }
  if(action){const button=el('button',labels[action]);button.type='button';button.dataset.recovery=action;
   button.onclick=()=>{if(busy)return;if(action==='login')$('line-login')?.onclick?.();else if(action==='retry')send();else if(action==='sync')send({type:'SYNC_CATALOG'});else refresh();};details.append(button);
  }

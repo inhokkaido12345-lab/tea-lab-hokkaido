@@ -1,6 +1,12 @@
 /** Platform-owned self affiliation read only. Independent of WorkTime employee/role DTO.
  * Missing/failed common service cannot disable legacy WorkTime. No write or permission inference.
  * Signature, iframe lineage, one-use nonce and current proof are checked before text-only rendering.
+ * Caller: account-info.js on /account/ and both WorkTime self-info screens.
+ * Removal disables only this independent read panel; legacy employee/punch APIs stay unchanged.
+ * Concept: authenticated read model with explicit identity and company boundaries.
+ * Contract edits must synchronize HTML IDs, GAS action/DTO/HMAC and focused/integration tests.
+ * No tokens, company profiles or keys enter URLs, logs or persistent browser storage.
+ * Verification: focused Node tests plus real GAS fixture; live LINE/browser rendering remains separate.
  */
 (function(global){'use strict';
  const TYPE='TLH_COMMON_AFFILIATION_V1',PHASE='READ_SELF';

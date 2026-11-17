@@ -12,7 +12,7 @@ export function uiHarness(){const nodes=new Map(),handlers={},sent=[],timers=new
  function signed(code,data='',overrides={}){const r=sent.at(-1),d={type:'TLH_COMMON_AFFILIATION_INVITE_V1',phase:r.phase,command:r.command,nonce:r.nonce,code,data:typeof data==='string'?data:JSON.stringify(data),...overrides};d.mac=createHmac('sha256',r.responseKey).update([d.type,d.phase,d.command,d.nonce,d.code,d.data].join('\n')).digest('hex');return d;}
  const deliver=(d,event={})=>handlers.message({origin:'https://script.google.com',source:n('common-frame').contentWindow,data:d,...event});
  const summary={organizationId:'orgA',storeId:'storeA',serviceId:'INVENTORY',permissions:[],employmentCreated:false};
- async function issue(){n('common-org').value='orgA';n('common-store').value='storeA';n('common-service').value='INVENTORY';act('issue-form','submit');await tick();}
+ async function issue(){n('common-org').value='orgA';n('common-store').value='storeA';n('common-service').value='INVENTORY';const before=sent.length;act('issue-form','submit');for(let i=0;i<100&&api.busy()&&sent.length===before;i++)await tick();}
  async function preview(){await deliver(signed('COMMON_INVITATION_PREVIEW_READY',{code:'COMMON_INVITATION_PREVIEW_READY',revision:'d'.repeat(64),summary}));}
  return {n,act,api,handlers,sent,timers,tick,issue,preview,deliver,signed,summary,setBlocked:v=>{blocked=v;}};
 }

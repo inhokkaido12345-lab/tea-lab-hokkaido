@@ -9,9 +9,11 @@
 <script src="/software/inventory/employee-login.js" defer></script>
 <script src="/workforce/current-workplace.js" defer></script>
 <script src="/workforce/common-affiliation-info.js" defer></script>
+<script src="/workforce/company-employment-info.js" defer></script>
 <script src="/workforce/account-info.js" defer></script>
 <script src="/workforce/staff-enrollment.js" defer></script>
 <script src="common-affiliation.js" defer></script>
+<script src="common-grants.js" defer></script>
 <script src="account.js" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
@@ -31,6 +33,10 @@
 <p>雇用情報・勤怠権限とは別です。ここに所属があっても、打刻や在庫の利用許可にはなりません。</p>
 <button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
 <iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section>
+<section aria-labelledby="company-self-heading"><h3 id="company-self-heading">会社別の本人・雇用情報</h3>
+<p>会社を選んで確認します。ここで選んでも、打刻先の店舗や権限は切り替わりません。</p>
+<button id="company-self-check" type="button">会社一覧を更新</button><label>確認する会社<select id="company-self-company" disabled><option value="">会社を選択</option></select></label>
+<p id="company-self-status" role="status" aria-live="polite"></p><div id="company-self-result"></div><iframe id="company-self-frame" name="tlhCompanyEmploymentFrame" title="会社別本人情報の応答" hidden></iframe></section>
 <details open><summary>① TLHアカウントを作る（未登録の方）</summary>
 <p>このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。一般登録の受付が停止中の場合は、その旨を表示します。所属招待はアカウント作成後に受け取ります。受付停止中は管理者へ確認してください。</p>
 <button id="account-create" type="button">自分のTLHアカウントを作成</button>
@@ -51,6 +57,15 @@
 <div id="common-issued" hidden><label>本人へ個別に渡す招待コード（30分有効）<textarea id="common-issued-code" rows="2" readonly autocomplete="off" spellcheck="false"></textarea></label><p>この画面を閉じるとコードの表示は消えます。コードの表示を閉じても、発行済み招待は取り消されません。</p></div>
 <p id="common-status" role="status" aria-live="polite"></p><iframe id="common-frame" name="tlhCommonAffiliationInviteFrame" title="共通所属招待の応答" hidden></iframe>
 </fieldset></section>
+<section aria-labelledby="grant-heading"><h2 id="grant-heading">管理者：在庫の業務権限を設定・停止</h2>
+<details><summary>所属招待とは別に、在庫の業務権限を変更する</summary><p>本人の有効な会社・店舗所属が必要です。自分自身への追加はできません。既存権限の削減・停止のみ可能です。社員情報・運営権限・サービス契約は変わりません。</p>
+<fieldset id="grant-lock" disabled><legend>対象と変更内容</legend><form id="grant-form"><fieldset id="grant-fields"><legend>対象の本人・店舗</legend>
+<label>対象TLHアカウントID<input id="grant-account" required maxlength="80" autocomplete="off"></label><label>会社ID<input id="grant-org" required maxlength="128" autocomplete="off"></label><label>店舗ID<input id="grant-store" required maxlength="128" autocomplete="off"></label>
+<p>選択した権限で置き換えます。何も選ばない場合、対象店舗の在庫権限をすべて停止します。</p>
+<label><input type="checkbox" id="grant-read">閲覧</label><label><input type="checkbox" id="grant-receive">入荷</label><label><input type="checkbox" id="grant-order">発注</label><label><input type="checkbox" id="grant-manage">管理</label>
+<label>変更理由<input id="grant-reason" required maxlength="200" autocomplete="off"></label></fieldset><button id="grant-preview-button" type="submit">変更前・変更後を確認</button></form>
+<div id="grant-preview" hidden><p id="grant-summary"></p><button id="grant-commit" type="button">確認した権限変更を確定</button></div><button id="grant-retry" type="button" hidden>同じ変更の結果を確認</button><button id="grant-cancel" type="button" hidden>やめる</button>
+<p id="grant-status" role="status" aria-live="polite"></p><iframe id="grant-frame" name="tlhCommonGrantFrame" title="在庫業務権限の変更応答" hidden></iframe></fieldset></details></section>
 <details><summary>別手続き：従業員情報・勤怠の登録</summary>
 <section aria-labelledby="staff-heading"><h2 id="staff-heading">従業員として登録</h2>
 <p data-current-workplace></p><p>この勤務先から受け取った招待コードを入力し、本人のLINEと従業員情報・勤怠の従業員権限を紐づけます。打刻アプリを利用しない方も、この画面で登録できます。アカウントだけを作る場合は、上の「TLHアカウントをまだ持っていない方」を使ってください。</p>
