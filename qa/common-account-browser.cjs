@@ -13,17 +13,20 @@ async function verify(options={}){
  const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
  const reports=[];
  try{for(const width of [320,390,1280]){
-  let registered=false,invitation='',actions=[],errors=[];
+  let registered=false,invitation='',actions=[],errors=[],proof='fake.admin.proof';
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.route('**/*',async route=>{
    const req=route.request(),url=new URL(req.url());
    if(url.origin==='https://tealabhokkaido.com'){
-    if(url.pathname==='/software/inventory/employee-login.js')return route.fulfill({contentType:'application/javascript; charset=utf-8',body:'window.TlhInventoryLogin={login:async()=>{},getToken:()=>window.fixtureProof};'});
+    if(url.pathname==='/software/inventory/employee-login.js')return route.fulfill({contentType:'application/javascript; charset=utf-8',body:options.loginSource||await fs.readFile(path.join(root,'software/inventory/employee-login.js'))});
+    if(['/software/worktime/inventory/auth/','/workforce/inventory/auth/'].includes(url.pathname))return route.fulfill({contentType:'text/html; charset=utf-8',body:options.authHTML||await fs.readFile(path.join(root,'workforce/inventory/auth/index.html'))});
+    if(['/software/worktime/inventory/auth/auth.js','/workforce/inventory/auth/auth.js'].includes(url.pathname))return route.fulfill({contentType:'application/javascript; charset=utf-8',body:options.authSource||await fs.readFile(path.join(root,'workforce/inventory/auth/auth.js'))});
     const name=url.pathname==='/account/'?'account/index.html':url.pathname.slice(1);
     if(!name.startsWith('account/')&&!name.startsWith('workforce/'))throw Error('UNEXPECTED_SITE_ROUTE');
     const mime=name.endsWith('.js')?'application/javascript':name.endsWith('.css')?'text/css':name.endsWith('.woff2')?'font/woff2':'text/html';
     return route.fulfill({contentType:mime+'; charset=utf-8',body:await fs.readFile(path.join(root,name))});
    }
+   if(url.origin==='https://static.line-scdn.net')return route.fulfill({contentType:'application/javascript; charset=utf-8',body:'window.liff={init:async()=>{},isLoggedIn:()=>true,isInClient:()=>false,getIDToken:()=>'+JSON.stringify(proof)+'};'});
    if(url.origin!=='https://script.google.com')throw Error('UNEXPECTED_EXTERNAL_ROUTE');
    const p=Object.fromEntries(new URLSearchParams(req.postData()));actions.push(p.action);let d;
    if(p.action==='bridgeCreateAccount')d={type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:p.nonce,code:'SIGNUP_CLOSED'};
@@ -54,7 +57,7 @@ async function verify(options={}){
   await admin.locator('#staff-issue').click();await admin.locator('#staff-invite-box').waitFor({state:'visible'});
   const code=await admin.locator('#staff-issued-code').inputValue();if(code!==invitation)throw Error('INVITATION_MISMATCH');
   const worker=await context.newPage();worker.on('pageerror',e=>errors.push(e.message));worker.on('dialog',d=>d.accept());
-  await worker.addInitScript(()=>{window.fixtureProof='fake.worker.proof';});await worker.goto('https://tealabhokkaido.com/account/');
+  proof='fake.worker.proof';await worker.goto('https://tealabhokkaido.com/account/');
   await worker.locator('#account-login').click();await worker.waitForFunction(()=>document.getElementById('account-info-status').textContent.includes('まだ登録されていません'));
   await worker.getByText('TLHアカウントをまだ持っていない方',{exact:true}).click();await worker.locator('#account-create').click();
   await worker.waitForFunction(()=>document.getElementById('account-create-status').textContent.includes('受付停止中'));
