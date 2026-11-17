@@ -1,0 +1,34 @@
+{
+  "browser": "157.0.4341.60",
+  "mode": "all routes mocked; no production network",
+  "results": [
+    {
+      "width": 320,
+      "status": "PASS",
+      "sourceParametersNotForwarded": true,
+      "errors": [],
+      "requests": 7
+    },
+    {
+      "width": 390,
+      "status": "PASS",
+      "sourceParametersNotForwarded": true,
+      "errors": [],
+      "requests": 7
+    },
+    {
+      "width": 768,
+      "status": "PASS",
+      "sourceParametersNotForwarded": true,
+      "errors": [],
+      "requests": 7
+    },
+    {
+      "width": 1280,
+      "status": "PASS",
+      "sourceParametersNotForwarded": true,
+      "errors": [],
+      "requests": 7
+    }
+  ]
+}

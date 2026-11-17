@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>TLH 共通アプリメニュー｜独立試作</title>
+<link rel="stylesheet" href="../../shared/app-menu/app-menu.css"><link rel="stylesheet" href="demo.css">
+<script src="../../shared/app-menu/catalog.js" defer></script><script src="../../shared/app-menu/app-menu.js" defer></script><script src="demo.js" defer></script>
+</head><body><header class="demo-header"><div><small>TEA LABORATORY HOKKAIDO</small><strong id="demo-app-name">在庫</strong></div><div id="app-menu-slot"></div></header>
+<main><p class="demo-kicker">INDEPENDENT PROTOTYPE</p><h1>アプリの入口を、ひとつに。</h1><p class="demo-lead">右上の「アプリ」から切り替えます。アプリが増えても、画面のリンクは増えません。</p>
+<section class="demo-controls" aria-labelledby="demo-settings"><h2 id="demo-settings">試作の表示条件</h2>
+<label>表示中のアプリ<select id="demo-current"><option value="inventory">在庫</option><option value="account">TLHアカウント</option><option value="worktime">勤怠</option></select></label>
+<label>権限の表示例<select id="demo-scenario"><option value="unknown">未確認</option><option value="both">在庫・勤怠を確認済み</option><option value="inventory-only">在庫のみ確認済み</option><option value="none">業務アプリの権限なし</option></select></label>
+<label class="demo-check"><input type="checkbox" id="demo-saving">保存結果が未確認の状態</label>
+<p>ここでの切替は架空の表示だけを変えます。実際のアカウント・所属・権限には接続しません。</p></section>
+<section class="demo-draft"><h2>移動しても残す入力の見本</h2><label>発注のメモ<input id="demo-draft" placeholder="未送信のメモを入力"></label><p>この試作では保存せず、移動先も開きません。クリックした入口だけを下へ表示します。</p><p id="demo-destination" role="status">右上のアプリ一覧を開いてください。</p></section>
+</main><footer>TLH 共通メニュー試作 · オンライン業務の認可は各アプリが担当</footer></body></html>

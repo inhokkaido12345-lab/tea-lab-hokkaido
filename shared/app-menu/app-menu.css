@@ -1,0 +1,29 @@
+/* Scoped launcher styles: no host hidden/disabled overrides, fonts or external assets.
+   Keep token colors aligned with TLH. Mobile dialog is a bottom sheet; native dialog owns focus. */
+.tlh-app-menu,.tlh-app-menu *,.tlh-app-dialog,.tlh-app-dialog *{box-sizing:border-box}
+.tlh-app-menu{display:inline-flex;font-family:inherit}
+.tlh-app-menu__trigger,.tlh-app-dialog__close{font:inherit;min-height:44px;border:1px solid #7C908E;border-radius:12px;padding:10px 14px;background:#fff;color:#2F5452;cursor:pointer}
+.tlh-app-menu__trigger{display:inline-flex;gap:10px;align-items:center;font-weight:700}
+.tlh-app-menu__dots{display:grid;grid-template-columns:repeat(3,3px);gap:3px}
+.tlh-app-menu__dots i{width:3px;height:3px;border-radius:50%;background:currentColor}
+.tlh-app-dialog{position:fixed;inset:76px 16px auto auto;margin:0;width:min(420px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 100px);padding:22px;border:1px solid #7C908E;border-radius:20px;background:#F3EFE7;color:#252829;font:inherit;box-shadow:0 12px 40px #25282933;overflow:auto;overscroll-behavior:contain}
+.tlh-app-dialog::backdrop{background:#25282955}
+.tlh-app-dialog__head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tlh-app-dialog__head h2{font-size:1.2rem;line-height:1.4;font-weight:700;margin:0}
+.tlh-app-dialog__help{color:#495C63;font-size:.875rem;line-height:1.7;margin:14px 0}
+.tlh-app-dialog__list{list-style:none;display:grid;gap:8px;padding:0;margin:0}
+.tlh-app-dialog__card{display:flex;align-items:center;gap:14px;min-height:88px;width:100%;text-decoration:none;color:#252829;background:#fff;border:1px solid #7C908E;border-radius:14px;padding:14px;overflow-wrap:anywhere}
+a.tlh-app-dialog__card:hover{background:#e7eeea;border-color:#2F5452}
+.tlh-app-dialog__mark{display:grid;place-items:center;flex:0 0 46px;height:46px;border-radius:13px;background:#2F5452;color:white;font-size:.85rem;font-weight:700}
+.tlh-app-dialog__text{display:grid;gap:3px;min-width:0}
+.tlh-app-dialog__text strong{font-size:1rem}
+.tlh-app-dialog__description{font-size:.8rem;color:#495C63;line-height:1.5}
+.tlh-app-dialog__badge{font-size:.75rem;font-weight:700;color:#2F5452}
+.tlh-app-dialog__card[aria-disabled=true]{border-style:dashed;background:#eceae5;color:#495C63}
+.tlh-app-dialog__card[aria-disabled=true] .tlh-app-dialog__mark{background:#626f70}
+.tlh-app-dialog__card[data-current=true]{border:2px solid #2F5452;background:#e7eeea}
+.tlh-app-dialog__status{color:#8E3F35;font-size:.875rem;line-height:1.7;margin:12px 0 0}
+.tlh-app-dialog__status:empty{margin:0}
+.tlh-app-menu__trigger:focus-visible,.tlh-app-dialog :focus-visible{outline:3px solid #2F5452;outline-offset:3px}
+.tlh-app-menu__sr{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+@media(max-width:600px){.tlh-app-dialog{inset:auto 0 0;width:100%;max-height:88dvh;border-radius:22px 22px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));}.tlh-app-dialog__card{min-height:88px}}

@@ -1,0 +1,112 @@
+{
+  "observedAt": "2026-11-17T09:03:32.919Z",
+  "method": "Unauthenticated HTTP GET of static resources only; no page scripts executed",
+  "pages": [
+    {
+      "url": "https://tealabhokkaido.com/account/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "manifestLinks": null
+    },
+    {
+      "url": "https://tealabhokkaido.com/software/inventory/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "manifestLinks": [
+        "<link rel=\"manifest\" href=\"manifest.webmanifest\">"
+      ]
+    },
+    {
+      "url": "https://tealabhokkaido.com/software/worktime/",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "manifestLinks": [
+        "<link rel=\"manifest\" href=\"/workforce/manifest.webmanifest\">"
+      ]
+    },
+    {
+      "url": "https://tealabhokkaido.com/software/inventory/manifest.webmanifest",
+      "status": 200,
+      "type": "application/manifest+json; charset=utf-8",
+      "manifestLinks": null,
+      "manifest": {
+        "id": "/software/inventory/",
+        "name": "TLH Inventory",
+        "short_name": "TLH Inventory",
+        "description": "TLHアカウントで使う在庫・発注管理",
+        "lang": "ja",
+        "start_url": "/software/inventory/",
+        "scope": "/software/inventory/",
+        "display": "standalone",
+        "background_color": "#F3EFE7",
+        "theme_color": "#2F5452",
+        "prefer_related_applications": false,
+        "icons": [
+          {
+            "src": "/workforce/icons/app-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "/workforce/icons/app-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+          }
+        ]
+      }
+    },
+    {
+      "url": "https://tealabhokkaido.com/workforce/manifest.webmanifest",
+      "status": 200,
+      "type": "application/manifest+json; charset=utf-8",
+      "manifestLinks": null,
+      "manifest": {
+        "id": "/workforce/",
+        "name": "TLH Work Time",
+        "short_name": "TLH Work Time",
+        "description": "TLH Work Time：従業員情報、出退勤、シフトを管理するオンラインWebアプリです。",
+        "lang": "ja",
+        "start_url": "/software/worktime/",
+        "scope": "/software/worktime/",
+        "display": "standalone",
+        "background_color": "#F3EFE7",
+        "theme_color": "#2F5452",
+        "prefer_related_applications": false,
+        "icons": [
+          {
+            "src": "icons/app-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+          },
+          {
+            "src": "icons/app-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+          }
+        ]
+      }
+    }
+  ],
+  "icons": [
+    {
+      "url": "https://tealabhokkaido.com/workforce/icons/app-192.png",
+      "status": 200,
+      "bytes": 502,
+      "width": 192,
+      "height": 192,
+      "png": true
+    },
+    {
+      "url": "https://tealabhokkaido.com/workforce/icons/app-512.png",
+      "status": 200,
+      "bytes": 2113,
+      "width": 512,
+      "height": 512,
+      "png": true
+    }
+  ]
+}
