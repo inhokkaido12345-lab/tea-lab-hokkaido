@@ -13,7 +13,7 @@ async function verify(options={}){
  const browser=await chromium.launch({headless:true,...(executablePath?{executablePath}:{})});
  const reports=[];
  try{for(const width of [320,390,1280]){
-  let registered=false,invitation='',actions=[],errors=[],proof='fake.admin.proof';
+  let registered=false,accountRegistered=false,invitation='',actions=[],errors=[],proof='fake.admin.proof';
   const context=await browser.newContext({viewport:{width,height:900}});
   await context.route('**/*',async route=>{
    const req=route.request(),url=new URL(req.url());
@@ -29,9 +29,12 @@ async function verify(options={}){
    if(url.origin==='https://static.line-scdn.net')return route.fulfill({contentType:'application/javascript; charset=utf-8',body:'window.liff={init:async()=>{},isLoggedIn:()=>true,isInClient:()=>false,getIDToken:()=>'+JSON.stringify(proof)+'};'});
    if(url.origin!=='https://script.google.com')throw Error('UNEXPECTED_EXTERNAL_ROUTE');
    const p=Object.fromEntries(new URLSearchParams(req.postData()));actions.push(p.action);let d;
-   if(p.action==='bridgeCreateAccount')d={type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:p.nonce,code:'SIGNUP_CLOSED'};
+   if(p.action==='bridgeCreateAccount'){
+    if(options.signupEnabled)accountRegistered=true;
+    d={type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:p.nonce,code:options.signupEnabled?'CREATED':'SIGNUP_CLOSED'};
+   }
    else if(p.action==='bridgeGetAccountInfo'){
-    const ready=p.idToken==='fake.admin.proof'||registered;
+    const ready=p.idToken==='fake.admin.proof'||accountRegistered||registered;
     const info={version:1,tlhAccountId:'usr_fixture',accountStatus:'ACTIVE',currentLoginProvider:'LINE',linkedProviders:['LINE'],
      employee:registered?{employeeCode:'INV900',name:'架空の在庫スタッフ',status:'ACTIVE',hireDate:'',terminationDate:''}:null,
      permissions:{workforceEmployee:registered,globalAdmin:p.idToken==='fake.admin.proof'}};
@@ -60,7 +63,8 @@ async function verify(options={}){
   proof='fake.worker.proof';await worker.goto('https://tealabhokkaido.com/account/');
   await worker.locator('#account-login').click();await worker.waitForFunction(()=>document.getElementById('account-info-status').textContent.includes('まだ登録されていません'));
   await worker.getByText('TLHアカウントをまだ持っていない方',{exact:true}).click();await worker.locator('#account-create').click();
-  await worker.waitForFunction(()=>document.getElementById('account-create-status').textContent.includes('受付停止中'));
+  await worker.waitForFunction(text=>document.getElementById('account-create-status').textContent.includes(text),options.signupEnabled?'作成しました':'受付停止中');
+  if(registered)throw Error('SIGNUP_GRANTED_EMPLOYMENT');
   await worker.locator('#staff-claim-code').fill(code);await worker.locator('#staff-claim').click();
   await worker.waitForFunction(()=>document.getElementById('staff-status').textContent==='従業員登録が完了しました。');
   await worker.locator('#account-info-check').click();await worker.waitForFunction(()=>!document.getElementById('account-info-result').hidden);
@@ -68,7 +72,7 @@ async function verify(options={}){
   if(await worker.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('HORIZONTAL_OVERFLOW');
   if(errors.length)throw Error('BROWSER_ERRORS');
   await worker.screenshot({path:path.join(output,'registered-'+width+'.png'),fullPage:true});
-  reports.push({width,registered,actions,errors:0});await context.close();
+  reports.push({width,signup:options.signupEnabled?'created':'closed',registered,actions,errors:0});await context.close();
  }}finally{await browser.close();}
  return {output,reports};
 }
