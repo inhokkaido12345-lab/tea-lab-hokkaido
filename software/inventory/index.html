@@ -16,7 +16,7 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=3ed583aaaf8c"><script src="config.js?v=3ed583aaaf8c" defer></script><script src="employee-login.js?v=3ed583aaaf8c" defer></script><script src="operation-recovery.js?v=3ed583aaaf8c" defer></script><script src="employee-transport.js?v=3ed583aaaf8c" defer></script><script src="app.js?v=3ed583aaaf8c" defer></script>
+<link rel="stylesheet" href="style.css?v=6c5d398df996"><script src="config.js?v=6c5d398df996" defer></script><script src="employee-login.js?v=6c5d398df996" defer></script><script src="operation-recovery.js?v=6c5d398df996" defer></script><script src="employee-transport.js?v=6c5d398df996" defer></script><script src="app.js?v=6c5d398df996" defer></script>
 <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/account/" target="_blank" rel="noopener">TLHアカウント（別画面）</a> ／ <a href="/software/worktime/">TLH Work Timeへ</a></header>
@@ -59,6 +59,7 @@
 <div id="lines"></div><button type="button" id="add">品目を追加</button>
 <label for="complete">今回で受取完了（分納なら未選択）</label>
 <select id="complete"><option value="">選択しない</option></select>
+<label id="receiving-association" hidden><input type="checkbox" id="receiving-association-confirm">この入荷が選択した注文の全量であることを伝票等で確認しました（分納・合算は未対応）</label>
 <button type="submit" class="primary wide">入荷をまとめて保存</button></form>
 </section>
 <section id="history" hidden><p class="eyebrow">03 / HISTORY</p><h2>記録の履歴</h2><div id="logs"></div></section>
