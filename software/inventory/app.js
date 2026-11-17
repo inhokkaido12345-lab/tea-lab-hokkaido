@@ -581,6 +581,12 @@ async function send(command){
  const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE','RECOVERY_UNKNOWN','RECOVERY_ACTOR_MISMATCH','RECOVERY_STORAGE_UNAVAILABLE','RECOVERY_LOCK_UNAVAILABLE','RECOVERY_IDENTITY_UNAVAILABLE','RECOVERY_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
+  // Recovery transport confirms historical saving; it does not execute another COMMAND.
+  if(data.code==='RECOVERY_SAVED'){
+   saved=true;pending=null;await load();
+   $('lines').replaceChildren();addLine();tab('stock');
+   message('保存済みを確認しました。再送せず、最新の記録を表示しました。','RECOVERY_SAVED');return;
+  }
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
   // サーバーが明示的に拒否した保存は未確定ではない。続くREADの失敗と混同しない。
   pending=null;try{await load();}catch{view=null;}message(errors[data.code]||'保存できませんでした。',data.code||'UNAVAILABLE');return;
