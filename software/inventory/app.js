@@ -1,3 +1,26 @@
+/** Explicit operation permissions. Legacy receive retains its historical union.
+ * Narrow receiving cannot complete an order without an explicit order grant.
+ * This checks operations only: current identity/store/scope checks remain mandatory. */
+const inventoryOperationPermission = Object.freeze({
+ READ:'inventory.read',RECEIVE:'inventory.receive-only',COUNT_STOCK:'inventory.stocktake',
+ SAVE_ITEM:'inventory.catalog',SYNC_CATALOG:'inventory.catalog',SET_FORECAST:'inventory.forecast',
+ OPEN_PACK:'inventory.consumption',FINISH_PACK:'inventory.consumption',NEXT_PACK:'inventory.consumption',
+ START_SAMPLE:'inventory.consumption',FINISH_SAMPLE:'inventory.consumption',CANCEL_SAMPLE:'inventory.consumption',
+ START_MEASUREMENT:'inventory.consumption',RECORD_MEASUREMENT:'inventory.consumption',UPDATE_MEASUREMENT:'inventory.consumption',CANCEL_MEASUREMENT:'inventory.consumption',
+ MARK_ORDERED:'inventory.order',CANCEL_ORDERED:'inventory.order'
+});
+const inventoryKnownPermissions=Object.freeze([...new Set([...Object.values(inventoryOperationPermission),'inventory.receive','inventory.manage'])]);
+function inventoryCanOperate(permissions,type,request={}){
+ if(!Array.isArray(permissions)||!Object.hasOwn(inventoryOperationPermission,type))return false;
+ const needed=inventoryOperationPermission[type];
+ const broad=permissions.includes('inventory.receive')&&!['inventory.read','inventory.order'].includes(needed);
+ if(!broad&&!permissions.includes(needed))return false;
+ if(!broad&&needed!=='inventory.order'&&needed!=='inventory.read'&&!permissions.includes('inventory.read'))return false;
+ if(type==='RECEIVE'&&request.completeCaseId!=null&&request.completeCaseId!==''&&!broad&&!permissions.includes('inventory.order'))return false;
+ return true;
+}
+
+function canOperate(type,request={}){return inventoryCanOperate(view?.permissions,type,request);}
 /**
  * 連結画面：APIへ送信し、サーバーが保存後に検証した画面DTOを表示。旧APIだけ別READ。
  * 状態はサーバーが正本。DOMの数量を直接加算しない。
@@ -245,7 +268,7 @@ function renderConsumption(card, item) {
   if(item.delivery)explanation.append(el('p','発注から受取まで：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
   renderInformationCoverage(explanation,item);
   card.append(explanation);
-  if(view.permissions.includes('inventory.receive')){
+  if(canOperate('SET_FORECAST')){
     const adjustment=el('details','');adjustment.append(el('summary','発注の余裕を調整'));
     let mounted=false;
     adjustment.ontoggle=()=>{if(!adjustment.open||mounted)return;mounted=true;renderOrderBuffer(adjustment,item);lock(busy);};
@@ -334,7 +357,7 @@ function showStockAction(name){
   const help={sampling:'1袋・1ケースなど、選んだ1単位の使用開始と使い切りを記録します。途中の残量入力は不要です。在庫全体の数え直しは「在庫を数える」で行います。',counting:'未開封・開封中を含む総量を品目の基準単位で入力します。この実数を起点に消費推定をやり直します。'};
   const workspace=el('div','','stock-workspace');workspace.append(el('h3',titles[name]),el('p',help[name],'muted'));
   stockWorkspaces.set(name,workspace);host.append(workspace);
-  if(!view.permissions.includes('inventory.receive')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
+  if(!canOperate(name==='counting'?'COUNT_STOCK':'START_MEASUREMENT')){workspace.append(el('p','この作業を保存する権限がありません。','muted'));return;}
   const label=el('label','対象の品目'),select=el('select','');select.setAttribute('aria-label',titles[name]+'：対象の品目');
   for(const item of view.items.filter(i=>i.active!==false&&i.forecast))select.append(new Option(item.name+(name==='sampling'&&(item.forecast.open||item.forecast.measurement)?'（計測中）':''),item.id));
   label.append(select);workspace.append(label);
@@ -372,7 +395,7 @@ function render(){
  renderStockFilters();renderStockCards();
  $('complete').replaceChildren(new Option('選択しない',''));
  // 受取完了は注文ごと。一件を完了しても他の未入荷注文を残す。
- for(const i of view.items.filter(i=>i.active!==false))for(const o of (i.orders||(i.order?[i.order]:[])).filter(o=>o.status==='ORDERED'))$('complete').append(new Option(i.name+' ／ '+(o.at?formatRecordedAt(o.at):'発注')+' ／ '+(o.plannedLine?o.plannedLine.quantity+' '+(i.units.find(u=>u.id===o.plannedLine.unitId)?.label||o.plannedLine.unitId):'数量未記入')+' ／ 到着 '+(o.expectedOn||'不明')+' ／ '+o.id,o.id));
+ for(const i of (canOperate('RECEIVE',{completeCaseId:'selection'})?view.items:[]).filter(i=>i.active!==false))for(const o of (i.orders||(i.order?[i.order]:[])).filter(o=>o.status==='ORDERED'))$('complete').append(new Option(i.name+' ／ '+(o.at?formatRecordedAt(o.at):'発注')+' ／ '+(o.plannedLine?o.plannedLine.quantity+' '+(i.units.find(u=>u.id===o.plannedLine.unitId)?.label||o.plannedLine.unitId):'数量未記入')+' ／ 到着 '+(o.expectedOn||'不明')+' ／ '+o.id,o.id));
  if(activeTab==='history')renderHistory();
  if(activeTab==='catalog')renderCatalog();
  showStockAction(stockAction);
@@ -382,7 +405,7 @@ function render(){
 function openInformationTask(kind,itemId){
  if(busy||pending||!view||globalThis.TlhInventory?.hasPendingReceipt?.()===true)return;
  const item=view.items.find(i=>i.id===itemId&&i.active!==false);
- if(!item||!view.permissions.includes('inventory.receive'))return;
+ if(!item||!canOperate(kind==='count'?'COUNT_STOCK':kind==='receipt'?'RECEIVE':'START_MEASUREMENT'))return;
  if(kind==='receipt'){tab('receiving');const h=document.querySelector('#receiving h2');if(h){h.setAttribute('tabindex','-1');h.focus();}return;}
  if(!['count','measurement'].includes(kind))return;
  const name=kind==='count'?'counting':'sampling';tab('stock');showStockAction(name);
@@ -432,7 +455,7 @@ function renderInformationCoverage(card,item){
   else if(count.state==='soon')text='都合のよいときに在庫を数える';
   else if(measurement.state==='soon'){kind='measurement';text='次に使う1袋で消費を測る（任意）';}
   else text='必要なときだけ在庫を数える';
-  if(view.permissions.includes('inventory.receive')){const action=el('button',text,'information-next');action.disabled=busy||!!pending;action.onclick=()=>openInformationTask(kind,item.id);display.append(action);}
+  if(canOperate(kind==='count'?'COUNT_STOCK':kind==='receipt'?'RECEIVE':'START_MEASUREMENT')){const action=el('button',text,'information-next');action.disabled=busy||!!pending;action.onclick=()=>openInformationTask(kind,item.id);display.append(action);}
   else display.append(el('small','閲覧のみ。記録は担当者に確認してください。'));
   const details=el('details','','information-history'),summary=el('summary','履歴の種類 Lv '+info.level+' / '+info.maximum+' · 精度ではありません');
   details.append(summary,el('p','記録の種類です。揃っていても更新の信号は別です。件数を増やす必要はありません。','muted'));
@@ -482,7 +505,7 @@ function renderStockCards(){
   };
   box.append(save);c.append(box);
  };c.append(b);}
- const b=el('button','入荷を登録');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);if(!item.forecast){const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));renderInformationCoverage(explanation,item);c.append(explanation);}stockCards.set(item.id,c);$('cards').append(c);
+ const b=el('button','入荷を登録');b.hidden=!canOperate('RECEIVE');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);if(!item.forecast){const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));renderInformationCoverage(explanation,item);c.append(explanation);}stockCards.set(item.id,c);$('cards').append(c);
  }
  if(view.items.some(i=>i.active!==false)&&!shown.length)$('cards').append(el('p','条件に合う品目がありません。カテゴリ・検索・発注状態の条件を変更してください。','muted'));
 }
@@ -525,6 +548,8 @@ const errors={INVALID_CATALOG_REFERENCE:'参照元は同じ店舗の商品を選
 async function send(command){
  if(busy||(!view&&!pending))return;
  if(pending&&command)return;
+ // Only gate new input locally. Unknown pending recovery retains its ID and uses current server authorization.
+ if(command&&!canOperate(command.type,command)){message('この操作を保存する権限がありません。');return;}
  if(command)pending={...command,operationId:crypto.randomUUID(),storeId:view.storeId};
  if(!pending)return;
  lock(true);$('recovery').hidden=true;message('保存結果を確認しています…');
@@ -568,7 +593,7 @@ function renderCatalog(){
   for(const [id,node]of drafts)node.hidden=id!==choice.value;
   if(drafts.has(choice.value))return;
   const item=itemsById.get(choice.value),c=item?.catalogResolved||item?.catalog||{},node=el('div','');drafts.set(choice.value,node);editor.append(node);
-  if(!view.permissions.includes('inventory.receive')){node.append(el('p','この情報を変更する権限がありません。'));return;}
+  if(!canOperate('SAVE_ITEM')){node.append(el('p','この情報を変更する権限がありません。'));return;}
   const field=(parent,label,value='',multiline=false)=>{
    const box=el('label',label),input=el(multiline?'textarea':'input','');input.value=value;input.setAttribute('aria-label',label);input.maxLength=multiline?2000:1500;if(!multiline)input.type='text';box.append(input);parent.append(box);return input;
   };
