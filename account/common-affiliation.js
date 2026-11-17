@@ -89,7 +89,7 @@
   }
   n['copy-code'].addEventListener('click',()=>copyIssued(false));n['copy-page'].addEventListener('click',()=>copyIssued(true));n['close-code'].addEventListener('click',()=>{if(stopped||draft)return;wipe();n.status.textContent='招待コードの表示を消去しました。発行済み招待は取り消されません。';});
   global.addEventListener('pagehide',()=>{stopped=true;wipe();n.status.textContent='画面を離れたためコードを消去しました。保存結果が不明な場合は管理者へ確認してください。';});
-  picker=global.TlhManagementPicker?.init({...options,prefix:'common',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({syncPicker:()=>picker?.sync(),busy:()=>!!draft||preparing||!!pending});
+  picker=global.TlhManagementPicker?.init({...options,prefix:'common',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({checkManagement:()=>picker?.loadScopes(),syncPicker:()=>picker?.sync(),busy:()=>!!draft||preparing||!!pending});
  }
  global.TlhCommonAffiliation=Object.freeze({init,verify,preview});
 })(window);

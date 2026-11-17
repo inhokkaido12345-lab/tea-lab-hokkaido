@@ -27,10 +27,10 @@
  const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),x=>parseInt(x,16)),enc.encode([TYPE,PHASE,d.nonce,d.code,d.data].join('\n')));}
  function init(options){const n=Object.fromEntries(['check','status','result','frame'].map(k=>[k,document.getElementById('access-overview-'+k)]));if(Object.values(n).some(v=>!v))return null;
  let pending=null,stopped=false,expected=null,shown=null,shownProof=null;
- const clear=()=>{shown=null;shownProof=null;n.result.replaceChildren();};
+ const clear=()=>{shown=null;shownProof=null;n.result.replaceChildren();options.onVerified?.(null);};
  function finish(){if(pending)clearTimeout(pending.timer);pending=null;n.check.disabled=stopped;n.status.setAttribute('aria-busy','false');}
  function setAccount(accountId){expected=accountId;if(shown&&shown!==expected){clear();n.status.textContent='本人情報が一致しないため共通所属を表示できません。LINE本人確認をやり直してください。';}}
- function render(d){clear();shown=d.accountId;shownProof=options.liff.getIDToken();const add=(parent,tag,text)=>{const el=document.createElement(tag);el.textContent=text;parent.appendChild(el);return el;};
+ function render(d){clear();options.onVerified?.(d);shown=d.accountId;shownProof=options.liff.getIDToken();const add=(parent,tag,text)=>{const el=document.createElement(tag);el.textContent=text;parent.appendChild(el);return el;};
   add(n.result,'p','TLHアカウント：'+d.accountId);
   const copy=add(n.result,'button','管理者に伝えるアカウント情報をコピー');copy.type='button';
   copy.addEventListener('click',async()=>{if(stopped||shown!==d.accountId||options.liff.getIDToken()!==shownProof)return;try{if(!global.navigator?.clipboard?.writeText)throw Error('unavailable');await global.navigator.clipboard.writeText('TLHアカウント：'+d.accountId);if(!stopped&&shown===d.accountId)n.status.textContent='本人のアカウントIDをコピーしました。所属や権限は変更していません。';}catch{if(!stopped&&shown===d.accountId)n.status.textContent='コピーできません。表示中のTLHアカウントIDを選択してコピーしてください。';}});

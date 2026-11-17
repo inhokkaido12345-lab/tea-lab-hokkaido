@@ -3,3 +3,5 @@
 select{font:inherit;width:100%;min-height:44px;padding:10px;border:1px solid #7C908E;border-radius:6px}
 
 input[type=checkbox]{display:inline-block;width:auto;min-width:20px;min-height:20px;margin-right:8px}
+/* Navigation hints are not security grants; disabled management remains visible. */
+.account-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;position:sticky;top:0;background:#F3EFE7;padding:8px 0;z-index:2}.account-tabs button{margin:0;font-size:.9rem;padding:10px 6px}.account-tabs [aria-selected=true]{outline:3px solid #8E3F35;outline-offset:-3px}.account-tabs [aria-disabled=true]{background:#d1d2cd;color:#545954;border-color:#b0b4ae}.account-tabs [aria-disabled=true]:not(:disabled){cursor:help}@media(max-width:480px){.account-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}}
