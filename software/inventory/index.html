@@ -16,12 +16,24 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=392c0c4840cd"><script src="config.js?v=392c0c4840cd" defer></script><script src="employee-login.js?v=392c0c4840cd" defer></script><script src="operation-recovery.js?v=392c0c4840cd" defer></script><script src="employee-transport.js?v=392c0c4840cd" defer></script><script src="app.js?v=392c0c4840cd" defer></script>
+<link rel="stylesheet" href="style.css?v=6ad752029416"><script src="config.js?v=6ad752029416" defer></script><script src="employee-login.js?v=6ad752029416" defer></script><script src="operation-recovery.js?v=6ad752029416" defer></script><script src="employee-transport.js?v=6ad752029416" defer></script><script src="app.js?v=6ad752029416" defer></script>
 <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/account/" target="_blank" rel="noopener">TLHアカウント（別画面）</a> ／ <a href="/software/worktime/">TLH Work Timeへ</a></header>
 <main>
 <aside><p><a href="/account/" target="_blank" rel="noopener">初めての方：アカウント作成</a>（勤怠登録は不要）</p><p>会社で使う：本人IDを管理者へ共有 → 所属招待を受取り → 管理者が在庫権限（閲覧を含む）を付与 → この在庫画面で更新。</p><p>アカウント画面の「在庫管理を開く」で戻れます。本人確認を求められたら同じLINEで再ログインしてください。所属だけでは会社在庫を利用できません。</p><details><summary>個人・家庭で使う方</summary><p>会社利用とは別の任意の用途です。アカウント作成後「自分の在庫を始める」で本人専用の在庫を使えます。会社への所属は不要です。</p></details>TLHアカウントでログインし、利用できる店舗を選んでください。新しく使い始める品目は、規格を確認して棚卸または初回入荷を登録してください。<details><summary>ホーム画面への追加</summary><p>iPhoneはSafariの共有→ホーム画面に追加。AndroidはChromeのメニュー→ホーム画面に追加／アプリをインストール。オンライン接続が必要です。</p></details></aside><div id="inventory-stores" class="store-context"></div><section id="operation-recovery" aria-live="polite"></section><button id="line-login" class="primary wide" hidden>LINEでログインして在庫を開く</button><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
+<!-- Read-only task help. No login, permission, data mutation or external transmission. -->
+<details id="inventory-help" class="inventory-help">
+<summary>使い方・困ったとき</summary>
+<p class="help-intro">やりたいことを選ぶ → 手順を確認 → 操作画面へ。開いても入力は消えません。</p>
+<div class="help-tasks">
+<details><summary>届いたものを入荷登録</summary><ol><li>「入荷」で届いた日・品目・袋やケースの単位・数量を入力。</li><li>注文の全量が届いたら「今回で受取完了」を選ぶ。分納なら未選択。</li><li>「入荷をまとめて保存」→ 保存完了を確認。</li></ol><p>発注しただけの物は登録せず、実際に届いた分だけ。</p><button type="button" data-help-task="receiving">入荷を開く</button></details>
+<details><summary>今ある在庫を数える（棚卸）</summary><ol><li>「在庫」→「在庫を数える」で品目を選ぶ。</li><li>未開封＋使いかけの総量を、欄に表示された単位（g・mL・本など）で入力。</li><li>「数えた量を保存」→ 保存完了を確認。</li></ol><p>追加量ではなく今ある総量。分からないときは0で埋めないでください。</p><button type="button" data-help-task="counting">在庫を数える</button></details>
+<details><summary>発注したことを記録</summary><ol><li>仕入先への注文は、いつもの方法で別に行う。</li><li>「在庫・発注」で品目の「発注を記録」を押す。</li><li>数量・到着予定日（任意）を入れ「発注済みにする」→ 保存完了を確認。</li></ol><p>このアプリから仕入先へ注文は送信されません。未入荷の注文は在庫に加算しません。</p><button type="button" data-help-task="ordering">在庫・発注を開く</button></details>
+<details><summary>消費速度を測る</summary><ol><li>「消費を測る」で品目と未使用の1袋・1ケースを選ぶ。表示の内容量を実物と確認。</li><li>その包装を使い始めた時に「この1袋・1ケースの使用開始を記録」。日時は日本時間、空欄なら今。</li><li>全量を使い切ったら同じ品目で日時を確認し「全量を使い切った：計測を終了」。</li></ol><p>途中の残量入力・毎回の開封記録は不要。継ぎ足しや別包装との混用をせず、その包装から順に使います。</p><details><summary>間違えた・途中で混ぜた／予測の意味</summary><p>「この計測を取り消す」。完了分は「最近の計測結果」→「この計測結果を取り消す」。履歴は残り、速度計算から外れます。</p><p>普段の使い方が含まれる期間で測ります。予測は実在庫の保証ではなく、曜日・季節・営業時間を自動補正しません。在庫の実数は棚卸で確認してください。</p></details><button type="button" data-help-task="sampling">消費を測る</button></details>
+<details><summary>保存できたか分からない</summary><ol><li>連打・別の新規登録・店舗切替をせず、画面の案内を確認。</li><li>「同じ操作を再確認」が出たら、そのボタンで確認。本人確認を求められたら同じLINEでログイン。</li><li>保存結果が確定してから「履歴」で品目・数量・日時を確認。</li></ol><p>確認が終わらない場合は画面の確認コードを管理者へ。ログイン情報や招待コードは送らないでください。</p></details>
+<details><summary>初めて使う／品目・ボタンがない</summary><ol><li>自分のLINEでログインし、会社・店舗が正しいか確認。</li><li>会社利用は所属だけでは使えません。管理者に在庫の閲覧・担当作業の権限を確認。</li><li>品目や包装の容量がない・違う場合は「仕入品情報」を確認できる管理者へ。</li></ol><p>個人・家庭の在庫と会社の在庫は別です。試しの数量を本番へ保存しないでください。</p></details>
+</div></details>
 <div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
 <div id="status-detail" class="status-resolution" role="alert" hidden></div>
 <section id="stock">

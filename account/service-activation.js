@@ -11,6 +11,7 @@
  const exact=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===keys.slice().sort().join(',');
  const hex=(s,n)=>typeof s==='string'&&new RegExp('^[a-f0-9]{'+n+'}$').test(s);
  const id=s=>typeof s==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(s);
+ const scopeId=s=>typeof s==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(s);
  const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),x=>x.toString(16).padStart(2,'0')).join('');
  const related=(source,frame)=>{try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;};
  async function verify(d,r){
@@ -20,7 +21,7 @@
  }
  function preview(text){let p;try{p=JSON.parse(text);}catch{return null;}
   if(!exact(p,['revision','summary','code'])||!hex(p.revision,64)||p.code!=='COMMON_ACTIVATION_PREVIEW_READY'||!exact(p.summary,['organizationId','storeId','serviceId','permissions','employmentCreated','validityMinutes','addedPermissions','unchangedPermissions']))return null;
-  const s=p.summary;if(!id(s.organizationId)||!id(s.storeId)||!id(s.serviceId)||!Array.isArray(s.permissions)||!s.permissions.length||s.permissions.some(p=>typeof p!=='string')||new Set(s.permissions).size!==s.permissions.length||s.employmentCreated!==false||s.validityMinutes!==30||!Array.isArray(s.addedPermissions)||!Array.isArray(s.unchangedPermissions))return null;const partition=[...s.addedPermissions,...s.unchangedPermissions];if(new Set(partition).size!==partition.length||partition.some(x=>!s.permissions.includes(x)))return null;return p;
+  const s=p.summary;if(!scopeId(s.organizationId)||!scopeId(s.storeId)||!id(s.serviceId)||!Array.isArray(s.permissions)||!s.permissions.length||s.permissions.some(p=>typeof p!=='string')||new Set(s.permissions).size!==s.permissions.length||s.employmentCreated!==false||s.validityMinutes!==30||!Array.isArray(s.addedPermissions)||!Array.isArray(s.unchangedPermissions))return null;const partition=[...s.addedPermissions,...s.unchangedPermissions];if(new Set(partition).size!==partition.length||partition.some(x=>!s.permissions.includes(x)))return null;return p;
  }
  function init(options){
   const n=Object.fromEntries(['lock','claim-form','code','claim','issue-form','org','store','service','issue','preview','summary','commit','retry','cancel','issued','issued-code','copy-code','copy-page','close-code','status','frame','permissions','register','open'].map(k=>[k,document.getElementById('activation-'+k)]));
@@ -60,8 +61,8 @@
    let input,secret='';
    n['issued-code'].value='';n.issued.hidden=true;
    if(command==='CLAIM'){if(options.registrationState?.()!=='registered'){n.status.textContent=options.registrationState?.()==='unregistered'?'このLINEは未登録です。「Accountを作成して受取りを続ける」で作成後、同じコードをもう一度確認してください。':'本人の登録状態を確認してから受け取ってください。';controls();return;}const inviteCode=n.code.value.trim();if(!hex(inviteCode,64)){n.status.textContent='64桁の利用開始コードを入力してください。';return;}input={inviteCode,reason:'本人が共通所属招待を受け取る'};}
-   else{const organizationId=n.org.value.trim(),storeId=n.store.value.trim(),serviceId=n.service.value;if(!id(organizationId)||!id(storeId)||!service()){n.status.textContent='会社ID・店舗ID・サービスを確認してください。';return;}
-    const permissions=permissionInputs.filter(p=>p.node.checked).map(p=>p.id);if(service().requiredPermissions?.some(p=>!permissions.includes(p))){n.status.textContent='利用開始に必要な閲覧権限を選択してください。自動では追加しません。';return;}if(!permissions.length){n.status.textContent='付与する操作権限を選択してください。';return;}
+   else{const organizationId=n.org.value.trim(),storeId=n.store.value.trim(),serviceId=n.service.value;if(!scopeId(organizationId)||!scopeId(storeId)||!service()){n.status.textContent='会社ID・店舗ID・サービスを確認してください。';return;}
+    const permissions=permissionInputs.filter(p=>p.node.checked).map(p=>p.id).sort();if(service().requiredPermissions?.some(p=>!permissions.includes(p))){n.status.textContent='利用開始に必要な閲覧権限を選択してください。自動では追加しません。';return;}if(!permissions.length){n.status.textContent='付与する操作権限を選択してください。';return;}
     const gen=++generation;preparing=true;controls();secret=random(32);try{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(secret));if(stopped||!preparing||generation!==gen)return;
      input={organizationId,storeId,serviceId,permissions,validityMinutes:30,tokenSha256:Array.from(new Uint8Array(digest),x=>x.toString(16).padStart(2,'0')).join(''),reason:'管理者が共通所属招待を発行する'};
     }catch{if(stopped||generation!==gen)return;preparing=false;controls();n.status.textContent='安全な招待コードを生成できませんでした。';return;}}

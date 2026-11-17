@@ -13,7 +13,7 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
- const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。確認できたアカウントIDを管理者へ共有してください。',
+ const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。利用開始コードがあれば、続けて受け取れます。',
   ALREADY_REGISTERED:'登録済みの応答を受け取りました。最新の本人情報を再確認しています。',
   SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
   SIGNUP_CLOSED:'一般アカウントの新規登録は受付停止中です。管理者に受付再開・登録方法を確認してください。在庫利用のために勤怠登録へ進む必要はありません。',

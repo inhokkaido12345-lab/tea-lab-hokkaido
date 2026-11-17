@@ -132,3 +132,15 @@ nav button { min-width: 0; }
 .item-filters label { margin:0; }
 .item-filters select,.item-filters input { display:block; margin-top:6px; }
 @media(max-width:600px) { .item-filters { grid-template-columns:1fr; } }
+
+/* Task help uses native disclosures; available without JS and during unknown saves. */
+.inventory-help{margin:0 0 1rem;padding:.75rem 1rem;background:#fff;border:1px solid #b9c8c3;border-radius:12px;color:#183b38}
+.inventory-help summary{cursor:pointer;min-height:44px;padding:.7rem .2rem;font-weight:700;line-height:1.5}
+.inventory-help summary:focus-visible,.inventory-help button:focus-visible{outline:3px solid #216e69;outline-offset:3px}
+.inventory-help .help-intro,.inventory-help p{font-size:.9rem;line-height:1.65}
+.help-tasks{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:.5rem 1rem;align-items:start}
+.help-tasks>details{border-top:1px solid #dbe3df;padding:.2rem .25rem .6rem;min-width:0}
+.help-tasks ol{padding-left:1.5rem;line-height:1.7;margin:.4rem 0}
+.help-tasks li+li{margin-top:.5rem}
+.help-tasks button{min-height:44px;max-width:100%;white-space:normal}
+.help-tasks details details{font-size:.9rem}

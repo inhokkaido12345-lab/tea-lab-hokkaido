@@ -14,19 +14,19 @@
 <script src="/workforce/staff-enrollment.js?v=44698d443d4e06a7" defer></script>
 <script src="management-picker.js?v=5c747eae4c693a1c" defer></script>
 <script src="activation-services.js?v=4799bd43d2ebd34e" defer></script>
-<script src="service-activation.js?v=663fcc1d8bfd995e" defer></script>
+<script src="service-activation.js?v=2dc4d1ad02c13a01" defer></script>
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=00a4c7551e1148fe" defer></script>
 <script src="access-overview.js?v=ff277742d27bc34a" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
 <script src="tabs.js?v=ca52759a7110b7b3" defer></script>
-<script src="account.js?v=0ec00fcd34a00540" defer></script>
+<script src="account.js?v=9acb1246ab12becf" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
 <section aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
-<p>アカウント作成 → 本人IDを管理者へ → 所属招待を受取 → 管理者が在庫の閲覧権限を設定。勤怠の従業員登録は不要です。</p>
+<p>管理者から利用開始コードを受け取り、同じLINEでログインして内容を確認します。未登録ならここでAccountを作成して続けられます。勤怠の従業員登録は不要です。</p>
 <button id="account-login" type="button">LINEでログイン</button>
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
@@ -138,7 +138,7 @@
 <iframe id="platform-ops-frame" name="platformOperationsFrame" title="運営APIの確認応答" hidden></iframe><p><span id="account-platform-reason">Platform運営権限は未確認です。会社・店舗の管理権限とは別です。</span> <a id="account-platform-link" href="rollout.html" hidden>Platform運営：共通所属の初期導入・COMMON有効化／停止</a></p><p>会社・店舗の業務管理権限は別途必要です。TLH運営権限だけで会社業務へアクセスできるとは限りません。</p></section>
 </div>
 <section aria-labelledby="apps-heading"><h2 id="apps-heading">アプリへ戻る</h2>
-<p>会社への所属と閲覧権限の設定後、会社在庫へ戻ってください。在庫側でLINE本人確認を求められた場合は、同じLINEでログインし、最新の所属・権限を確認します。勤怠登録は不要です。</p>
+<p>利用開始コードの受取りが完了したら、会社在庫へ戻ってください。旧方式の場合は所属と閲覧権限の設定完了を確認してください。在庫側でLINE本人確認を求められた場合は、同じLINEでログインし、最新の所属・権限を確認します。勤怠登録は不要です。</p>
 
 <nav aria-label="TLHアプリ"><a href="/software/inventory/">会社在庫へ戻る（個人用在庫もこちら）</a><a href="/software/worktime/">勤怠・シフトを開く</a></nav></section>
 <noscript>アカウントの登録にはJavaScriptを有効にしてください。</noscript>
