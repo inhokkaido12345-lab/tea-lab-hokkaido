@@ -1,0 +1,29 @@
+/* Independent candidate. TLH colors; category/detail structure inspired by the supplied reference, not a copied skin. */
+.account-management-layout { display:grid; grid-template-columns:220px minmax(0,1fr); gap:32px; color:#252829; background:#F3EFE7; min-height:80vh; font-family:"IBM Plex Sans JP",sans-serif; }
+.account-management-layout * { box-sizing:border-box; }
+.account-management-layout nav { position:static; display:flex; flex-direction:column; gap:8px; padding:24px 12px; background:transparent; }
+.account-management-layout nav button { width:100%; min-height:48px; text-align:left; border:0; border-radius:24px; background:transparent; color:#2F5452; padding:12px 18px; font:inherit; }
+.account-management-layout nav button[aria-current="page"] { background:#dce9e5; font-weight:700; }
+.account-management-layout nav button:disabled { color:#697773; }
+.account-management-layout nav small { display:block; padding:0 18px; }
+.account-management-layout main { width:100%; min-width:0; max-width:850px; padding:24px; margin:0; }
+.account-management-layout header { border:0; padding:12px 0 24px; text-align:center; }
+.account-management-layout h1 { font-size:24px; }
+.account-management-layout h2 { font-size:21px; }
+.account-management-layout button,.account-management-layout select,.account-management-layout input { font:inherit; min-height:44px; }
+.account-management-layout :focus-visible { outline:3px solid #2F5452; outline-offset:3px; }
+.management-mobile-category { display:none; }
+@media(max-width:680px){.account-management-layout{display:block;}.account-management-layout nav{display:none;}.account-management-layout main{padding:16px;}.account-management-layout header{padding:0 0 12px;}.management-mobile-category{display:block;width:100%;margin-bottom:20px;}}
+
+.management-category-icon { display:inline-block; width:32px; margin-right:8px; text-align:center; }
+.service-management form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; }
+.service-management form label { grid-column:1/-1; }
+.service-management input,.service-management select { width:100%; border:1px solid #7C908E; border-radius:24px; padding:10px 16px; background:#fff; }
+.service-management button { border:1px solid #7C908E; border-radius:12px; padding:10px 16px; background:#fff; color:#2F5452; cursor:pointer; }
+.service-management > div:has(>button>small) { display:grid; gap:8px; }
+.service-management button small { display:block; font-size:12px; font-weight:normal; color:#495C63; }
+.service-management section { padding:16px; border:1px solid #d7d9d0; border-radius:16px; }
+.service-management [hidden] { display:none!important; }
+.service-management [aria-busy="true"]::before { content:""; display:inline-block; width:14px; height:14px; margin-right:8px; border:2px solid #d7d9d0; border-top-color:#2F5452; border-radius:50%; animation:service-spin 1s linear infinite; }
+@keyframes service-spin { to { transform:rotate(360deg); } }
+@media(prefers-reduced-motion:reduce){.service-management [aria-busy="true"]::before{animation:none;}}

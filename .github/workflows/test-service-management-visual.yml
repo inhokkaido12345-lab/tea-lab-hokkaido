@@ -1,0 +1,25 @@
+name: Service management candidate visual QA
+on:
+  pull_request:
+    paths: ['account/service-shell/**', 'qa/service-management-*', '.github/workflows/test-service-management-visual.yml']
+permissions:
+  contents: read
+jobs:
+  synthetic-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install official Playwright
+        run: npm install --prefix .qa-tools --no-save --package-lock=false playwright@1.56.1 && .qa-tools/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise closed candidate UI
+        run: node qa/service-management-visual-ci.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: service-management-${{ github.sha }}
+          path: qa-artifacts/service-management/
+          retention-days: 7
