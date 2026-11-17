@@ -18,7 +18,7 @@ const spinner=()=>{const e=document.getElementById('account-tab-manage'),s=getCo
 try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(const scenario of scenarios){
  const context=await browser.newContext({viewport,serviceWorkers:'block',locale:'ja-JP'}),page=await context.newPage(),requests=[],blocked=[],errors=[],name=scenario+'-'+viewport.width;
  let holdRetry=false;
- const report={scenario,viewport,synthetic:true,realPhone:false,realOAuth:false,externalNetworkSent:0,passed:false};
+ const report={scenario,viewport,synthetic:true,realPhone:false,realOAuth:false,externalHttpPolicy:'block-non-local',networkObservation:'Playwright route interception; not packet capture',passed:false};
  try{
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{const u=new URL(r.url());if(u.origin===origin&&r.status()>=400&&/\.(?:js|css|woff2?)(?:$)/.test(u.pathname))errors.push('LOCAL_ASSET_MISSING:'+u.pathname);});await page.clock.install();
   await context.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());
@@ -58,7 +58,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
   await page.evaluate(()=>document.fonts.ready);assert.deepEqual(errors,[],'BROWSER_OR_UNEXPECTED_CONTRACT_ERROR');
   const metrics=await page.evaluate(()=>({fonts:[...document.fonts].map(f=>({family:f.family,status:f.status})),width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')}))}));
   metrics.visibleButtons=await page.evaluate(collectViewportButtons);
-  assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');report.metrics=metrics;report.requests=requests;report.blockedExternalResources=blocked;
+  assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');report.metrics=metrics;report.requests=requests;report.blockedExternalRequestCount=blocked.length;report.blockedExternalResources=blocked;
   await page.screenshot({path:path.join(output,name+'-viewport.png')});await page.screenshot({path:path.join(output,name+'-full.png'),fullPage:true});
   if(scenario==='checking'){await page.clock.fastForward(31000);await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('data-state')==='error');assert.equal(await page.evaluate(spinner),false,'TIMEOUT_SPINNER_STUCK');report.timeoutSettled=true;await page.screenshot({path:path.join(output,name+'-timeout.png')});}
   if(scenario==='error'){
@@ -70,7 +70,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
    report.explicitRetrySpinner=true;await page.screenshot({path:path.join(output,name+'-retry.png')});
   }
   report.passed=true;
- }catch(e){failed=true;report.error=e.message;report.errors=errors;report.requests=requests;report.blockedExternalResources=blocked;await page.screenshot({path:path.join(output,name+'-FAIL.png'),fullPage:true}).catch(()=>{});}
+ }catch(e){failed=true;report.error=e.message;report.errors=errors;report.requests=requests;report.blockedExternalRequestCount=blocked.length;report.blockedExternalResources=blocked;await page.screenshot({path:path.join(output,name+'-FAIL.png'),fullPage:true}).catch(()=>{});}
  finally{reports.push(report);await context.close();}
 }
 }finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(output,'report.json'),JSON.stringify({browser:'official Playwright Chromium',sourceSha:process.env.GITHUB_SHA||'local-uncommitted',reports},null,2));}
