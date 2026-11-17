@@ -15,7 +15,7 @@ let after=before.replace(/(<script\b[^>]*\bsrc=")([^"?#]+)(?:\?v=[a-f0-9]+)?(")/
  return `${start}${src}?v=${hash}${end}`;
 });
 // Own stylesheet is versioned too; external font assets stay untouched.
-after=after.replace(/(href=")account\.css(?:\?v=[a-f0-9]+)?(")/g,(_m,a,b)=>a+'account.css?v='+createHash('sha256').update(fs.readFileSync(path.join(root,'account/account.css'))).digest('hex').slice(0,16)+b);
+after=after.replace(/(href=")(account\.css|service-shell\/[a-z-]+\.css)(?:\?v=[a-f0-9]+)?(")/g,(_m,a,name,b)=>a+name+'?v='+createHash('sha256').update(fs.readFileSync(path.join(root,'account',name))).digest('hex').slice(0,16)+b);
 if(process.argv.includes('--check')){
  if(after!==before){console.error('Account asset hashes are stale. Run node scripts/sync-account-assets.mjs');process.exitCode=1;}
 }else if(after!==before)fs.writeFileSync(page,after);

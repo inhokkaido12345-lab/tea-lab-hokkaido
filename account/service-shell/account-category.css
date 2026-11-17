@@ -1,0 +1,12 @@
+/* Preserve every existing controller/DOM node; only category presentation changes. */
+.account-category-shell .account-tabs { position:static; display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; background:transparent; box-shadow:none; }
+.account-category-shell .account-tabs button { flex:1 1 140px; min-height:48px; background:transparent; color:#2f5452; border:0; border-radius:24px; text-align:left; }
+.account-category-shell .account-tabs button[aria-selected="true"] { background:#dce9e5; font-weight:700; }
+.account-category-shell .account-tabs button[aria-disabled="true"] { color:#89938f; }
+@media(min-width:1000px) {
+ .account-category-shell main { max-width:1120px; padding-left:240px; position:relative; }
+ .account-category-shell .account-tabs { position:absolute; left:0; top:0; width:220px; flex-direction:column; }
+ .account-category-shell .account-tabs button { flex:0 0 auto; width:100%; }
+}
+.account-category-shell .service-management * { box-sizing:border-box; }
+.account-category-shell [hidden] { display:none!important; }
