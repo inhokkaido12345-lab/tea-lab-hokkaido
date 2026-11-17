@@ -23,12 +23,13 @@
   const s=p.summary;if(!id(s.organizationId)||!id(s.storeId)||!['INVENTORY','WORKFORCE','POS'].includes(s.serviceId)||!Array.isArray(s.permissions)||s.permissions.length||s.employmentCreated!==false)return null;return p;
  }
  function init(options){
-  const n=Object.fromEntries(['lock','claim-form','code','claim','issue-form','org','store','service','issue','preview','summary','commit','retry','cancel','issued','issued-code','status','frame'].map(k=>[k,document.getElementById('common-'+k)]));
+  const n=Object.fromEntries(['lock','claim-form','code','claim','issue-form','org','store','service','issue','preview','summary','commit','retry','cancel','issued','issued-code','copy-code','copy-page','close-code','status','frame'].map(k=>[k,document.getElementById('common-'+k)]));
   let stopped=false,pending=null,draft=null,preparing=false,committed=false,unknown=false,generation=0;
   let picker=null;
   function controls(){const busy=!!pending||preparing;n.status.setAttribute('aria-busy',String(busy));
    for(const k of ['claim','issue','code','org','store','service'])n[k].disabled=stopped||busy||!!draft;
    n.commit.disabled=stopped||busy||!draft?.revision||unknown;n.retry.hidden=!unknown;n.retry.disabled=stopped||busy;
+   for(const k of ['copy-code','copy-page','close-code'])n[k].disabled=stopped||!!draft||!hex(n['issued-code'].value,64);
    n.cancel.hidden=!draft&&!preparing;n.cancel.disabled=stopped||committed;n.preview.hidden=!draft?.revision||unknown;
    picker?.sync();options.onState?.();
   }
@@ -75,15 +76,20 @@
     if(r.phase!=='COMMIT'&&!(draft.command==='CLAIM'&&d.code==='COMMON_INVITATION_ALREADY_CLAIMED'))return;let v;try{v=JSON.parse(d.data);}catch{return;}const keys=d.code==='COMMON_INVITATION_SAVED'?['code','savedRevision','invitationId','status','summary']:d.code==='COMMON_INVITATION_ALREADY_SAVED'?['code','savedRevision','invitationId','status']:['code','invitationId','status'];
     if(!exact(v,keys)||v.code!==d.code||!id(v.invitationId)||!['PENDING','CLAIMED'].includes(v.status)||('savedRevision' in v&&(!Number.isSafeInteger(v.savedRevision)||v.savedRevision<1))||draft.command==='CLAIM'&&v.status!=='CLAIMED'||draft.command==='ISSUE'&&d.code==='COMMON_INVITATION_ALREADY_CLAIMED')return;
     if(v.summary&&!preview(JSON.stringify({revision:draft.revision,summary:v.summary,code:'COMMON_INVITATION_PREVIEW_READY'})))return;
-    const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'所属招待を発行しました。本人に個別に渡してください。':'所属招待を受け取りました。業務権限は管理者が別途設定します。';return;
+    const secret=draft.command==='ISSUE'&&v.status==='PENDING'?draft.secret:'';wipe();n['issued-code'].value=secret;n.issued.hidden=!secret;n.status.textContent=secret?'所属招待を発行しました。コードと受取りページを本人に個別に渡してください。':'所属招待を受け取りました。業務権限は管理者が別途設定します。';controls();return;
    }
    if(d.data!=='')return;
    if(d.code==='COMMON_RESULT_UNKNOWN'){uncertain();return;}
    if(committed&&unknown){uncertain();n.status.textContent=messages[d.code]+' 保存済みかはまだ確認できていません。同じ操作で確認するか、管理者へ確認してください。';return;}
    wipe();n.status.textContent=messages[d.code];
   });
+  async function copyIssued(page){if(stopped||draft||n.issued.hidden||!hex(n['issued-code'].value,64))return;const gen=generation,secret=n['issued-code'].value;
+   try{if(!global.navigator?.clipboard?.writeText)throw Error('COPY_UNAVAILABLE');await global.navigator.clipboard.writeText(page?'https://tealabhokkaido.com/account/':secret);if(stopped||gen!==generation||n['issued-code'].value!==secret)return;n.status.textContent=page?'受取りページをコピーしました。招待コードはURLに含めていません。':'招待コードをコピーしました。本人に個別に渡してください。';}
+   catch{if(stopped||gen!==generation||n['issued-code'].value!==secret)return;if(!page){n['issued-code'].focus?.();n['issued-code'].select?.();}n.status.textContent=page?'コピーできませんでした。受取りページのリンクを長押し、または右クリックしてコピーしてください。':'コピーできませんでした。招待コード欄を選択してコピーしてください。';}
+  }
+  n['copy-code'].addEventListener('click',()=>copyIssued(false));n['copy-page'].addEventListener('click',()=>copyIssued(true));n['close-code'].addEventListener('click',()=>{if(stopped||draft)return;wipe();n.status.textContent='招待コードの表示を消去しました。発行済み招待は取り消されません。';});
   global.addEventListener('pagehide',()=>{stopped=true;wipe();n.status.textContent='画面を離れたためコードを消去しました。保存結果が不明な場合は管理者へ確認してください。';});
-  picker=global.TlhManagementPicker?.init({...options,prefix:'common',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({busy:()=>!!draft||preparing||!!pending});
+  picker=global.TlhManagementPicker?.init({...options,prefix:'common',busy:()=>stopped||!!draft||!!pending||!!options.blocked?.()||preparing});controls();return Object.freeze({syncPicker:()=>picker?.sync(),busy:()=>!!draft||preparing||!!pending});
  }
  global.TlhCommonAffiliation=Object.freeze({init,verify,preview});
 })(window);

@@ -1,10 +1,10 @@
 import fs from 'node:fs';import vm from 'node:vm';import {webcrypto,createHmac} from 'node:crypto';
 export const uiSource=fs.readFileSync(new URL('../../account/common-affiliation.js',import.meta.url),'utf8');
-export function uiHarness(){const nodes=new Map(),handlers={},sent=[],timers=new Map();let seq=0,blocked=false;
+export function uiHarness({clipboard}={}){const nodes=new Map(),handlers={},sent=[],timers=new Map();let seq=0,blocked=false;
  const element=()=>({value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},attributes:{},contentWindow:{},
  setAttribute(k,v){this.attributes[k]=v;},addEventListener(k,v){this.events[k]=v;},appendChild(n){this.children.push(n);},remove(){},submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}});
  const n=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
- const window={addEventListener(k,v){handlers[k]=v;}};window.top=window;
+ const window={navigator:{clipboard},addEventListener(k,v){handlers[k]=v;}};window.top=window;
  vm.runInNewContext(uiSource,{window,document:{getElementById:n,createElement:element,body:element()},crypto:webcrypto,TextEncoder,Uint8Array,setTimeout(f){timers.set(++seq,f);return seq;},clearTimeout(k){timers.delete(k);}});
  const api=window.TlhCommonAffiliation.init({gasUrl:'https://script.google.com/macros/s/mock/exec',liff:{getIDToken:()=> 'company.jwt.proof'},blocked:()=>blocked});
  const act=(id,kind='click')=>n('common-'+id).events[kind]({preventDefault(){}});
