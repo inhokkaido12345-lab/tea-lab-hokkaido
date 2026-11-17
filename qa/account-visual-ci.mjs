@@ -6,7 +6,7 @@
  * or aborted before transport. Service workers are disabled. No real accounts.
  */
 import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
-import {fixtureReply,replyHTML,scenarios} from './account-visual-fixtures.mjs';
+import {fixtureReply,replyHTML,scenarios,collectViewportButtons} from './account-visual-fixtures.mjs';
 const require=createRequire(import.meta.url),root=path.resolve(new URL('..',import.meta.url).pathname),output=path.join(root,'qa-artifacts/account-visual');
 const {chromium}=require(path.join(root,'.qa-tools/node_modules/playwright'));
 await fs.mkdir(output,{recursive:true});
@@ -54,7 +54,8 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
   }
   if(scenario==='checking')assert.equal(await page.locator('#account-create').isVisible(),false,'CHECKING_IS_NOT_UNREGISTERED');
   await page.evaluate(()=>document.fonts.ready);assert.deepEqual(errors,[],'BROWSER_OR_UNEXPECTED_CONTRACT_ERROR');
-  const metrics=await page.evaluate(()=>({fonts:[...document.fonts].map(f=>({family:f.family,status:f.status})),width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')})),visibleButtons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({id:e.id,label:e.textContent.trim(),disabled:e.disabled,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
+  const metrics=await page.evaluate(()=>({fonts:[...document.fonts].map(f=>({family:f.family,status:f.status})),width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')}))}));
+  metrics.visibleButtons=await page.evaluate(collectViewportButtons);
   assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');report.metrics=metrics;report.requests=requests;report.blockedExternalResources=blocked;
   await page.screenshot({path:path.join(output,name+'-viewport.png')});await page.screenshot({path:path.join(output,name+'-full.png'),fullPage:true});
   if(scenario==='checking'){await page.clock.fastForward(31000);await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('data-state')==='error');assert.equal(await page.evaluate(spinner),false,'TIMEOUT_SPINNER_STUCK');report.timeoutSettled=true;await page.screenshot({path:path.join(output,name+'-timeout.png')});}

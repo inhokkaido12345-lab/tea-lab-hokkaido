@@ -18,3 +18,21 @@ export function fixtureReply(p,scenario){
  r.mac=createHmac('sha256',p.responseKey).update(parts.join('\n')).digest('hex');return r;
 }
 export function replyHTML(reply,origin){return reply?'<!doctype html><meta charset="utf-8"><script>window.top.postMessage('+JSON.stringify(reply).replaceAll('<','\\u003c')+','+JSON.stringify(origin)+')</script>':'<!doctype html><meta charset="utf-8"><title>synthetic withheld response</title>';}
+
+/** Browser-evaluated QA metric: rendered buttons intersecting the current viewport.
+ * Closed details descendants are excluded, except its first summary subtree.
+ * This is geometric visibility, not a claim that overlays cannot occlude a button.
+ */
+export function collectViewportButtons() {
+  return [...document.querySelectorAll('button')].filter(e => {
+    for (let p = e.parentElement; p; p = p.parentElement) {
+      if (p.tagName === 'DETAILS' && !p.open) {
+        const summary = [...p.children].find(c => c.tagName === 'SUMMARY');
+        if (!summary || !summary.contains(e)) return false;
+      }
+    }
+    if (!e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true,contentVisibilityAuto:true})) return false;
+    const r = e.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.right > 0 && r.bottom > 0 && r.left < innerWidth && r.top < innerHeight;
+  }).map(e => { const r = e.getBoundingClientRect(); return {id:e.id,label:e.textContent.trim(),disabled:e.disabled,width:r.width,height:r.height}; });
+}
