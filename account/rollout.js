@@ -11,7 +11,7 @@
  const exact=(v,k)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).sort().join(',')===k.slice().sort().join(',');
  const id=x=>typeof x==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(x),hex=(x,n)=>typeof x==='string'&&new RegExp('^[a-f0-9]{'+n+'}$').test(x),text=(x,n)=>typeof x==='string'&&x.trim()===x&&x.length>0&&x.length<=n&&!/[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]/.test(x);
  const day=x=>typeof x==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(x)&&Number.isFinite(Date.parse(x+'T00:00:00Z'))&&new Date(x+'T00:00:00Z').toISOString().slice(0,10)===x;
- const perms=['inventory.read','inventory.receive','inventory.order','inventory.manage'];
+ const perms=['inventory.read','inventory.receive','inventory.order','inventory.manage','inventory.receive-only','inventory.stocktake','inventory.catalog','inventory.consumption','inventory.forecast'];
  function members(a){if(!Array.isArray(a)||!a.length||a.length>100)return false;const ids=new Set();for(const m of a){if(!exact(m,['accountId','permissions','validFromDate','validToDate'])||!id(m.accountId)||m.accountId.length>80||ids.has(m.accountId)||!Array.isArray(m.permissions)||new Set(m.permissions).size!==m.permissions.length||m.permissions.some(p=>!perms.includes(p))||!day(m.validFromDate)||m.validToDate!==''&&(!day(m.validToDate)||m.validToDate<m.validFromDate))return false;ids.add(m.accountId);}return true;}
  const scope=['organizationId','storeId','serviceId','serviceInstanceId','localStoreId'];
  const canonical=a=>JSON.stringify(a.map(m=>[m.accountId,[...m.permissions].sort(),m.validFromDate,m.validToDate]).sort((a,b)=>a[0].localeCompare(b[0])));
