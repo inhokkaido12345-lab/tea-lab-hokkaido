@@ -43,7 +43,7 @@
   }
   function wipe(){completed=false;n['result-links'].replaceChildren();generation++;if(pending)clearTimeout(pending.timer);pending=null;draft=null;preparing=false;committed=false;unknown=false;n.code.value='';n.open.hidden=true;n['issued-code'].value='';n.issued.hidden=true;n.summary.textContent='';n.identifiers.textContent='';controls();}
   function uncertain(){if(pending)clearTimeout(pending.timer);pending=null;unknown=true;n.status.textContent=messages.COMMON_RESULT_UNKNOWN;controls();}
-  function cancel(){if(stopped||committed)return;const code=n.code.value;wipe();n.code.value=code;n.status.textContent='入力内容を変更できます。保存していません。';}
+  function cancel(){if(stopped||committed)return;const code=n.code.value,wasCompleted=completed;wipe();n.code.value=code;n.status.textContent=wasCompleted?'別の利用開始コードを入力してください。':'入力内容を変更できます。保存していません。';}
   function send(phase){
    if(stopped||pending||preparing||!draft||options.blocked?.()||global!==global.top)return;
    let proof;try{proof=options.liff.getIDToken();}catch{}if(!proof){n.status.textContent=messages.COMMON_AUTH_REQUIRED;return;}
