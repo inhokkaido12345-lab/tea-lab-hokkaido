@@ -24,7 +24,7 @@ try{for(const recover of [false,true]){
   });
   context.on('page',p=>{p.on('pageerror',e=>errors.push(e.message));p.on('dialog',d=>d.accept());});
   const inventory=await context.newPage();await inventory.goto(origin+'/software/inventory/',{waitUntil:'networkidle'});
-  async function snap(p,stage){await p.evaluate(()=>document.fonts.ready);assert.equal(new URL(p.url()).search,'','SECRET_OR_CONTEXT_IN_URL');assert.equal(new URL(p.url()).hash,'','SECRET_IN_FRAGMENT');await p.screenshot({path:path.join(out,name+'-'+stage+'.png'),fullPage:true});stages.push(stage);}
+  async function snap(p,stage){await p.evaluate(()=>document.fonts.ready);assert.equal(new URL(p.url()).search,new URL(p.url()).pathname==='/account/'?'?service=inventory':'','ONLY_REVIEWED_SERVICE_HINT_IN_URL');assert.equal(new URL(p.url()).hash,'','SECRET_IN_FRAGMENT');await p.screenshot({path:path.join(out,name+'-'+stage+'.png'),fullPage:true});stages.push(stage);}
   await snap(inventory,'01-inventory');const popup=context.waitForEvent('page');await inventory.locator('.entry-primary').click();page=await popup;await page.waitForLoadState('domcontentloaded');await page.clock.install();
   await page.locator('#account-login').click();await page.locator('#account-create').waitFor({state:'visible'});assert.equal(await page.locator('#activation-code-entry').isVisible(),false);await snap(page,'02-unregistered');
   await page.locator('#account-create').click();
