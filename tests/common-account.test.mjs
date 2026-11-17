@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
-export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false,overviewState='not_registered',overviewData=null,scopeStarted=true}={}){
+export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false,overviewState='not_registered',overviewData=null,scopeStarted=true,activationBusy=false}={}){
  const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,refreshes=0,scopeReads=0,overviewReads=0,managementStates=[],enrollmentInits=0,loginCalls=0,clearCalls=0,release,verified;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
@@ -19,6 +19,7 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=f
   TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
   TlhAccountAccessOverview:{init(o){verified=o.onVerified;return {load(){overviewReads++;verified(overviewData,overviewState);},refresh(){refreshes++;}};}},
   TlhAccountTabs:{init(){return {ready(){},sync(){},roles(){},management(state,source){managementStates.push({state,source});}};}},
+  TlhServiceActivation:{init(){return {busy:()=>activationBusy,syncRegistration(){}};}},
   TlhCommonAffiliation:{init(){return {busy:()=>false,syncPicker(){},checkManagement(){scopeReads++;return scopeStarted;}};}},
   TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),proof);enrollmentInits++;}},
   TlhCurrentWorkplace:{submit(form){form.submit();}}};window.top=window;
@@ -112,3 +113,5 @@ test('initial overview precedes exactly one scoped read only for relevant manage
 });
 
 test('automatic scope blocked or pending terminates in retryable error rather than eternal loading',async()=>{const h=harness({scopeStarted:false,overviewData:{operatingRoles:[{role:'ORGANIZATION_OPERATOR',effective:true}]}});await h.login();assert.equal(h.scopeReads,1);assert.deepEqual(h.managementStates.at(-1),{state:'error',source:'overview'});h.verify(null);h.verify({operatingRoles:[{role:'ORGANIZATION_OPERATOR',effective:true}]});assert.equal(h.scopeReads,2);assert.deepEqual(h.managementStates.at(-1),{state:'error',source:'overview'});});
+
+test('activation unknown blocks signup, sibling forms and cross-app navigation',async()=>{const h=harness({activationBusy:true});await h.login();h.create();assert.equal(h.sent.length,0);assert.equal(h.window.TlhAccountNavigation.canLeave(),false);assert.equal(h.n('common-lock').disabled,true);assert.equal(h.n('grant-lock').disabled,true);});
