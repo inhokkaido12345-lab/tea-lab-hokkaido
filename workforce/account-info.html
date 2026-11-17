@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261111-status1">
   <script defer src="current-workplace.js?v=20261105-store2"></script>
 <script defer src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script><script defer src="auto-read.js?v=20261109-workspace1"></script>
+  <script defer src="common-affiliation-info.js"></script>
   <script defer src="account-info.js?v=20261105-more1" data-bootstrap="true"></script>
 </head><body class="secondary-page">
 <header><strong>TLH Work Time</strong><a href="./">勤怠画面へ戻る</a></header>
@@ -28,4 +29,8 @@
     <p class="footnote">現在のログインはLINEです。TLH独自のパスワード・メール認証・SMS認証はまだ利用できません。権限の表示は登録状態の確認であり、操作時は毎回サーバーで確認します。</p>
   </section>
   <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
+<section aria-labelledby="common-self-heading"><h3 id="common-self-heading">TLH Platform：共通アカウント・所属</h3>
+<p>雇用情報・勤怠権限とは別です。ここに所属があっても、打刻や在庫の利用許可にはなりません。</p>
+<button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
+<iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section>
 </main><script src="status-guidance.js?v=20261111-status2"></script></body></html>

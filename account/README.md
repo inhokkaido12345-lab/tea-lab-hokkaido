@@ -46,3 +46,16 @@ node --test tests/common-account.test.mjs tests/account-info.test.mjs tests/staf
 公開確認：UI PR #106をmainへ反映し、`https://tealabhokkaido.com/account/` と在庫ヘッダーのリンクを公開しました。画面・JS/CSS・在庫HTML・認証窓口の6ファイルが検証したソースと一致。実配信の在庫画面から共通登録画面が別窓で開き、ログインボタンが有効・未認証時の登録操作が隠れていること、画面エラーがないことを確認しました。LINE SDKとGASを模擬した成功経路と、実ユーザーの本人操作による受入れは別です。
 
 公開時の運用記録：Inventoryの配布workflowにscripts/README.mdの除外漏れがあり、変更していないGASソースの再配布が実行されました。配布と匿名拒否・health検査は成功。説明書を配布条件から除外し、回帰検査へ追加しました。Work TimeのGAS・所属・受付設定はこの作業では変更していません。
+
+
+## 未公開候補：共通所属専用の入口
+
+この候補は `72f7ec1afa1455853ae6d0c2dc26704ccf6c6e9b` を基準にしています。公開済みUIやGASの設定・一般登録受付は変更していません。
+
+- 自己登録は既存 `bridgeCreateAccount`。`SIGNUP_CLOSED` は維持します。
+- `common-affiliation.js` は管理者の所属専用招待と本人受取だけ。社員情報・勤怠登録・業務grantを作りません。会社/店舗IDは管理者が入力し、サーバー確認後のPREVIEWを見て明示COMMITします。発行秘密はブラウザ生成、ISSUEではSHA-256だけを送信し、CLAIMではPOST bodyで送ります。秘密をURL・保存領域・ログへ出しません。
+- 結果不明のCOMMITは同じ操作ID・入力・revisionだけで再確認します。再確認中に認証/権限が失われても未確定操作を別操作へ置き換えません。画面を閉じることは保存取消ではありません。
+- `workforce/common-affiliation-info.js` は `bridgeCommonAffiliationV1` の本人限定読取。共通ページとWorkTime本人情報画面で共用します。従業員情報・勤怠roleの既存DTOへ項目を混ぜません。共通所属が未設定でも既存勤怠を止めません。共通所属なし、未登録、未設定、通信障害は別表示です。
+- 正式GAS候補の両bridgeを先に確認しない限り公開しません。実在する会社・社員による試験や設定変更は別途判断が必要です。
+
+検証: `node --test tests/common-account.test.mjs tests/account-info.test.mjs tests/staff-enrollment.test.mjs tests/common-affiliation-ui.test.mjs tests/common-affiliation-info.test.mjs`。架空データで実GASとの別途連結試験も実施。ブラウザ視覚試験はexecutorのChromium起動が `socket() failed: Operation not permitted` のため未実施で、実LINEも未確認です。

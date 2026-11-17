@@ -185,6 +185,10 @@
         </div>
         <details class="tool-help"><summary>登録情報が違う・LINEを変更したとき</summary><p>社員コードと違っている項目を管理者へお知らせください。LINEの再連携受付は停止中です。この表示から登録・連携・権限は変更しません。</p><a class="button secondary" href="account-info.html">アカウント情報だけを別画面で開く</a></details>
         <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
+<section aria-labelledby="common-self-heading"><h3 id="common-self-heading">TLH Platform：共通アカウント・所属</h3>
+<p>雇用情報・勤怠権限とは別です。ここに所属があっても、打刻や在庫の利用許可にはなりません。</p>
+<button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
+<iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section>
       </section>
 <details class="enrollment-details">
       <summary>招待コードを受け取った方へ</summary><p class="tool-intro">管理者から渡されたコードを入力し、このLINEに従業員情報を紐付けます。登録する本人が操作してください。</p>
@@ -436,6 +440,7 @@
   <script src="attendance-journal.js?v=20261108-batch1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261110-read-priority1"></script>
+  <script src="common-affiliation-info.js"></script>
   <script src="account-info.js?v=20261105-more1"></script>
   <script src="schedule-view.js?v=20261111-maint1"></script>
   <script src="schedule-report.js?v=20261111-maint1"></script>
