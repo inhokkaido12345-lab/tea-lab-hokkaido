@@ -5,8 +5,8 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
-export function harness({deferLogin=false,proof='fixture.jwt.proof'}={}){
- const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,enrollmentInits=0,loginCalls=0,release;
+export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false}={}){
+ const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,enrollmentInits=0,loginCalls=0,clearCalls=0,release;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
   addEventListener(k,v){this.events[k]=v;},appendChild(v){this.children.push(v);},remove(){},
@@ -14,13 +14,15 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof'}={}){
  const n=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
  const document={getElementById:n,createElement:element,body:element()};
  n('account-tools').hidden=true;n('account-reload').hidden=true;
- const window={confirm:()=>true,location:{reload(){window.reloaded=true;}},addEventListener(k,v){handlers[k]=v;},
-  TlhInventoryLogin:{async login(){loginCalls++;if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
+ const window={confirm:()=>true,location:{reload(){window.reloaded=true;}},addEventListener(k,v){const old=handlers[k];handlers[k]=old?e=>{old(e);v(e);}:v;},
+  TlhInventoryLogin:{clearToken(){clearCalls++;order.push('clear');},async login(){loginCalls++;order.push('login');if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
   TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
   TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),proof);enrollmentInits++;}},
   TlhCurrentWorkplace:{submit(form){form.submit();}}};window.top=window;
- vm.runInNewContext(source,{window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}});
- return {n,handlers,sent,timers,window,login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
+ const context={window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}};
+ if(realBroker){window.open=url=>{opened.push(url);return popup;};vm.runInNewContext(fs.readFileSync(new URL('../software/inventory/employee-login.js',import.meta.url),'utf8'),context);}
+ vm.runInNewContext(source,context);
+ return {n,handlers,sent,timers,window,order,opened,popup,get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
   releaseLogin:()=>release(),get reads(){return reads;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
   reply(code,overrides={},event={}){handlers.message({origin:'https://script.google.com',source:n('account-create-frame').contentWindow,
    data:{type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:sent.at(-1).nonce,code,...overrides},...event});}};
@@ -85,3 +87,10 @@ test('signup rate limit is a known refusal, shows retry guidance without claimin
  assert.match(h.n('account-create-status').textContent,/新規登録が集中/);assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.sent.length,1);assert.equal(h.n('account-create').disabled,false);
 });
 test('BFCache return reloads a clean account page without replaying unresolved registration',async()=>{const h=harness();await h.login();h.create();const count=h.sent.length;h.handlers.pagehide();assert.equal(h.n('account-tools').hidden,true);h.handlers.pageshow({persisted:false});assert.equal(h.window.reloaded,undefined);h.handlers.pageshow({persisted:true});assert.equal(h.window.reloaded,true);assert.equal(h.sent.length,count);assert.equal(h.n('account-tools').hidden,true);});
+
+test('explicit Account login clears rejected broker proof first, without automatic writes or repeated resets',async()=>{
+ const h=harness();assert.equal(h.clearCalls,0);await h.login();assert.deepEqual(h.order,['clear','login']);assert.equal(h.clearCalls,1);assert.match(h.n('account-status').textContent,/本人確認情報を受け取り/);assert.doesNotMatch(h.n('account-status').textContent,/本人確認が完了/);await h.login();assert.equal(h.clearCalls,1);h.create();[...h.timers.values()][0]();await h.login();assert.equal(h.clearCalls,1);assert.equal(h.sent.length,1);
+});
+test('fresh Account page and reload both send real broker through reauth=1, never stale default popup',async()=>{
+ for(let page=0;page<2;page++){const h=harness({realBroker:true});const done=h.login();assert.equal(h.opened.length,1);assert.match(h.opened[0],/\&reauth=1$/);const nonce=h.opened[0].match(/request=([a-f0-9]{32})/)[1];h.handlers.message({origin:'https://tealabhokkaido.com',source:h.popup,data:{type:'TLH_INVENTORY_LOGIN_RESULT',nonce,code:'OK',idToken:'fixture.jwt.proof'}});await done;assert.equal(h.reads,1);assert.equal(h.sent.length,0);}
+});
