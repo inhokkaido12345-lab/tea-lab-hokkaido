@@ -27,7 +27,7 @@ jobs:
         run: |
           npm install --prefix .qa-tools --no-save --ignore-scripts playwright@1.56.1
           .qa-tools/node_modules/.bin/playwright install --with-deps chromium
-      - name: Run localhost-only synthetic states at mobile and desktop widths
+      - name: Run localhost-only synthetic states at 390px emulated width
         run: node qa/account-journey-ci.mjs
       - name: Retain synthetic screenshots and DOM metrics (including failures)
         if: always()

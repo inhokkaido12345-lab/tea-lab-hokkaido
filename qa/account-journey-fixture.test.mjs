@@ -9,3 +9,10 @@ test('fake Core state changes across registration, same-code retry and same-oper
  assert.equal(core.reply({...claim,phase:'COMMIT'}),null);assert.equal(core.reply({...claim,phase:'COMMIT',nonce:'e'.repeat(32)}).code,'COMMON_ACTIVATION_SAVED');
  assert.equal(core.summary().createdAccountCount,1);assert.equal(core.summary().appliedInvitationCount,1);assert.throws(()=>core.reply({...claim,phase:'COMMIT',operationId:'f'.repeat(32)}));
 });
+
+test('missing or malformed registration/commit IDs fail before fake state transition',()=>{
+ for(const value of [undefined,'','a'.repeat(31),'g'.repeat(32)]){
+  const core=createJourneyCore();assert.throws(()=>core.reply({action:'bridgeCreateAccount',nonce:value}),/INVALID_REGISTRATION_NONCE/);assert.equal(core.summary().registered,false);assert.equal(core.summary().registrationAttempts,0);
+  core.reply({action:'bridgeCreateAccount',nonce:'a'.repeat(32)});assert.throws(()=>core.reply({action:'bridgeCommonServiceActivationV1',command:'CLAIM',phase:'COMMIT',operationId:value}),/INVALID_ACTIVATION_OPERATION/);assert.equal(core.summary().claimed,false);assert.equal(core.summary().commitAttempts,0);
+ }
+});
