@@ -21,3 +21,7 @@ input[type=checkbox]{display:inline-block;width:auto;min-width:20px;min-height:2
 .activation-primary-link{display:block;text-align:center;background:#2F5452;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none;font-weight:700;min-height:44px}#account-management-details{margin:12px 0 20px}#activation-cancel{font-size:.9rem;min-height:44px}#account-management-details p{font-size:.85rem}
 
 #account-status[aria-busy=true]::before{content:'';display:inline-block;width:14px;height:14px;margin-right:8px;border:2px solid #c7d4cd;border-top-color:#2F5452;border-radius:50%;animation:account-tab-spin .8s linear infinite}
+
+/* Tab eligibility may update after the activation render. Empty-state visibility
+ * is independent of tab visibility; never re-expose a heading-only card. */
+#activation-section[data-action-empty=true]{display:none!important}
