@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
-function harness({deferLogin=false}={}){
+export function harness({deferLogin=false,proof='fixture.jwt.proof'}={}){
  const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,enrollmentInits=0,loginCalls=0,release;
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
@@ -15,9 +15,9 @@ function harness({deferLogin=false}={}){
  const document={getElementById:n,createElement:element,body:element()};
  n('account-tools').hidden=true;n('account-reload').hidden=true;
  const window={confirm:()=>true,location:{reload(){window.reloaded=true;}},addEventListener(k,v){handlers[k]=v;},
-  TlhInventoryLogin:{async login(){loginCalls++;if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> 'fixture.jwt.proof'},
-  TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),'fixture.jwt.proof');return {load(){reads++;}};}},
-  TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),'fixture.jwt.proof');enrollmentInits++;}},
+  TlhInventoryLogin:{async login(){loginCalls++;if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
+  TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
+  TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),proof);enrollmentInits++;}},
   TlhCurrentWorkplace:{submit(form){form.submit();}}};window.top=window;
  vm.runInNewContext(source,{window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}});
  return {n,handlers,sent,timers,window,login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
