@@ -8,7 +8,8 @@
 import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 import {fixtureReply,replyHTML,collectViewportButtons} from './account-visual-fixtures.mjs';
 import {createHmac} from 'node:crypto';
-const scenarios=['existing','unregistered','success','unknown'];
+import {data as verifiedOverview} from '../tests/helpers/account-access-overview-harness.mjs';
+const scenarios=['existing','unregistered','success','unknown','services-ready'];
 const require=createRequire(import.meta.url),root=path.resolve(new URL('..',import.meta.url).pathname),output=path.join(root,'qa-artifacts/account-service-mount');
 const {chromium}=require(path.join(root,'.qa-tools/node_modules/playwright'));
 await fs.mkdir(output,{recursive:true});
@@ -19,7 +20,7 @@ const reports=[],browser=await chromium.launch({headless:true});let failed=false
 const spinner=()=>{const e=document.getElementById('account-tab-manage'),s=getComputedStyle(e,'::after');return e.getAttribute('aria-busy')==='true'&&s.content!=='none'&&s.animationName!=='none'&&parseFloat(s.width)>0;};
 try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(const scenario of scenarios){
  const context=await browser.newContext({viewport,serviceWorkers:'block',locale:'ja-JP'}),page=await context.newPage(),requests=[],blocked=[],errors=[],name=scenario+'-'+viewport.width;
- let holdRetry=false;
+ let holdRetry=false,holdRegistry=scenario==='services-ready';
  const report={scenario,viewport,synthetic:true,realPhone:false,realOAuth:false,externalHttpPolicy:'block-non-local',networkObservation:'Playwright route interception; not packet capture',passed:false};
  try{
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{const u=new URL(r.url());if(u.origin===origin&&r.status()>=400&&/\.(?:js|css|woff2?)(?:$)/.test(u.pathname))errors.push('LOCAL_ASSET_MISSING:'+u.pathname);});await page.clock.install();
@@ -30,7 +31,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
    }
    if(url.origin==='https://script.google.com'&&req.method()==='POST'){
     const p=Object.fromEntries(new URLSearchParams(req.postData()));requests.push({action:p.action,phase:p.phase||'',command:p.command||''});
-    if(p.action==='bridgeServiceRegistryReadV1'){const r={type:'TLH_SERVICE_REGISTRY_READ_V1',phase:p.phase,query:p.query,cursor:p.cursor,serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,nonce:p.nonce,code:'REGISTRY_NOT_CONNECTED',data:''};r.mac=createHmac('sha256',p.responseKey).update(['type','phase','query','cursor','serviceId','scopeKind','scopeId','nonce','code','data'].map(k=>r[k]).join('\n')).digest('hex');return route.fulfill({contentType:'text/html',body:replyHTML(r,origin)});}
+    if(p.action==='bridgeServiceRegistryReadV1'){if(holdRegistry)return route.fulfill({contentType:'text/html',body:replyHTML(null,origin)});const r={type:'TLH_SERVICE_REGISTRY_READ_V1',phase:p.phase,query:p.query,cursor:p.cursor,serviceId:p.serviceId,scopeKind:p.scopeKind,scopeId:p.scopeId,nonce:p.nonce,code:'REGISTRY_NOT_CONNECTED',data:''};if(scenario==='services-ready'){r.code='OK';const capability={id:'fixtureService:read',label:'記録を見る',description:'合成試験の操作名です。'};r.data=JSON.stringify(p.phase==='LIST'?{version:1,actorAccountId:verifiedOverview().accountId,registryRevision:'fixture1',items:[{serviceId:'fixtureService',displayName:'検証サービス',status:'ACTIVE',scopeKinds:['PERSONAL'],availableCapabilities:[capability.id],capabilityDescriptors:[capability],connectionState:'NOT_VERIFIED'}],nextCursor:''}:{version:1,actorAccountId:verifiedOverview().accountId,selected:{version:1,serviceId:p.serviceId,scope:{kind:p.scopeKind,id:p.scopeId||verifiedOverview().accountId},state:'VERIFIED',capabilities:[capability.id],capabilityDescriptors:[capability],authoritative:false,registryRevision:'fixture1'}});}r.mac=createHmac('sha256',p.responseKey).update(['type','phase','query','cursor','serviceId','scopeKind','scopeId','nonce','code','data'].map(k=>r[k]).join('\n')).digest('hex');return route.fulfill({contentType:'text/html',body:replyHTML(r,origin)});}
    try{return route.fulfill({contentType:'text/html; charset=utf-8',body:replyHTML(holdRetry&&p.action==='bridgeAccountAccessOverviewV1'?null:fixtureReply(p,scenario),origin)});}catch(e){errors.push(e.message);return route.abort();}
    }
    blocked.push(url.origin+url.pathname);return route.abort();
@@ -60,6 +61,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
   if(scenario==='unknown'){assert.equal(await page.locator('#account-tab-services').isEnabled(),false,'UNKNOWN_CATEGORY_ENABLED');}
   else{const codeBefore=await page.locator('#activation-code').inputValue();if(viewport.width===390)await page.locator('#account-mobile-category').selectOption('services');else await page.locator('#account-tab-services').click();
    if(scenario==='unregistered'){await page.getByText('本人情報を確認してからサービスを表示します。',{exact:true}).waitFor();assert.equal(requests.some(r=>r.action==='bridgeServiceRegistryReadV1'),false);}
+   else if(scenario==='services-ready'){await page.locator('.service-management [aria-busy=true]').waitFor();await page.screenshot({path:path.join(output,name+'-loading.png')});await page.clock.fastForward(31000);await page.getByRole('button',{name:'再確認',exact:true}).waitFor();await page.screenshot({path:path.join(output,name+'-error.png')});holdRegistry=false;await page.getByRole('button',{name:'再確認',exact:true}).click();await page.getByRole('button',{name:'検証サービス',exact:true}).waitFor();await page.screenshot({path:path.join(output,name+'-list.png')});await page.getByRole('button',{name:'検証サービス',exact:true}).click();await page.getByText('記録を見る',{exact:true}).waitFor();assert.equal(await page.getByRole('searchbox').isVisible(),false);assert.equal(await page.getByText('利用状態を確認しました。',{exact:true}).count(),1);}
    else {await page.getByText('サービス一覧は未接続です。',{exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'再確認',exact:true}).isVisible(),true);}
    assert.equal(await page.locator('#activation-section').isVisible(),false);await page.screenshot({path:path.join(output,name+'-services.png')});
    if(viewport.width===390)await page.locator('#account-mobile-category').selectOption('self');else await page.locator('#account-tab-self').click();assert.equal(await page.locator('#activation-code').inputValue(),codeBefore,'CATEGORY_DESTROYED_P0_STATE');
