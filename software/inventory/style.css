@@ -157,3 +157,5 @@ nav button { min-width: 0; }
 body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) :is(#stock,#receiving,#history,#catalog,#refresh),
 body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) > nav { display:none; }
 #operation-recovery:empty { display:none; }
+/* 店舗選択や個人利用の内容がまだないhostだけ装飾を隠す。 */
+#inventory-stores.store-context:empty { display:none; }
