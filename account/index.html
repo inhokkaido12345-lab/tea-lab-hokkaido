@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>TLH Account｜共通アカウント</title>
-<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=c45be504f03f030e">
+<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=309d16162691d54e">
 <!-- 本人確認だけを既存の認証窓口で共用。Inventoryの業務controller、打刻controller、SDKの重複初期化は読み込まない。 -->
 <script src="/software/inventory/employee-login.js?v=6304a8f02a029d31" defer></script>
 <script src="/workforce/current-workplace.js?v=0c1479b7fa9c1d89" defer></script>
@@ -16,8 +16,10 @@
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=00a4c7551e1148fe" defer></script>
 <script src="access-overview.js?v=0fe89b1edc49be6a" defer></script>
-<script src="tabs.js?v=4b8ba11de231fc36" defer></script>
-<script src="account.js?v=11a864eaa94812a8" defer></script>
+<script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
+<script src="operations-panels.js?v=f7e61f533419137f" defer></script>
+<script src="tabs.js?v=7cb1f79be28dcff5" defer></script>
+<script src="account.js?v=156e009eb372ec2d" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
@@ -93,8 +95,32 @@
 </details><p id="staff-status" role="status" aria-live="polite"></p>
 <iframe name="tlhStaffFrame" title="従業員の招待・登録の応答" hidden></iframe>
 </fieldset></section></details>
-<section data-account-panel="company" hidden><h2>社内管理</h2><p>管理を委任された法人の店舗・店舗サービス管理者を管理します。既登録のTLHアカウントを対象に、変更前後と理由を確認して任命・停止します。</p><a href="/software/worktime/company-operations.html">法人の店舗・管理者を管理する</a><p>招待を受け取って店舗管理者になる手続きは未実装です。所属招待では管理者権限は付きません。</p></section>
-<section data-account-panel="platform" hidden><h2>TLH管理</h2><p>TLHサービス全体の法人・法人運営者を管理します。法人管理者権限の停止は、本人アカウント・雇用・所属の削除ではありません。</p><a href="/software/worktime/platform-operations.html">法人・法人管理者権限を管理する</a><p><span id="account-platform-reason">Platform運営権限は未確認です。会社・店舗の管理権限とは別です。</span> <a id="account-platform-link" href="rollout.html" hidden>Platform運営：共通所属の初期導入・COMMON有効化／停止</a></p><p>会社・店舗の業務管理権限は別途必要です。TLH運営権限だけで会社業務へアクセスできるとは限りません。</p></section>
+<section data-account-panel="company" hidden><h2>社内管理</h2><p>管理を委任された法人の店舗・店舗サービス管理者を管理します。既登録のTLHアカウントを対象に、変更前後と理由を確認して任命・停止します。</p><p id="company-ops-status" role="status" aria-live="polite" aria-busy="false">この範囲の最新情報を確認します。</p><div class="operations-actions"><button id="company-ops-login" type="button" hidden disabled>LINEログイン</button><button id="company-ops-refresh" type="button" disabled>最新情報を読み込む</button></div>
+<div class="operations-grid"><section aria-labelledby="company-ops-form-heading"><h2 id="company-ops-form-heading">登録・権限の変更</h2><p>会社名や店舗名と、変更後の有効／停止を確認して保存します。対象者のTLHアカウントIDは、本人の「アカウント基本情報」で確認できます。社員番号・LINEのID・パスワードは入力しません。</p>
+<fieldset id="company-ops-fields" disabled><label for="company-ops-command">操作</label><select id="company-ops-command"><option value="">権限の確認後に表示します</option></select>
+<div id="company-ops-row-organizationId"><label for="company-ops-organization">会社</label><select id="company-ops-organization"></select><input id="company-ops-organization-new" aria-label="新しい会社ID" autocomplete="off" maxlength="128" placeholder="例：company_example" hidden></div>
+<div id="company-ops-row-storeId"><label for="company-ops-store">店舗</label><select id="company-ops-store"></select><input id="company-ops-store-new" aria-label="新しい店舗ID" autocomplete="off" maxlength="128" placeholder="例：store_example" hidden></div>
+<div id="company-ops-row-name"><label for="company-ops-name">登録・変更後の名称</label><input id="company-ops-name" type="text" maxlength="100" autocomplete="off"></div>
+<div id="company-ops-row-accountId"><label for="company-ops-account">対象者のTLHアカウントID</label><input id="company-ops-account" type="text" maxlength="128" autocomplete="off" spellcheck="false"></div>
+<div id="company-ops-row-serviceId"><label for="company-ops-service">対象サービス</label><select id="company-ops-service"><option value="WORKFORCE">タイムカード</option><option value="INVENTORY">在庫管理</option><option value="POS">POS（未接続）</option></select></div>
+<div id="company-ops-row-enabled"><label for="company-ops-enabled">変更後の権限</label><select id="company-ops-enabled"><option value="true">有効にする</option><option value="false">停止する</option></select></div>
+<label for="company-ops-reason">変更する理由（監査履歴に保存）</label><textarea id="company-ops-reason" maxlength="200" rows="3" autocomplete="off"></textarea><p>理由へパスワード・認証コード・個人の給与等を記載しないでください。</p><button id="company-ops-preview" type="button" disabled>対象と変更内容を確認</button></fieldset>
+<div id="company-ops-review" aria-live="polite"></div><div class="operations-actions"><button id="company-ops-commit" type="button" hidden disabled>確認した内容を保存する</button><button id="company-ops-cancel" type="button" disabled>確認を取り消す</button><button id="company-ops-retry" type="button" hidden disabled>同じ操作の保存結果を確認</button></div></section>
+<section aria-labelledby="company-ops-list-heading"><h2 id="company-ops-list-heading">自社の店舗・運営権限</h2><div id="company-ops-result"></div></section></div>
+<iframe id="company-ops-frame" name="companyOperationsFrame" title="運営APIの確認応答" hidden></iframe><p>招待を受け取って店舗管理者になる手続きは未実装です。所属招待では管理者権限は付きません。</p></section>
+<section data-account-panel="platform" hidden><h2>TLH管理</h2><p>TLHサービス全体の法人・法人運営者を管理します。法人管理者権限の停止は、本人アカウント・雇用・所属の削除ではありません。</p><p id="platform-ops-status" role="status" aria-live="polite" aria-busy="false">この範囲の最新情報を確認します。</p><div class="operations-actions"><button id="platform-ops-login" type="button" hidden disabled>LINEログイン</button><button id="platform-ops-refresh" type="button" disabled>最新情報を読み込む</button></div>
+<div class="operations-grid"><section aria-labelledby="platform-ops-form-heading"><h2 id="platform-ops-form-heading">登録・権限の変更</h2><p>会社名や店舗名と、変更後の有効／停止を確認して保存します。対象者のTLHアカウントIDは、本人の「アカウント基本情報」で確認できます。社員番号・LINEのID・パスワードは入力しません。</p>
+<fieldset id="platform-ops-fields" disabled><label for="platform-ops-command">操作</label><select id="platform-ops-command"><option value="">権限の確認後に表示します</option></select>
+<div id="platform-ops-row-organizationId"><label for="platform-ops-organization">会社</label><select id="platform-ops-organization"></select><input id="platform-ops-organization-new" aria-label="新しい会社ID" autocomplete="off" maxlength="128" placeholder="例：company_example" hidden></div>
+<div id="platform-ops-row-storeId"><label for="platform-ops-store">店舗</label><select id="platform-ops-store"></select><input id="platform-ops-store-new" aria-label="新しい店舗ID" autocomplete="off" maxlength="128" placeholder="例：store_example" hidden></div>
+<div id="platform-ops-row-name"><label for="platform-ops-name">登録・変更後の名称</label><input id="platform-ops-name" type="text" maxlength="100" autocomplete="off"></div>
+<div id="platform-ops-row-accountId"><label for="platform-ops-account">対象者のTLHアカウントID</label><input id="platform-ops-account" type="text" maxlength="128" autocomplete="off" spellcheck="false"></div>
+<div id="platform-ops-row-serviceId"><label for="platform-ops-service">対象サービス</label><select id="platform-ops-service"><option value="WORKFORCE">タイムカード</option><option value="INVENTORY">在庫管理</option><option value="POS">POS（未接続）</option></select></div>
+<div id="platform-ops-row-enabled"><label for="platform-ops-enabled">変更後の権限</label><select id="platform-ops-enabled"><option value="true">有効にする</option><option value="false">停止する</option></select></div>
+<label for="platform-ops-reason">変更する理由（監査履歴に保存）</label><textarea id="platform-ops-reason" maxlength="200" rows="3" autocomplete="off"></textarea><p>理由へパスワード・認証コード・個人の給与等を記載しないでください。</p><button id="platform-ops-preview" type="button" disabled>対象と変更内容を確認</button></fieldset>
+<div id="platform-ops-review" aria-live="polite"></div><div class="operations-actions"><button id="platform-ops-commit" type="button" hidden disabled>確認した内容を保存する</button><button id="platform-ops-cancel" type="button" disabled>確認を取り消す</button><button id="platform-ops-retry" type="button" hidden disabled>同じ操作の保存結果を確認</button></div></section>
+<section aria-labelledby="platform-ops-list-heading"><h2 id="platform-ops-list-heading">利用会社・店舗・運営権限</h2><div id="platform-ops-result"></div></section></div>
+<iframe id="platform-ops-frame" name="platformOperationsFrame" title="運営APIの確認応答" hidden></iframe><p><span id="account-platform-reason">Platform運営権限は未確認です。会社・店舗の管理権限とは別です。</span> <a id="account-platform-link" href="rollout.html" hidden>Platform運営：共通所属の初期導入・COMMON有効化／停止</a></p><p>会社・店舗の業務管理権限は別途必要です。TLH運営権限だけで会社業務へアクセスできるとは限りません。</p></section>
 </div>
 <section aria-labelledby="apps-heading"><h2 id="apps-heading">アプリへ戻る</h2>
 <p>会社への所属と閲覧権限の設定後、会社在庫へ戻ってください。在庫側でLINE本人確認を求められた場合は、同じLINEでログインし、最新の所属・権限を確認します。勤怠登録は不要です。</p>

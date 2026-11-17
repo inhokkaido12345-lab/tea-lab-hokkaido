@@ -32,3 +32,24 @@ test('standalone pages share typography, contain no PWA registration or browser 
  for(const page of ['platform','company']){const html=fs.readFileSync(new URL('../workforce/'+page+'-operations.html',import.meta.url),'utf8');assert.match(html,/fonts\/ibm-plex-sans-jp.css/);assert.match(html,/<fieldset id="ops-fields" disabled>/);assert.doesNotMatch(html,/rel="manifest"|serviceWorker|localStorage|sessionStorage/);}
  const js=fs.readFileSync(new URL('../workforce/operations.js',import.meta.url),'utf8');assert.doesNotMatch(js,/localStorage\.|sessionStorage\.|console\.|fetch\(/);
 });
+
+test('scoped mounts are lazy and isolate frame identities, latest catalog and pending/draft/unknown busy',async()=>{
+ let blocked=false;const h=operationsUi({view:'COMPANY',prefix:'company-ops-',autoLoad:false,blocked:()=>blocked});
+ assert.equal(h.sent.length,0);assert.equal(h.controller.busy(),false);h.controller.load();assert.equal(h.sent.length,1);assert.equal(h.controller.busy(),true);await h.ready();assert.equal(h.controller.busy(),false);
+ h.choose('CREATE_STORE');h.set({'store-new':'newStore',name:'店舗',reason:'検査'});h.click('preview');const r=h.sent.at(-1);await h.reply(r,'OPERATIONS_PREVIEW_READY',previewData(r),'a'.repeat(64));assert.equal(h.controller.busy(),true);
+ h.n('organization').events.change();assert.equal(h.controller.busy(),false);assert.equal(h.n('commit').disabled,true);
+ h.click('preview');const p=h.sent.at(-1);await h.reply(p,'OPERATIONS_PREVIEW_READY',previewData(p),'a'.repeat(64));h.click('commit');h.timeout();assert.equal(h.controller.busy(),true);h.controller.invalidate();assert.equal(h.controller.busy(),true);assert.equal(h.n('result').children.length,0);const before=h.sent.length;h.controller.load();assert.equal(h.sent.length,before);
+ const other=operationsUi({prefix:'platform-ops-',autoLoad:false});other.controller.load();await other.reply(other.sent[0],'OPERATIONS_READY',catalog(),'',{}, {source:h.n('frame').contentWindow});assert.equal(other.n('fields').disabled,true);await other.ready();assert.equal(other.n('fields').disabled,false);
+ const fresh=operationsUi({autoLoad:false,blocked:()=>blocked});blocked=true;fresh.controller.load();assert.equal(fresh.sent.length,0);
+});
+
+test('Account coordinator mounts both real controllers with independent frames and locks siblings during unknown saves',async()=>{
+ const vm=await import('node:vm');const h=operationsUi({autoLoad:false,prefix:'company-ops-',view:'COMPANY'}),p=operationsUi({autoLoad:false,prefix:'platform-ops-'});Object.assign(h.nodes,p.nodes);
+ vm.runInNewContext(fs.readFileSync(new URL('../account/operations-panels.js',import.meta.url),'utf8'),h.c);
+ const api=h.c.TlhAccountOperations.init({liff:{getIDToken:()=> 'admin.jwt.proof'}});api.activate('company');assert.equal(h.sent.length,1);await h.reply(h.sent[0],'OPERATIONS_READY',catalog('COMPANY'));assert.equal(api.busy(),false);
+ api.activate('platform');const pr=h.sent.at(-1);assert.equal(pr.view,'PLATFORM');await h.reply(pr,'OPERATIONS_READY',catalog(),'',{}, {source:h.nodes['platform-ops-frame'].contentWindow});assert.equal(api.busy(),false);
+ h.choose('CREATE_STORE');h.set({'store-new':'newStore',name:'架空店',reason:'検査'});h.click('preview');const r=h.sent.at(-1);await h.reply(r,'OPERATIONS_PREVIEW_READY',previewData(r),'a'.repeat(64));h.click('commit');h.timeout();assert.equal(api.busy(),true);const before=h.sent.length;api.activate('platform');assert.equal(h.sent.length,before);api.invalidate();assert.equal(api.busy(),true);assert.equal(h.nodes['platform-ops-result'].children.length,0);
+});
+test('invalidating a scoped read discards delayed signed catalog and clears old review and inputs',async()=>{
+ const h=operationsUi({view:'COMPANY',prefix:'company-ops-'}),r=h.sent[0];h.n('account').value='oldAccount';h.controller.invalidate();await h.reply(r,'OPERATIONS_READY',catalog('COMPANY'));assert.equal(h.n('result').children.length,0);assert.equal(h.n('fields').disabled,true);assert.equal(h.n('account').value,'');assert.equal(h.controller.busy(),false);h.controller.load();await h.reply(h.sent.at(-1),'OPERATIONS_READY',catalog('COMPANY'));assert.equal(h.n('fields').disabled,false);
+});
