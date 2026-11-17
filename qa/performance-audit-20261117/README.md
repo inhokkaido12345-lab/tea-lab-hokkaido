@@ -18,6 +18,8 @@
 
 調査中、公開サイトmainは `f2cfc82f62fe920c294f3c439d6ce2ba4265a7d7` に進んだ。PR #112/#113の差分10ファイルを確認。明示再認証・picker復帰・招待コピー・READMEの公開状態説明が更新された。`viewer.load(); access?.load();` と内部の3読取は残るため、今回の4本という構造上の指摘は残る。新main全体の回帰試験は今回の対象外。backend/inventoryのmainは再確認時に基準と一致した。版情報は [sources.json](sources.json)。
 
+最終照合では公開mainがさらに `e640f35e699b02e90f5a03d018410ff1906e1491`（PR #114）へ進んだ。追加差分4ファイルも確認し、内容はJS資産の版付きURL・同期script・試験・README追記で、上記の読取起動関係は変わらない。追加試験自体は今回未実行。
+
 ### 1. アカウント初回表示：4要求とロック競合
 
 実際の `account/account.js` と読取controller4個を同じ架空DOMで動かし、form.submitを記録した。LINE brokerと従業員招待controllerは代用品。実HTTP・実LINE・画面描画性能の測定ではない。

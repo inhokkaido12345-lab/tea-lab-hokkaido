@@ -33,5 +33,12 @@
       "tests/helpers/common-affiliation-ui-harness.mjs"
     ],
     "effect": "Explicit reauthentication and picker recovery added; viewer.load()/access.load() startup fanout unchanged; initial README deployment caveats superseded by latest main."
-  }
+  },
+  "finalPublicMainObserved": "e640f35e699b02e90f5a03d018410ff1906e1491",
+  "finalPublicDiffReviewed": [
+    "account/README.md",
+    "account/index.html",
+    "scripts/sync-account-assets.mjs",
+    "tests/account-asset-version.test.mjs"
+  ]
 }
