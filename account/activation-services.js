@@ -1,0 +1,2 @@
+/** Reviewed compatibility adapter metadata, not the general TLH service registry. No implicit grants. */
+(function(g){g.TlhActivationServices=Object.freeze([{serviceId:'INVENTORY',label:'在庫',path:'/software/inventory/',requiredPermissions:['inventory.read'],permissions:[{id:'inventory.read',label:'閲覧（会社在庫を開くために必要）'},{id:'inventory.receive',label:'入荷記録'},{id:'inventory.order',label:'発注'},{id:'inventory.manage',label:'在庫管理'}]}]);})(window);

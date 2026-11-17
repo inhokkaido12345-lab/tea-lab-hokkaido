@@ -613,6 +613,19 @@ async function refresh(){
 }
 $('refresh').onclick=refresh;
 $('add').onclick=()=>{if(view)addLine();};
+/** Help only opens an existing workspace. Never saves, refreshes, clears input or changes permissions.
+ * The same pending/unknown lock as normal controls applies; static help stays readable. */
+function openInventoryHelpTask(name){
+ if(busy||pending||!view)return;
+ if(!['receiving','counting','sampling','ordering'].includes(name))return;
+ const target=name==='receiving'?'receiving':'stock';
+ tab(target);
+ if(target==='stock')showStockAction(name==='ordering'?'overview':name);
+ const help=$('inventory-help');if(help)help.open=false;
+ const heading=document.querySelector('#'+target+' h2');
+ if(heading){heading.setAttribute('tabindex','-1');heading.focus();}
+}
+for(const b of document.querySelectorAll('[data-help-task]'))b.onclick=()=>openInventoryHelpTask(b.dataset.helpTask);
 for(const b of document.querySelectorAll('[data-tab]'))b.onclick=()=>tab(b.dataset.tab);
 for(const b of document.querySelectorAll('[data-stock-action]'))b.onclick=()=>{if(view&&!busy&&!pending)showStockAction(b.dataset.stockAction);};
 for(const b of document.querySelectorAll('[data-filter]'))b.onclick=()=>{filter=b.dataset.filter;for(const x of document.querySelectorAll('[data-filter]'))x.setAttribute('aria-pressed',String(x===b));if(view)renderStockCards();};
