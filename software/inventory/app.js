@@ -399,7 +399,7 @@ function renderInformationCoverage(card,item){
  const list=el('ul','','information-records');
  for(const c of info.categories){
   const line=el('li',''),label=el('strong',labels[c.kind]||'記録');line.append(label);
-  line.append(el('span',c.count?c.count+'件 ・ '+(c.ageDays===0?'今日':c.ageDays+'日前')+' ・由来未確認':'まだ記録がありません'));
+  line.append(el('span',c.count?c.count+'件 ・ '+(c.ageDays===0?'24時間以内':c.ageDays+'日前')+' ・由来未確認':'まだ記録がありません'));
   if(c.kind==='measurement'&&c.count===1)line.append(el('small','1件だけの傾向です。曜日・季節の違いは分かりません。'));
   list.append(line);
  }
