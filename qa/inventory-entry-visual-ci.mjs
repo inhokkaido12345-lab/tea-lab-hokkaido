@@ -22,7 +22,38 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   const metrics=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,controls:['.entry-primary','.entry-personal','#line-login'].map(s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),css=getComputedStyle(e);return {selector:s,label:e.textContent.trim(),top:r.top,bottom:r.bottom,height:r.height,width:r.width,background:css.backgroundColor};}),openDetails:[...document.querySelectorAll('.inventory-entry details')].filter(e=>e.open).length}));
   assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');assert.equal(metrics.openDetails,0);assert.ok(metrics.controls.every(x=>x.height>=44),'SMALL_ENTRY_TARGET');assert.ok(metrics.controls[0].top<metrics.controls[1].top&&metrics.controls[1].top<metrics.controls[2].top,'ENTRY_ORDER');assert.ok(metrics.controls[0].bottom<=viewport.height,'PRIMARY_BELOW_FOLD');assert.notEqual(metrics.controls[0].background,'rgba(0, 0, 0, 0)','PRIMARY_UNSTYLED');
   assert.deepEqual(errors,[],'BROWSER_OR_ASSET_ERROR');assert.deepEqual(blocked,[],'UNAUTHENTICATED_PAGE_ATTEMPTED_EXTERNAL_REQUEST');
-  report.metrics=metrics;await page.screenshot({path:path.join(out,viewport.width+'-viewport.png')});await page.screenshot({path:path.join(out,viewport.width+'-full.png'),fullPage:true});report.passed=true;
+  report.metrics=metrics;
+  // The initial state above is actual startup. Following states project DOM only,
+  // never authenticate, create a receipt, or claim that server recovery succeeded.
+  const shellSelectors=['#stock','#refresh','body > nav'];
+  for(const selector of shellSelectors)assert.equal(await page.locator(selector).isVisible(),false,'IDLE_SHELL_VISIBLE:'+selector);
+  assert.equal(await page.locator('#operation-recovery').isVisible(),false,'EMPTY_RECOVERY_VISIBLE');
+  assert.equal(await page.locator('#inventory-stores').isVisible(),false,'EMPTY_STORE_HOST_VISIBLE');
+  await page.locator('#inventory-stores').evaluate(e=>{const p=document.createElement('p');p.textContent='QA合成：選択した店舗';e.append(p);});assert.equal(await page.locator('#inventory-stores').isVisible(),true,'POPULATED_STORE_HOST_HIDDEN');await page.screenshot({path:path.join(out,viewport.width+'-projected-store-host.png')});await page.locator('#inventory-stores').evaluate(e=>e.replaceChildren());assert.equal(await page.locator('#inventory-stores').isVisible(),false,'EMPTIED_STORE_HOST_VISIBLE');
+  const original=await page.evaluate(()=>{const ids=['line-login','status','status-detail','recovery'];return Object.fromEntries(ids.map(id=>{const e=document.getElementById(id);return [id,{hidden:e.hidden,className:e.className,busy:e.getAttribute('aria-busy'),text:id==='status'?e.textContent:null}];}));});
+  report.projectedStates=[];
+  async function project(state){await page.evaluate(({state,original})=>{
+   for(const [id,s]of Object.entries(original)){const e=document.getElementById(id);e.hidden=s.hidden;e.className=s.className;if(s.busy===null)e.removeAttribute('aria-busy');else e.setAttribute('aria-busy',s.busy);if(s.text!==null)e.textContent=s.text;}
+   document.getElementById('operation-recovery').replaceChildren();
+   if(state==='receipt'||state==='invalid-receipt'){const p=document.createElement('p');p.textContent=state==='receipt'?'QA合成：保存結果の確認が必要です':'QA合成：復旧情報を確認できません';document.getElementById('operation-recovery').append(p);}
+   if(state==='busy')document.getElementById('status').setAttribute('aria-busy','true');
+   if(state==='error'){document.getElementById('status').classList.add('status-needs-action');document.getElementById('status').textContent='QA合成：読込に失敗しました';}
+   if(state==='detail')document.getElementById('status-detail').hidden=false;
+   if(state==='legacy-recovery')document.getElementById('recovery').hidden=false;
+   if(state==='login-hidden')document.getElementById('line-login').hidden=true;
+  },{state,original});}
+  async function checkProjection(state,restored){
+   for(const selector of shellSelectors)assert.equal(await page.locator(selector).isVisible(),restored,state+':'+selector);
+   for(const selector of ['#status','#inventory-help','.inventory-entry'])assert.equal(await page.locator(selector).isVisible(),true,state+':HID_REQUIRED_UI');
+   for(const selector of ['#receiving','#history','#catalog'])assert.equal(await page.locator(selector).isVisible(),false,state+':UNSELECTED_PANEL_REVEALED');
+   report.projectedStates.push({state,syntheticDOMOnly:true,shellRestored:restored});await page.screenshot({path:path.join(out,viewport.width+'-projected-'+state+'.png'),fullPage:true});
+  }
+  for(const state of ['receipt','invalid-receipt','busy','error','detail','legacy-recovery','login-hidden']){await project(state);await checkProjection(state,true);await project('idle-again');await checkProjection('idle-again-'+state,false);}
+  const removed=await page.evaluate(()=>{const out=[];for(const sheet of document.styleSheets){for(let i=sheet.cssRules.length-1;i>=0;i--){const rule=sheet.cssRules[i];if(rule.selectorText?.includes('body:has(#line-login')){out.push({href:sheet.href,index:i,text:rule.cssText});sheet.deleteRule(i);}}}return out;});
+  assert.ok(removed.length>0,'IDLE_CSS_RULE_MISSING');await checkProjection('no-has-rule-fallback',true);
+  await page.evaluate(rules=>{for(const r of rules.reverse()){const sheet=[...document.styleSheets].find(s=>s.href===r.href);sheet.insertRule(r.text,r.index);}},removed);await checkProjection('restored-idle-rule',false);
+  assert.deepEqual(blocked,[],'PROJECTED_STATE_ATTEMPTED_EXTERNAL_REQUEST');assert.deepEqual(errors,[],'PROJECTED_STATE_BROWSER_ERROR');
+  await page.screenshot({path:path.join(out,viewport.width+'-viewport.png')});await page.screenshot({path:path.join(out,viewport.width+'-full.png'),fullPage:true});report.passed=true;
  }catch(e){failed=true;report.error=e.message;await page.screenshot({path:path.join(out,viewport.width+'-FAIL.png'),fullPage:true}).catch(()=>{});}finally{report.blockedExternalRequestCount=blocked.length;report.blockedExternalRequests=blocked;report.errors=errors;reports.push(report);await context.close();}
 }}finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(out,'report.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||'local',syntheticEnvironment:true,reports},null,2));}
 console.log(JSON.stringify({cases:reports.length,passed:reports.filter(r=>r.passed).length}));if(failed)process.exitCode=1;
