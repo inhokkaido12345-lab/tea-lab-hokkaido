@@ -388,33 +388,62 @@ function openInformationTask(kind,itemId){
  const workspace=stockWorkspaces.get(name),select=workspace?.querySelector('select');
  if(select&&[...select.options].some(o=>o.value===itemId)){select.value=itemId;select.onchange?.();select.focus();}
 }
+/** Display-only review intervals. No ledger write, accuracy claim or inferred seasonality. */
+function informationSignal(category,days){
+ if(!category?.count||!Number.isFinite(category.ageDays)||category.ageDays<0)return {state:'unknown',symbol:'?',label:'まだ判断できません',remaining:null};
+ if(!Number.isInteger(days)||days<1||days>365)return {state:'unknown',symbol:'?',label:'目安を確認',remaining:null};
+ const remaining=Math.max(0,days-category.ageDays);
+ if(category.ageDays>=days)return {state:'due',symbol:'!',label:'見直し目安を超過',remaining:0};
+ if(category.ageDays>=Math.ceil(days*0.8))return {state:'soon',symbol:'△',label:'見直しが近い',remaining};
+ return {state:'recent',symbol:'✓',label:'記録は目安内',remaining};
+}
 function renderInformationCoverage(card,item){
  const info=item.information;if(!info||info.version!==1||!Array.isArray(info.categories))return;
- const box=el('div','','information-coverage'),details=el('details',''),summary=el('summary','情報充実度 Lv '+info.level+' / '+info.maximum);
- summary.append(el('span','記録の種類 '+info.level+' / '+info.maximum+' ・精度ではありません','information-caption'),el('span','由来未確認：初期値・試験の記録が含まれる可能性があります','information-caption'));
- const ages=info.categories.filter(c=>c.count>0&&Number.isFinite(c.ageDays)).map(c=>c.ageDays);
- if(ages.length)summary.append(el('span','各種類の最終記録：'+Math.min(...ages)+'〜'+Math.max(...ages)+'日前（Lvは古さを評価しません）','information-caption'));
- details.append(summary,el('p','種類が揃うと手がかりが増えます。件数を増やす必要はありません。','muted'));
- const labels={count:'棚卸形式の記録',receipt:'入荷の記録',measurement:'終了した消費計測',order:'発注の記録'};
- const list=el('ul','','information-records');
- for(const c of info.categories){
-  const line=el('li',''),label=el('strong',labels[c.kind]||'記録');line.append(label);
-  line.append(el('span',c.count?c.count+'件 ・ '+(c.ageDays===0?'24時間以内':c.ageDays+'日前')+' ・由来未確認':'まだ記録がありません'));
-  if(c.kind==='measurement'&&c.count===1)line.append(el('small','1件だけの傾向です。曜日・季節の違いは分かりません。'));
-  list.append(line);
- }
- details.append(list,el('p','記録だけでは実測・初期値・試験を区別できません。0の記録も実棚卸とは断定しません。Lvが揃っても数量の正確さは未確認です。','information-caution'));
- box.append(details);
  const byKind=Object.fromEntries(info.categories.map(c=>[c.kind,c]));
- let kind='count',text='必要なときに、在庫を数えて確認';
- if(!byKind.count?.count)text='まず数えてみる（任意）';
- else if(!byKind.measurement?.count){kind='measurement';text='普段の1袋で消費を測る（任意）';}
- else if(!byKind.receipt?.count){kind='receipt';text='次の納品が来たら入荷を記録';}
- if(!view.permissions.includes('inventory.receive')){box.append(el('small','記録は閲覧できます。保存は担当者に確認してください。'));card.append(box);return;}
- const action=el('button',text,'information-next');action.disabled=busy||!!pending||!view.permissions.includes('inventory.receive');
- action.onclick=()=>openInformationTask(kind,item.id);box.append(action);
- if(!view.permissions.includes('inventory.receive'))box.append(el('small','記録は閲覧できます。保存は担当者に確認してください。'));
- card.append(box);
+ const box=el('section','','information-coverage');box.setAttribute('aria-label','情報の更新目安');
+ const display=el('div','','information-display'),settings=el('details','','information-settings');
+ let countDays=7,measurementDays=30;
+ const age=c=>!c?.count?'記録なし':Number.isFinite(c.ageDays)?(c.ageDays===0?'24時間以内':c.ageDays+'日前'):'日時不明';
+ function paint(){
+  display.replaceChildren();
+  const count=informationSignal(byKind.count,countDays),measurement=informationSignal(byKind.measurement,measurementDays);
+  const active=!!(item.forecast?.open||item.forecast?.measurement);
+  const signals=active?[count]:[count,measurement];
+  const priority=['due','unknown','soon','recent'];let overall=signals.slice().sort((a,b)=>priority.indexOf(a.state)-priority.indexOf(b.state))[0];
+  if(active&&overall.state==='recent')overall={state:'unknown',symbol:'◷',label:'消費の計測を継続中'};
+  const banner=el('div','','information-signal signal-'+overall.state);
+  const icon=el('span',overall.symbol,'signal-icon');icon.setAttribute('aria-hidden','true');
+  banner.append(icon,el('strong',overall.label),el('span','更新の目安 · 正確さの判定ではありません','information-caption'));
+  display.append(banner);
+  const tiles=el('div','','information-tiles');
+  for(const [kind,label,signal,days] of [['count','棚卸',count,countDays],['measurement','消費計測',measurement,measurementDays]]){
+   const c=byKind[kind],ongoing=kind==='measurement'&&active,tile=el('div','','information-tile signal-'+(ongoing?'unknown':signal.state));
+   tile.append(el('strong',(ongoing?'◷':signal.symbol)+' '+label),el('span',ongoing?'計測中 · 使い切るまで続ける':signal.label),el('small','最後の記録：'+age(c)),el('small','仮目安 '+days+'日'+(signal.remaining!==null&&!ongoing?' · あと'+signal.remaining+'日':'')));
+   tiles.append(tile);
+  }
+  display.append(tiles,el('p','由来未確認 · 初期値・試験の記録を含む可能性があります。','information-caution'));
+  let kind='count',text='まず在庫を数える（任意）';
+  if(count.state==='due')text='在庫を数えて見直す（任意）';
+  else if(count.state==='unknown')text='まず在庫を数える（任意）';
+  else if(active){kind='measurement';text='計測中の内容を見る';}
+  else if(measurement.state==='due'||measurement.state==='unknown'){kind='measurement';text='次に使う1袋で消費を測る（任意）';}
+  else if(count.state==='soon')text='都合のよいときに在庫を数える';
+  else if(measurement.state==='soon'){kind='measurement';text='次に使う1袋で消費を測る（任意）';}
+  else text='必要なときだけ在庫を数える';
+  if(view.permissions.includes('inventory.receive')){const action=el('button',text,'information-next');action.disabled=busy||!!pending;action.onclick=()=>openInformationTask(kind,item.id);display.append(action);}
+  else display.append(el('small','閲覧のみ。記録は担当者に確認してください。'));
+  const details=el('details','','information-history'),summary=el('summary','履歴の種類 Lv '+info.level+' / '+info.maximum+' · 精度ではありません');
+  details.append(summary,el('p','記録の種類です。揃っていても更新の信号は別です。件数を増やす必要はありません。','muted'));
+  const labels={count:'棚卸形式の記録',receipt:'入荷の記録',measurement:'終了した消費計測',order:'発注の記録'},list=el('ul','','information-records');
+  for(const c of info.categories){const line=el('li','');line.append(el('strong',labels[c.kind]||'記録'),el('span',c.count?c.count+'件 · '+age(c)+' · 由来未確認':'まだ記録がありません'));if(c.kind==='receipt'||c.kind==='order')line.append(el('small','発生したときだけ記録。古さで催促しません。'));if(c.kind==='measurement'&&c.count===1)line.append(el('small','1件だけの傾向。曜日・季節の違いは不明です。'));list.append(line);}
+  details.append(list,el('p','0の記録も実棚卸とは断定しません。Lvが揃っても数量の正確さは未確認です。次の納品が来たら入荷を記録し、発注は必要なときだけ行ってください。','information-caution'));display.append(details);
+ }
+ settings.append(el('summary','見直し間隔を調整'));
+ const inputs=[];
+ for(const [label,value] of [['棚卸の目安（日）',7],['消費計測の目安（日）',30]]){const wrap=el('label',label),input=el('input','');input.type='number';input.min='1';input.max='365';input.step='1';input.value=String(value);wrap.append(input);settings.append(wrap);inputs.push(input);}
+ const note=el('p','7日／30日は仮の出発点です。品目・季節・家庭ごとの適切な頻度は未確認。変更はこの表示だけで、最新読込・離脱で元に戻ります。','information-caution'),error=el('p','');error.setAttribute('role','status');
+ const apply=el('button','この表示に適用');apply.onclick=()=>{if(busy||pending||globalThis.TlhInventory?.hasPendingReceipt?.()===true)return;const values=inputs.map(n=>Number(n.value));if(values.some(v=>!Number.isInteger(v)||v<1||v>365)){error.textContent='1〜365日の整数を入力してください。';return;}[countDays,measurementDays]=values;paint();error.textContent='表示の目安だけ変更しました。記録は保存していません。';};
+ settings.append(note,apply,error);box.append(display,settings);paint();card.append(box);
 }
 
 function renderStockCards(){

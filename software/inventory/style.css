@@ -173,3 +173,12 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .information-caution { color:#4d514e; }
 .information-next { width:100%; min-height:44px; margin-top:6px; white-space:normal; }
 .information-coverage summary:focus-visible,.information-next:focus-visible { outline:3px solid #146e61; outline-offset:3px; }
+
+/* Update hints use text and shape as well as color. They never rate accuracy. */
+.information-signal{display:grid;grid-template-columns:32px 1fr;gap:4px 8px;align-items:center;padding:10px;border:2px solid currentColor;border-radius:12px}
+.information-signal .information-caption{grid-column:2;font-size:.78rem}
+.signal-icon{border-radius:50%;border:2px solid currentColor;width:28px;height:28px;display:grid;place-items:center;font-weight:800}
+.signal-recent{color:#145235;background:#eef8f0}.signal-soon{color:#684500;background:#fff7d9}.signal-due{color:#8a2424;background:#fff0ef}.signal-unknown{color:#46505c;background:#f0f2f5}
+.information-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.information-tile{padding:10px;border:1px solid currentColor;border-radius:10px;display:flex;flex-direction:column;gap:6px;font-size:.83rem;overflow-wrap:anywhere}.information-tile strong{font-size:.95rem}
+.information-settings label{display:block;margin:8px 0}.information-settings input{min-height:44px;width:100%;box-sizing:border-box}.information-settings button{min-height:44px}.information-history{margin-top:10px}
+@media(forced-colors:active){.information-signal,.information-tile,.signal-icon{border:2px solid CanvasText}}
