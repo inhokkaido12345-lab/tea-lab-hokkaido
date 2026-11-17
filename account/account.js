@@ -14,9 +14,15 @@
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
  // A fixed presentation hint only: never authorization or a redirect destination.
- const personalPurpose=/^\?purpose=personal$/.test(global.location.search||'');
- if(personalPurpose){$('account-reload').setAttribute('href','?purpose=personal');$('account-login-intro').textContent='個人利用のアカウント作成・確認。所属・利用開始コードは不要です。';$('activation-heading').textContent='アカウント作成・任意の招待';}
- $('account-personal-return').addEventListener('click',event=>{if(!registrationConfirmed||!global.TlhAccountNavigation.canLeave())event.preventDefault();});
+ // Compatibility catalog only, not the general service registry. Query is display-only.
+ const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');
+ const personalPurpose=!!purposeMatch;
+ const matches=personalPurpose?(global.TlhActivationServices||[]).filter(x=>x.serviceId===purposeMatch[1]):[];
+ // Same strict relative-path grammar as the activation return link; no URL decoding.
+ const destination=matches.length===1&&typeof matches[0].path==='string'&&!/[\x00-\x20\x7f]/.test(matches[0].path)&&/^\/(?:[a-z0-9-]+\/)+$/.test(matches[0].path)?matches[0]:null;
+ if(destination){$('account-personal-return').setAttribute('href',destination.path);$('account-personal-return').textContent=destination.label+'へ戻る';}
+ if(personalPurpose){$('account-reload').setAttribute('href',destination?'?purpose=personal&service='+destination.serviceId:'?purpose=personal');$('account-login-intro').textContent='個人利用のアカウント作成・確認。所属・利用開始コードは不要です。';$('activation-heading').textContent='アカウント作成・任意の招待';}
+ $('account-personal-return').addEventListener('click',event=>{if(!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave())event.preventDefault();});
  const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。利用開始コードがあれば、続けて受け取れます。',
   ALREADY_REGISTERED:'登録済みの応答を受け取りました。最新の本人情報を再確認しています。',
   SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
@@ -42,7 +48,7 @@
   login.disabled=stopped||loggingIn||ready;$('account-login-section').setAttribute('data-authenticated',String(ready&&!stopped));
   $('account-read-retry').hidden=selfReadState!=='error';$('account-read-retry').disabled=!ready||!global.TlhAccountNavigation.canLeave();status.setAttribute('aria-busy',String(selfReadState==='checking'));
   $('account-apps').hidden=!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
-  $('account-personal-ready').hidden=!personalPurpose||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  $('account-personal-ready').hidden=!personalPurpose||!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
   if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;
   create.disabled=!!activation?.busy()||(!unregistered&&!request)||!!operations?.busy()||stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
