@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
+<title>TLH Account｜共通アカウント</title>
+<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css">
+<!-- 本人確認だけを既存の認証窓口で共用。Inventoryの業務controller、打刻controller、SDKの重複初期化は読み込まない。 -->
+<script src="/software/inventory/employee-login.js" defer></script>
+<script src="/workforce/current-workplace.js" defer></script>
+<script src="/workforce/account-info.js" defer></script>
+<script src="/workforce/staff-enrollment.js" defer></script>
+<script src="account.js" defer></script>
+</head>
+<body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
+<main>
+<section aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
+<p>TLHアカウントの登録と、勤務先からの従業員招待の受取ができます。在庫管理・勤怠のどちらを使う場合も、ここから登録できます。</p>
+<button id="account-login" type="button">LINEでログイン</button>
+<p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
+<a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
+<div id="account-tools" hidden>
+<section aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
+<button id="account-info-check" type="button" disabled>登録情報を更新</button>
+<p id="account-info-status" role="status" aria-live="polite"></p>
+<details><summary>登録情報の詳細</summary><div id="account-info-result" hidden><dl id="account-info-fields"></dl></div></details>
+<iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
+<details><summary>TLHアカウントをまだ持っていない方</summary>
+<p>このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。一般登録の受付が停止中の場合は、その旨を表示します。従業員の招待コードがある方は、下の「従業員として登録」から登録できます。</p>
+<button id="account-create" type="button">自分のTLHアカウントを作成</button>
+<p id="account-create-status" role="status" aria-live="polite"></p>
+<iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
+</details></section>
+<section aria-labelledby="staff-heading"><h2 id="staff-heading">従業員として登録</h2>
+<p data-current-workplace></p><p>この勤務先から受け取った招待コードを入力し、本人のLINEと従業員情報を紐づけます。打刻アプリを利用しない方も、この画面で登録できます。</p>
+<fieldset id="account-enrollment-lock" disabled><legend>従業員の招待・登録</legend>
+<form id="staff-claim-form"><label for="staff-claim-code">招待コード</label>
+<textarea id="staff-claim-code" rows="3" required maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+<button id="staff-claim" type="submit">このLINEで招待を受け取る</button></form>
+<details><summary>この勤務先の管理者の方</summary>
+<p>管理者権限を確認した後に、従業員の事前登録・招待を行います。勤怠・在庫で共通の勤務先に対する登録です。この画面では配属を設定しません。</p>
+<button id="staff-check" type="button">従業員の招待権限を確認</button>
+<div id="staff-admin" hidden><form id="staff-issue-form"><fieldset id="staff-fields"><legend>招待する従業員</legend>
+<label>社員番号<input id="staff-employee-code" required maxlength="32" pattern="[A-Z0-9][A-Z0-9_-]{2,31}" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+<label>氏名<input id="staff-name" required maxlength="80" autocomplete="off"></label>
+<label>入社日（任意）<input id="staff-hire-date" type="date"></label></fieldset>
+<p>招待の再発行は、社員番号・氏名の空白・入社日も登録済みの情報に合わせてください。</p>
+<button id="staff-issue" type="submit">従業員を事前登録して招待を発行</button></form>
+<div id="staff-invite-box" hidden><label for="staff-issued-code">発行済み招待コード</label><textarea id="staff-issued-code" rows="3" readonly autocomplete="off" spellcheck="false"></textarea><button id="staff-copy" type="button">招待コードをコピー</button></div>
+<button id="staff-revoke" type="button">未使用招待を取り消す</button><button id="staff-reset" type="button">登録入力をやり直す</button></div>
+</details><p id="staff-status" role="status" aria-live="polite"></p>
+<iframe name="tlhStaffFrame" title="従業員の招待・登録の応答" hidden></iframe>
+</fieldset></section>
+</div>
+<section aria-labelledby="apps-heading"><h2 id="apps-heading">アプリへ戻る</h2>
+<p>登録が完了したら、利用するアプリでLINEログインしてください。従業員の所属は共通です。在庫を使うために勤怠アプリを開く必要はありません。</p>
+<nav aria-label="TLHアプリ"><a href="/software/inventory/">在庫管理を開く</a><a href="/software/worktime/">勤怠・シフトを開く</a></nav></section>
+<noscript>アカウントの登録にはJavaScriptを有効にしてください。</noscript>
+</main><footer>TEA LABORATORY HOKKAIDO</footer></body></html>

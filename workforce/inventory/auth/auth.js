@@ -15,7 +15,7 @@
  const reauthenticate=new URLSearchParams(global.location.search||'').get('reauth')==='1';
  let ready=false,done=false,stopped=false,channel=null,returnTimer=null;
  if(global.location.origin!==origin||![path,path+'index.html'].includes(global.location.pathname)||!/^[a-f0-9]{32}$/.test(nonce||'')){
-  status.textContent='元の在庫画面を再読み込みし、「LINEでログイン」から開いてください。';return;
+  status.textContent='元の画面を再読み込みし、「LINEでログイン」から開いてください。';return;
  }
  try{if(global.BroadcastChannel)channel=new global.BroadcastChannel('tlh-inventory-login-'+nonce);}catch{}
  if(!global.opener&&!channel){
@@ -24,7 +24,7 @@
  function receive(data,send){
   if(stopped||!data||data.nonce!==nonce)return;
   if(data.type==='TLH_INVENTORY_LOGIN_ACK'&&done){
-   clearTimeout(returnTimer);status.textContent='在庫画面へ本人確認の結果を渡しました。元の画面へ戻ってください。';
+   clearTimeout(returnTimer);status.textContent='元の画面へ本人確認の結果を渡しました。元の画面へ戻ってください。';
    try{global.close();}catch{}return;
   }
   if(!ready||done||data.type!=='TLH_INVENTORY_LOGIN_REQUEST')return;
@@ -53,14 +53,14 @@
    // 要求の目印だけを維持。ID tokenやLINE subをredirectUriに載せない。
    global.liff.login({redirectUri:origin+path+'?request='+nonce});return;
   }
-  ready=true;status.textContent='LINE本人確認が完了しました。在庫画面へ結果を返しています…';
+  ready=true;status.textContent='LINE本人確認が完了しました。元の画面へ結果を返しています…';
   returnTimer=setTimeout(()=>{
-   status.textContent='元の在庫画面へ自動で戻れませんでした。同じブラウザーの元画面に戻って状態を確認してください。（AUTH_RETURN_UNAVAILABLE）';
+   status.textContent='元の画面へ自動で戻れませんでした。同じブラウザーの元画面に戻って状態を確認してください。（AUTH_RETURN_UNAVAILABLE）';
   },12000);
   const packet={type:'TLH_INVENTORY_LOGIN_READY',nonce};
   if(global.opener)try{global.opener.postMessage(packet,origin);}catch{}
   channel?.postMessage(packet);
  }catch{
-  status.textContent='LINE本人確認に接続できません。元の在庫画面からやり直してください。（AUTH_INIT_FAILED）';
+  status.textContent='LINE本人確認に接続できません。元の画面からやり直してください。（AUTH_INIT_FAILED）';
  }
 })(window);

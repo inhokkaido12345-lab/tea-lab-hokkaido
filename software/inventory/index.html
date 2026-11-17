@@ -16,10 +16,10 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=9bf3b1576aa5"><script src="config.js" defer></script><script src="employee-login.js?v=9bf3b1576aa5" defer></script><script src="employee-transport.js?v=9bf3b1576aa5" defer></script><script src="app.js?v=9bf3b1576aa5" defer></script>
+<link rel="stylesheet" href="style.css?v=d447472aec95"><script src="config.js" defer></script><script src="employee-login.js?v=d447472aec95" defer></script><script src="employee-transport.js?v=d447472aec95" defer></script><script src="app.js?v=d447472aec95" defer></script>
 <link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
-<header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/workforce/">TLH Work Timeへ</a></header>
+<header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p><a href="/account/" target="_blank" rel="noopener">TLHアカウント・従業員登録（別画面）</a> ／ <a href="/software/worktime/">TLH Work Timeへ</a></header>
 <main>
 <aside>TLHアカウントでログインし、参加している店舗を選んで利用します。新しく使い始める品目は、規格を確認して棚卸または初回入荷を登録してください。<details><summary>ホーム画面への追加</summary><p>iPhoneはSafariの共有→ホーム画面に追加。AndroidはChromeのメニュー→ホーム画面に追加／アプリをインストール。オンライン接続が必要です。</p></details></aside><div id="inventory-stores" class="store-context"></div><button id="line-login" class="primary wide" hidden>LINEでログインして在庫を開く</button><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
 <div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
