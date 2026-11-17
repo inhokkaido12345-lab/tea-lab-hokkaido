@@ -11,7 +11,7 @@
  'use strict';
  const $=id=>document.getElementById(id),login=$('account-login'),status=$('account-status');
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
- let common=null,grants=null;
+ let common=null,grants=null,access=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
  const messages=Object.freeze({CREATED:'TLHアカウントを作成しました。利用するアプリへ戻り、LINEログインしてください。',
   ALREADY_REGISTERED:'このLINEのTLHアカウントは登録済みです。利用するアプリへ戻れます。',
@@ -44,8 +44,9 @@
    global.TlhStaffEnrollment.init({gasUrl:endpoint,liff:proof});
    common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls});
    grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls});
+   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof});
    ready=true;$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
-   status.textContent='LINE本人確認が完了しました。アカウントの登録・招待の受取ができます。';viewer.load();
+   status.textContent='LINE本人確認が完了しました。アカウントの登録・招待の受取ができます。';viewer.load();access?.load();
   }catch{
    if(!stopped)status.textContent='本人確認を開始できませんでした。ポップアップの許可と通信状態を確認し、もう一度お試しください。';
   }finally{loggingIn=false;controls();}

@@ -14,6 +14,7 @@
 <script src="/workforce/staff-enrollment.js" defer></script>
 <script src="common-affiliation.js" defer></script>
 <script src="common-grants.js" defer></script>
+<script src="access-overview.js" defer></script>
 <script src="account.js" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
@@ -24,6 +25,7 @@
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
 <div id="account-tools" hidden>
+<section aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">このアカウントで何ができる？</h2><p>所属・運営ロール・業務権限を分けて確認します。未接続や未確認を「利用可能」とは表示しません。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
 <section aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
 <button id="account-info-check" type="button" disabled>登録情報を更新</button>
 <p id="account-info-status" role="status" aria-live="polite"></p>
