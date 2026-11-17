@@ -13,7 +13,7 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
- const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>global.TlhInventoryLogin.getToken(),launchers:global.TlhActivationServices||[],canLeave:()=>global.TlhAccountNavigation?.canLeave()===true});
+ const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>global.TlhInventoryLogin.getToken(),launchers:global.TlhAccountServiceLaunchers||[],canLeave:()=>global.TlhAccountNavigation?.canLeave()===true});
  // A fixed presentation hint only: never authorization or a redirect destination.
  // Compatibility catalog only, not the general service registry. Query is display-only.
  const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');
@@ -48,7 +48,7 @@
  function controls(){
   login.disabled=stopped||loggingIn||ready;$('account-login-section').setAttribute('data-authenticated',String(ready&&!stopped));
   $('account-read-retry').hidden=selfReadState!=='error';$('account-read-retry').disabled=!ready||!global.TlhAccountNavigation.canLeave();status.setAttribute('aria-busy',String(selfReadState==='checking'));
-  $('account-apps').hidden=!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
+  $('account-apps').hidden=true; // App discovery is centralized in the service category; P0 return CTAs stay local.
   $('account-personal-ready').hidden=!personalPurpose||!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
   if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;

@@ -21,11 +21,12 @@
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
 <script src="tabs.js?v=35137a4709f9286e" defer></script>
-<script src="service-shell/signed-service-reader.js?v=46ed80031cb6393f" defer></script>
+<script src="service-shell/signed-service-reader.js?v=f3597e943f255a56" defer></script>
 <script src="service-shell/verified-overview-scopes.js?v=dae5f1ab2ee29ad8" defer></script>
-<script src="service-shell/service-management.js?v=ffce030ec9d1b8ba" defer></script>
+<script src="service-shell/service-management.js?v=30408cacf734249f" defer></script>
+<script src="service-shell/compatibility-launchers.js?v=633e5f797c56e013" defer></script>
 <script src="service-shell/account-service-category.js?v=b9b272d7f682a296" defer></script>
-<script src="account.js?v=08c4abafef1962c0" defer></script>
+<script src="account.js?v=64b6319450b63bcc" defer></script>
 <link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=5405fbe59f12c426">
 </head>
 <body class="account-category-shell"><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
@@ -147,9 +148,6 @@
 <iframe id="platform-ops-frame" name="platformOperationsFrame" title="運営APIの確認応答" hidden></iframe><p><span id="account-platform-reason">Platform運営権限は未確認です。会社・店舗の管理権限とは別です。</span> <a id="account-platform-link" href="rollout.html" hidden>Platform運営：共通所属の初期導入・COMMON有効化／停止</a></p><p>会社・店舗の業務管理権限は別途必要です。TLH運営権限だけで会社業務へアクセスできるとは限りません。</p></section>
 </div>
 <details id="account-management-details"><summary>管理情報を読み込めませんでした（再確認）</summary><p id="account-management-reason" role="status"></p><button id="account-management-check" type="button" disabled>店舗情報を再読込</button><p id="account-company-reason" role="status"></p><p id="account-platform-tab-reason" role="status"></p><button id="account-role-check" type="button" disabled>管理情報を再読込</button></details>
-<details id="account-apps"><summary>その他のアプリ</summary>
-<p>招待を受け取ったら、同じLINEでアプリへ戻れます。</p>
-
-<nav aria-label="TLHアプリ"><a href="/software/inventory/">会社在庫へ戻る（個人用在庫もこちら）</a><a href="/software/worktime/">勤怠・シフトを開く</a></nav></details>
+<details id="account-apps" hidden><summary>サービス管理</summary><p>アプリの利用状態はサービス管理で確認できます。</p></details>
 <noscript>アカウントの登録にはJavaScriptを有効にしてください。</noscript>
 </main><footer>TEA LABORATORY HOKKAIDO</footer></body></html>
