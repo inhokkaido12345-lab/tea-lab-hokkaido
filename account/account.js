@@ -1,0 +1,91 @@
+/**
+ * 共通アカウントの入口。LINE証明→既存本人情報・登録・従業員招待へ接続する。
+ * account/index.htmlから呼ぶ。打刻・シフト・在庫の業務controllerは初期化しない。
+ * 削除影響: この入口だけ停止。既存アプリ・ID・原簿には変更しない。
+ * 概念: composition root（既存機能を組み合わせる起点）とidentity/authorizationの分離。
+ * 改造: 認証はInventoryの固定popup broker、本人情報・招待はworkforceのcontrollerと契約を共有。
+ * 秘密はページメモリとPOST bodyだけ。一般登録の受付・権限はサーバーが判断する。
+ * 検証: tests/common-account.test.mjs、既存account-info/staff-enrollment試験。実登録は模擬試験に使わない。
+ */
+(function(global){
+ 'use strict';
+ const $=id=>document.getElementById(id),login=$('account-login'),status=$('account-status');
+ const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
+ const endpoint=global.TlhAccountInfo.config.gasUrl;
+ const messages=Object.freeze({CREATED:'TLHアカウントを作成しました。利用するアプリへ戻り、LINEログインしてください。',
+  ALREADY_REGISTERED:'このLINEのTLHアカウントは登録済みです。利用するアプリへ戻れます。',
+  SIGNUP_CLOSED:'一般アカウントの新規登録は受付停止中です。従業員の招待コードがある方は、この画面で招待を受け取れます。',
+  IDENTITY_REVIEW_REQUIRED:'登録状態の確認が必要です。管理者に連絡してください。',
+  INVALID_NONCE:'登録リクエストを確認できませんでした。',INVALID_ID_TOKEN_FORMAT:'本人確認情報を確認できませんでした。',
+  LINE_VERIFY_REJECTED:'本人確認が拒否されました。保存状態を確認してから、画面を開き直してください。',
+  REGISTRATION_UNAVAILABLE:'登録結果を確認できません。同じ登録の結果を確認してください。',
+  REGISTRATION_ERROR:'登録結果を確認できません。同じ登録の結果を確認してください。'});
+ let stopped=false,loggingIn=false,ready=false,viewer=null,request=null;
+ const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
+ // GAS応答は入れ子iframeから届く。別iframeの同名メッセージを受け付けない。
+ function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;}
+ function controls(){
+  login.disabled=stopped||loggingIn||ready;
+  create.disabled=stopped||!ready||!!request?.timer;
+  enrollment.disabled=stopped||!ready||!!request;
+  createStatus.setAttribute('aria-busy',String(!!request?.timer));
+ }
+ login.addEventListener('click',async()=>{
+  if(stopped||loggingIn||ready||global!==global.top)return;
+  loggingIn=true;controls();status.textContent='LINEで本人確認しています…';
+  try{
+   await global.TlhInventoryLogin.login();if(stopped)return;
+   if(!global.TlhInventoryLogin.getToken())throw Error('AUTH_REQUIRED');
+   const proof=Object.freeze({getIDToken:()=>stopped?null:global.TlhInventoryLogin.getToken()});
+   viewer=global.TlhAccountInfo.init({gasUrl:endpoint,liff:proof});
+   global.TlhStaffEnrollment.init({gasUrl:endpoint,liff:proof});
+   ready=true;$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
+   status.textContent='LINE本人確認が完了しました。アカウントの登録・招待の受取ができます。';viewer.load();
+  }catch{
+   if(!stopped)status.textContent='本人確認を開始できませんでした。ポップアップの許可と通信状態を確認し、もう一度お試しください。';
+  }finally{loggingIn=false;controls();}
+ });
+ /** 一般登録だけを明示POST。結果不明時は同じnonceと本人で照会し、他の保存を開始させない。 */
+ function submitRegistration(){
+  if(stopped||!ready||request?.timer||$('staff-status').getAttribute('aria-busy')==='true'||global!==global.top)return;
+  const proof=global.TlhInventoryLogin.getToken();if(!proof)return;
+  if(!request){
+   if(!global.confirm('このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。続けますか？'))return;
+   request={nonce:random(),timer:null};
+  }
+  const current=request;
+  current.timer=setTimeout(()=>{
+   if(stopped||request!==current)return;current.timer=null;
+   createStatus.textContent='登録結果を確認できません。同じ登録の結果を確認してください。画面を離れる前に結果を確認してください。';
+   create.textContent='同じ登録の結果を確認';controls();
+  },30000);
+  controls();createStatus.textContent='アカウントの登録結果を確認しています…';
+  const form=document.createElement('form');form.method='POST';form.action=endpoint;form.target='tlhCommonAccountCreateFrame';form.hidden=true;
+  for(const [name,value] of Object.entries({action:'bridgeCreateAccount',nonce:current.nonce,idToken:proof})){
+   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  try{global.TlhCurrentWorkplace.submit(form);}catch{
+   clearTimeout(current.timer);current.timer=null;create.textContent='同じ登録の結果を確認';
+   createStatus.textContent='送信結果を確認できません。同じ登録の結果を確認してください。';controls();
+  }finally{form.remove();}
+ }
+ create.addEventListener('click',submitRegistration);
+ global.addEventListener('message',event=>{
+  const current=request,d=event.data;
+  if(stopped||!current||!related(event.source,$('account-create-frame').contentWindow)||
+   !(event.origin==='null'||event.origin==='https://script.google.com'||event.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(event.origin))||
+   !d||Object.keys(d).sort().join(',')!=='code,nonce,type'||d.type!=='TLH_BRIDGE_ACCOUNT_CREATED'||d.nonce!==current.nonce||!Object.hasOwn(messages,d.code))return;
+  clearTimeout(current.timer);current.timer=null;createStatus.textContent=messages[d.code];
+  if(['REGISTRATION_UNAVAILABLE','REGISTRATION_ERROR'].includes(d.code)){create.textContent='同じ登録の結果を確認';controls();return;}
+  request=null;create.textContent='自分のTLHアカウントを作成';controls();
+  if(['CREATED','ALREADY_REGISTERED'].includes(d.code))viewer.load();
+ });
+ global.addEventListener('pagehide',()=>{
+  stopped=true;ready=false;if(request)clearTimeout(request.timer);request=null;viewer=null;
+  $('account-tools').hidden=true;createStatus.textContent='';status.textContent='画面を離れたため本人確認情報を消去しました。';controls();
+ });
+ // 戻るキャッシュに以前の本人・招待情報を復活させない。保存の自動再送はしない。
+ global.addEventListener('pageshow',event=>{if(event.persisted)global.location.reload();});
+ controls();
+})(window);
