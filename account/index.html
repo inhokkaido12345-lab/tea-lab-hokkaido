@@ -4,22 +4,22 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>TLH Account｜共通アカウント</title>
-<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=309d16162691d54e">
+<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=600f0eccb66ed8f3">
 <!-- 本人確認だけを既存の認証窓口で共用。Inventoryの業務controller、打刻controller、SDKの重複初期化は読み込まない。 -->
 <script src="/software/inventory/employee-login.js?v=6304a8f02a029d31" defer></script>
 <script src="/workforce/current-workplace.js?v=0c1479b7fa9c1d89" defer></script>
 <script src="/workforce/common-affiliation-info.js?v=17ee735147e975fa" defer></script>
 <script src="/workforce/company-employment-info.js?v=5e3e61e8e900bf25" defer></script>
-<script src="/workforce/account-info.js?v=8bac20bd9961602a" defer></script>
-<script src="/workforce/staff-enrollment.js?v=44698d443d4e06a7" defer></script>
+<script src="/workforce/account-info.js?v=0b094cbdbe8398ad" defer></script>
+<script src="/workforce/staff-enrollment.js?v=dfa6a51bc0eeeca8" defer></script>
 <script src="management-picker.js?v=0d67556ffeb228cc" defer></script>
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=00a4c7551e1148fe" defer></script>
-<script src="access-overview.js?v=0fe89b1edc49be6a" defer></script>
+<script src="access-overview.js?v=ff277742d27bc34a" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
-<script src="tabs.js?v=7cb1f79be28dcff5" defer></script>
-<script src="account.js?v=156e009eb372ec2d" defer></script>
+<script src="tabs.js?v=ca52759a7110b7b3" defer></script>
+<script src="account.js?v=6668b24cdae82cc3" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
@@ -29,19 +29,19 @@
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
 <div id="account-tools" hidden>
-<nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">統括店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p><p id="account-management-reason" role="status"></p><button id="account-management-check" type="button" disabled>管理できる店舗を確認・再確認</button><p id="account-company-reason" role="status"></p><p id="account-platform-tab-reason" role="status"></p><button id="account-role-check" type="button" disabled>法人・TLH管理の権限を確認・再確認</button>
+<nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">統括店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p><p id="account-management-reason" role="status"></p><button id="account-management-check" type="button" disabled>店舗情報を再読込</button><p id="account-company-reason" role="status"></p><p id="account-platform-tab-reason" role="status"></p><button id="account-role-check" type="button" disabled>管理情報を再読込</button>
 <section data-account-panel="self" aria-labelledby="access-overview-heading"><h2 id="access-overview-heading">このアカウントで何ができる？</h2><p>所属・運営ロール・業務権限を分けて確認します。未接続や未確認を「利用可能」とは表示しません。</p><button id="access-overview-check" type="button">利用条件を更新</button><p id="access-overview-status" role="status" aria-live="polite"></p><div id="access-overview-result"></div><iframe id="access-overview-frame" name="tlhAccountAccessOverviewFrame" title="本人の利用条件の応答" hidden></iframe></section>
 <section data-account-panel="self" aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
 <button id="account-info-check" type="button" disabled>登録情報を更新</button>
 <p id="account-info-status" role="status" aria-live="polite"></p>
-<details><summary>登録情報の詳細</summary><p>本人のTLHアカウントと、この勤務先の従業員情報・勤怠権限を表示します。ここに表示する管理者権限は勤怠の権限です。</p><div id="account-info-result" hidden><dl id="account-info-fields"></dl></div></details>
+<details id="account-details"><summary>勤怠の登録情報</summary><p>本人のTLHアカウントと、この勤務先の従業員情報・勤怠権限を表示します。ここに表示する管理者権限は勤怠の権限です。</p><div id="account-info-result" hidden><dl id="account-info-fields"></dl></div></details>
 <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
-<section aria-labelledby="common-self-heading"><h3 id="common-self-heading">TLH Platform：共通アカウント・所属</h3>
+<details><summary>共通所属の詳細</summary><section aria-labelledby="common-self-heading"><h3 id="common-self-heading">TLH Platform：共通アカウント・所属</h3>
 <p>雇用情報・勤怠権限とは別です。ここに所属があっても、打刻や在庫の利用許可にはなりません。</p>
 <button id="common-self-check" type="button">共通所属を更新</button><p id="common-self-status" role="status" aria-live="polite"></p><div id="common-self-result"></div>
-<iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section>
+<iframe id="common-self-frame" name="tlhCommonSelfFrame" title="本人の共通所属の応答" hidden></iframe></section></details>
 
-<details open><summary>① TLHアカウントを作る（未登録の方）</summary>
+<details id="account-signup" hidden open><summary>TLHアカウントを作る（未登録の方）</summary>
 <p>このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。一般登録の受付が停止中の場合は、その旨を表示します。所属招待はアカウント作成後に受け取ります。受付停止中は管理者へ確認してください。勤怠招待を代替の登録手順には使いません。</p>
 <button id="account-create" type="button">自分のTLHアカウントを作成</button>
 <p id="account-create-status" role="status" aria-live="polite"></p>
@@ -70,10 +70,10 @@
 <label>変更理由<input id="grant-reason" required maxlength="200" autocomplete="off"></label></fieldset><button id="grant-preview-button" type="submit">変更前・変更後を確認</button></form>
 <div id="grant-preview" hidden><p id="grant-summary"></p><button id="grant-commit" type="button">確認した権限変更を確定</button></div><button id="grant-retry" type="button" hidden>同じ変更の結果を確認</button><button id="grant-cancel" type="button" hidden>やめる</button>
 <p id="grant-status" role="status" aria-live="polite"></p><iframe id="grant-frame" name="tlhCommonGrantFrame" title="在庫業務権限の変更応答" hidden></iframe></fieldset></details></section>
-<section data-account-panel="self" hidden aria-labelledby="company-self-heading"><h3 id="company-self-heading">会社別の本人・雇用情報</h3>
+<details data-account-panel="self" hidden><summary>会社別の雇用情報</summary><section aria-labelledby="company-self-heading"><h3 id="company-self-heading">会社別の本人・雇用情報</h3>
 <p>会社を選んで確認します。ここで選んでも、打刻先の店舗や権限は切り替わりません。</p>
 <button id="company-self-check" type="button">会社一覧を更新</button><label>確認する会社<select id="company-self-company" disabled><option value="">会社を選択</option></select></label>
-<p id="company-self-status" role="status" aria-live="polite"></p><div id="company-self-result"></div><iframe id="company-self-frame" name="tlhCompanyEmploymentFrame" title="会社別本人情報の応答" hidden></iframe></section>
+<p id="company-self-status" role="status" aria-live="polite"></p><div id="company-self-result"></div><iframe id="company-self-frame" name="tlhCompanyEmploymentFrame" title="会社別本人情報の応答" hidden></iframe></section></details>
 <details data-account-panel="self" hidden><summary>別手続き：従業員情報・勤怠の登録</summary>
 <section aria-labelledby="staff-heading"><h2 id="staff-heading">従業員として登録</h2>
 <p data-current-workplace></p><p>この勤務先から受け取った招待コードを入力し、本人のLINEと従業員情報・勤怠の従業員権限を紐づけます。打刻アプリを利用しない方も、この画面で登録できます。アカウントだけを作る場合は、「アカウント基本情報」タブのアカウント作成を使ってください。</p>

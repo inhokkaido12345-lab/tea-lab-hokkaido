@@ -75,7 +75,7 @@
       }catch(_e){loginPending=false;n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';controls();}
     });
     function load(){
-      if(pending||stopped||loginRequired||loginPending)return;common?.load();company?.load();clear();
+      if(pending||stopped||loginRequired||loginPending)return;if(options.loadRelated!==false){common?.load();company?.load();}clear();
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
       if(!proof){n.status.textContent='LINEログインが必要です。';requireLogin();return;}

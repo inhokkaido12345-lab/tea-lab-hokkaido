@@ -5,8 +5,8 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
-export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false}={}){
- const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,refreshes=0,enrollmentInits=0,loginCalls=0,clearCalls=0,release;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
+export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false,overviewState='not_registered',overviewData=null}={}){
+ const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,refreshes=0,scopeReads=0,overviewReads=0,enrollmentInits=0,loginCalls=0,clearCalls=0,release,verified;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
   addEventListener(k,v){this.events[k]=v;},appendChild(v){this.children.push(v);},remove(){},
@@ -17,14 +17,15 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=f
  const window={confirm:()=>true,location:{reload(){window.reloaded=true;}},addEventListener(k,v){const old=handlers[k];handlers[k]=old?e=>{old(e);v(e);}:v;},
   TlhInventoryLogin:{clearToken(){clearCalls++;order.push('clear');},async login(){loginCalls++;order.push('login');if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
   TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
-  TlhAccountAccessOverview:{init(){return {load(){},refresh(){refreshes++;}};}},
+  TlhAccountAccessOverview:{init(o){verified=o.onVerified;return {load(){overviewReads++;verified(overviewData,overviewState);},refresh(){refreshes++;}};}},
+  TlhCommonAffiliation:{init(){return {busy:()=>false,syncPicker(){},checkManagement(){scopeReads++;}};}},
   TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),proof);enrollmentInits++;}},
   TlhCurrentWorkplace:{submit(form){form.submit();}}};window.top=window;
  const context={window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}};
  if(realBroker){window.open=url=>{opened.push(url);return popup;};vm.runInNewContext(fs.readFileSync(new URL('../software/inventory/employee-login.js',import.meta.url),'utf8'),context);}
  vm.runInNewContext(source,context);
- return {n,handlers,sent,timers,window,order,opened,popup,get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
-  releaseLogin:()=>release(),get reads(){return reads;},get refreshes(){return refreshes;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
+ return {verify:(d,state)=>verified(d,state),n,handlers,sent,timers,window,order,opened,popup,get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
+  releaseLogin:()=>release(),get reads(){return reads;},get refreshes(){return refreshes;},get scopeReads(){return scopeReads;},get overviewReads(){return overviewReads;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
   reply(code,overrides={},event={}){handlers.message({origin:'https://script.google.com',source:n('account-create-frame').contentWindow,
    data:{type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:sent.at(-1).nonce,code,...overrides},...event});}};
 }
@@ -34,9 +35,9 @@ test('common account starts without automatic login, account writes or employmen
  assert.doesNotMatch(html,/src="[^"]*(?:punch|layout|schedule|app\.js|liff\/edge)/);
  assert.doesNotMatch(source,/localStorage|sessionStorage|innerHTML|console\./);
 });
-test('explicit login reads self once and initializes existing enrollment without writing',async()=>{
+test('explicit login defers legacy self reads and initializes existing enrollment without writing',async()=>{
  const h=harness();await h.login();await h.login();
- assert.equal(h.loginCalls,1);assert.equal(h.reads,1);assert.equal(h.enrollmentInits,1);assert.equal(h.sent.length,0);
+ assert.equal(h.loginCalls,1);assert.equal(h.reads,0);assert.equal(h.enrollmentInits,1);assert.equal(h.sent.length,0);
  assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.n('account-tools').hidden,false);
 });
 test('late login completion after departure cannot initialize registration or read identity',async()=>{
@@ -55,24 +56,24 @@ test('unknown result retains the nonce and blocks enrollment while retrying the 
  h.create();assert.equal(h.sent.length,2);assert.equal(h.sent[1].nonce,nonce);
  h.reply('REGISTRATION_UNAVAILABLE');assert.equal(h.n('account-enrollment-lock').disabled,true);
  h.create();assert.equal(h.sent[2].nonce,nonce);h.reply('ALREADY_REGISTERED');
- assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.refreshes,1);
+ assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,0);assert.equal(h.refreshes,1);
 });
 test('forged origin, source, nonce, code and extra fields cannot resolve a registration',async()=>{
  const h=harness();await h.login();h.create();
  for(const [overrides,event]of [[{nonce:'0'.repeat(32)},{}],[{},{origin:'https://evil.test'}],[{},{source:{}}],[{code:'UNKNOWN'},{}],[{role:'ADMIN'},{}]]){
-  h.reply('CREATED',overrides,event);assert.equal(h.n('account-enrollment-lock').disabled,true);assert.equal(h.reads,1);
+  h.reply('CREATED',overrides,event);assert.equal(h.n('account-enrollment-lock').disabled,true);assert.equal(h.reads,0);
  }
- h.reply('CREATED');assert.equal(h.reads,1);assert.equal(h.refreshes,1);assert.equal(h.n('account-enrollment-lock').disabled,false);
+ h.reply('CREATED');assert.equal(h.reads,0);assert.equal(h.refreshes,1);assert.equal(h.n('account-enrollment-lock').disabled,false);
 });
 test('closed signup remains closed and employee invitation remains available',async()=>{
  const h=harness();await h.login();h.create();h.reply('SIGNUP_CLOSED');
  assert.match(h.n('account-create-status').textContent,/受付停止中/);assert.equal(h.n('account-enrollment-lock').disabled,false);
- assert.equal(h.reads,1);assert.equal(h.sent.length,1);
+ assert.equal(h.reads,0);assert.equal(h.sent.length,1);
 });
 test('staff operation in progress blocks account creation; departure rejects late result',async()=>{
  const h=harness();await h.login();h.n('staff-status').setAttribute('aria-busy','true');h.create();assert.equal(h.sent.length,0);
  h.n('staff-status').setAttribute('aria-busy','false');h.create();h.handlers.pagehide();h.reply('CREATED');
- assert.equal(h.reads,1);assert.equal(h.n('account-tools').hidden,true);assert.equal(h.timers.size,0);
+ assert.equal(h.reads,0);assert.equal(h.n('account-tools').hidden,true);assert.equal(h.timers.size,0);
  h.handlers.pageshow({persisted:true});assert.equal(h.window.reloaded,true);
 });
 test('all existing enrollment and self-info DOM contracts exist on the standalone page',()=>{
@@ -85,17 +86,26 @@ test('all existing enrollment and self-info DOM contracts exist on the standalon
 });
 test('signup rate limit is a known refusal, shows retry guidance without claiming creation or blocking old invitations',async()=>{
  const h=harness();await h.login();h.create();h.reply('SIGNUP_RATE_LIMITED');
- assert.match(h.n('account-create-status').textContent,/新規登録が集中/);assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.sent.length,1);assert.equal(h.n('account-create').disabled,false);
+ assert.match(h.n('account-create-status').textContent,/新規登録が集中/);assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,0);assert.equal(h.sent.length,1);assert.equal(h.n('account-create').disabled,false);
 });
 test('BFCache return reloads a clean account page without replaying unresolved registration',async()=>{const h=harness();await h.login();h.create();const count=h.sent.length;h.handlers.pagehide();assert.equal(h.n('account-tools').hidden,true);h.handlers.pageshow({persisted:false});assert.equal(h.window.reloaded,undefined);h.handlers.pageshow({persisted:true});assert.equal(h.window.reloaded,true);assert.equal(h.sent.length,count);assert.equal(h.n('account-tools').hidden,true);});
 
 test('explicit Account login clears rejected broker proof first, without automatic writes or repeated resets',async()=>{
- const h=harness();assert.equal(h.clearCalls,0);await h.login();assert.deepEqual(h.order,['clear','login']);assert.equal(h.clearCalls,1);assert.match(h.n('account-status').textContent,/本人確認情報を受け取り/);assert.doesNotMatch(h.n('account-status').textContent,/本人確認が完了/);await h.login();assert.equal(h.clearCalls,1);h.create();[...h.timers.values()][0]();await h.login();assert.equal(h.clearCalls,1);assert.equal(h.sent.length,1);
+ const h=harness();assert.equal(h.clearCalls,0);await h.login();assert.deepEqual(h.order,['clear','login']);assert.equal(h.clearCalls,1);assert.match(h.n('account-status').textContent,/未登録/);assert.doesNotMatch(h.n('account-status').textContent,/本人確認が完了/);await h.login();assert.equal(h.clearCalls,1);h.create();[...h.timers.values()][0]();await h.login();assert.equal(h.clearCalls,1);assert.equal(h.sent.length,1);
 });
 test('fresh Account page and reload both send real broker through reauth=1, never stale default popup',async()=>{
- for(let page=0;page<2;page++){const h=harness({realBroker:true});const done=h.login();assert.equal(h.opened.length,1);assert.match(h.opened[0],/\&reauth=1$/);const nonce=h.opened[0].match(/request=([a-f0-9]{32})/)[1];h.handlers.message({origin:'https://tealabhokkaido.com',source:h.popup,data:{type:'TLH_INVENTORY_LOGIN_RESULT',nonce,code:'OK',idToken:'fixture.jwt.proof'}});await done;assert.equal(h.reads,1);assert.equal(h.sent.length,0);}
+ for(let page=0;page<2;page++){const h=harness({realBroker:true});const done=h.login();assert.equal(h.opened.length,1);assert.match(h.opened[0],/\&reauth=1$/);const nonce=h.opened[0].match(/request=([a-f0-9]{32})/)[1];h.handlers.message({origin:'https://tealabhokkaido.com',source:h.popup,data:{type:'TLH_INVENTORY_LOGIN_RESULT',nonce,code:'OK',idToken:'fixture.jwt.proof'}});await done;assert.equal(h.reads,0);assert.equal(h.sent.length,0);}
 });
 
-test('registration success requests one self-overview refresh while unknown and forged results do not',async()=>{const h=harness();await h.login();h.create();h.reply('REGISTRATION_UNAVAILABLE');assert.equal(h.refreshes,0);h.reply('CREATED',{nonce:'0'.repeat(32)});assert.equal(h.refreshes,0);h.reply('CREATED');assert.equal(h.refreshes,1);assert.equal(h.reads,1);});
+test('registration success requests one self-overview refresh while unknown and forged results do not',async()=>{const h=harness();await h.login();h.create();h.reply('REGISTRATION_UNAVAILABLE');assert.equal(h.refreshes,0);h.reply('CREATED',{nonce:'0'.repeat(32)});assert.equal(h.refreshes,0);h.reply('CREATED');assert.equal(h.refreshes,1);assert.equal(h.reads,0);});
 
 test('closed signup directs to administrator and never suggests workforce invitation as an alternative',async()=>{const h=harness();await h.login();h.create();h.reply('SIGNUP_CLOSED');assert.match(h.n('account-create-status').textContent,/管理者/);assert.doesNotMatch(h.n('account-create-status').textContent,/招待コードがある方/);assert.equal(h.refreshes,0);});
+
+test('signup appears only after verified unregistered, never existing, loading or error; detail read is explicit',async()=>{
+ for(const [overviewData,overviewState] of [[{operatingRoles:[]},undefined],[null,undefined],[null,'error']]){const h=harness({overviewData,overviewState});await h.login();if(overviewData===null&&overviewState===undefined)h.verify(null);assert.equal(h.n('account-signup').hidden,true);h.create();assert.equal(h.sent.length,0);h.verify(null,'not_registered');assert.equal(h.n('account-signup').hidden,false);h.verify({operatingRoles:[]});assert.equal(h.n('account-signup').hidden,true);}
+ const h=harness();await h.login();assert.equal(h.reads,0);h.n('account-details').open=true;h.n('account-details').events.toggle();assert.equal(h.reads,1);
+});
+
+test('initial overview precedes exactly one scoped read only for relevant managers, with no legacy fanout',async()=>{
+ for(const [role,serviceId,expected] of [['ORGANIZATION_OPERATOR','',1],['STORE_SERVICE_ADMIN','INVENTORY',1],['STORE_SERVICE_ADMIN','WORKFORCE',0],['PLATFORM_OPERATOR','',0]]){const h=harness({overviewData:{operatingRoles:[{role,serviceId,effective:true}]}});await h.login();assert.equal(h.overviewReads,1);assert.equal(h.scopeReads,expected);assert.equal(h.reads,0);assert.equal(h.sent.length,0);}
+});
