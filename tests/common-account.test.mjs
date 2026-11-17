@@ -6,7 +6,7 @@ import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
 export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false}={}){
- const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,enrollmentInits=0,loginCalls=0,clearCalls=0,release;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
+ const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,refreshes=0,enrollmentInits=0,loginCalls=0,clearCalls=0,release;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
   addEventListener(k,v){this.events[k]=v;},appendChild(v){this.children.push(v);},remove(){},
@@ -17,13 +17,14 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=f
  const window={confirm:()=>true,location:{reload(){window.reloaded=true;}},addEventListener(k,v){const old=handlers[k];handlers[k]=old?e=>{old(e);v(e);}:v;},
   TlhInventoryLogin:{clearToken(){clearCalls++;order.push('clear');},async login(){loginCalls++;order.push('login');if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
   TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
+  TlhAccountAccessOverview:{init(){return {load(){},refresh(){refreshes++;}};}},
   TlhStaffEnrollment:{init(options){assert.equal(options.liff.getIDToken(),proof);enrollmentInits++;}},
   TlhCurrentWorkplace:{submit(form){form.submit();}}};window.top=window;
  const context={window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}};
  if(realBroker){window.open=url=>{opened.push(url);return popup;};vm.runInNewContext(fs.readFileSync(new URL('../software/inventory/employee-login.js',import.meta.url),'utf8'),context);}
  vm.runInNewContext(source,context);
  return {n,handlers,sent,timers,window,order,opened,popup,get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
-  releaseLogin:()=>release(),get reads(){return reads;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
+  releaseLogin:()=>release(),get reads(){return reads;},get refreshes(){return refreshes;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
   reply(code,overrides={},event={}){handlers.message({origin:'https://script.google.com',source:n('account-create-frame').contentWindow,
    data:{type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:sent.at(-1).nonce,code,...overrides},...event});}};
 }
@@ -54,14 +55,14 @@ test('unknown result retains the nonce and blocks enrollment while retrying the 
  h.create();assert.equal(h.sent.length,2);assert.equal(h.sent[1].nonce,nonce);
  h.reply('REGISTRATION_UNAVAILABLE');assert.equal(h.n('account-enrollment-lock').disabled,true);
  h.create();assert.equal(h.sent[2].nonce,nonce);h.reply('ALREADY_REGISTERED');
- assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,2);
+ assert.equal(h.n('account-enrollment-lock').disabled,false);assert.equal(h.reads,1);assert.equal(h.refreshes,1);
 });
 test('forged origin, source, nonce, code and extra fields cannot resolve a registration',async()=>{
  const h=harness();await h.login();h.create();
  for(const [overrides,event]of [[{nonce:'0'.repeat(32)},{}],[{},{origin:'https://evil.test'}],[{},{source:{}}],[{code:'UNKNOWN'},{}],[{role:'ADMIN'},{}]]){
   h.reply('CREATED',overrides,event);assert.equal(h.n('account-enrollment-lock').disabled,true);assert.equal(h.reads,1);
  }
- h.reply('CREATED');assert.equal(h.reads,2);assert.equal(h.n('account-enrollment-lock').disabled,false);
+ h.reply('CREATED');assert.equal(h.reads,1);assert.equal(h.refreshes,1);assert.equal(h.n('account-enrollment-lock').disabled,false);
 });
 test('closed signup remains closed and employee invitation remains available',async()=>{
  const h=harness();await h.login();h.create();h.reply('SIGNUP_CLOSED');
@@ -94,3 +95,7 @@ test('explicit Account login clears rejected broker proof first, without automat
 test('fresh Account page and reload both send real broker through reauth=1, never stale default popup',async()=>{
  for(let page=0;page<2;page++){const h=harness({realBroker:true});const done=h.login();assert.equal(h.opened.length,1);assert.match(h.opened[0],/\&reauth=1$/);const nonce=h.opened[0].match(/request=([a-f0-9]{32})/)[1];h.handlers.message({origin:'https://tealabhokkaido.com',source:h.popup,data:{type:'TLH_INVENTORY_LOGIN_RESULT',nonce,code:'OK',idToken:'fixture.jwt.proof'}});await done;assert.equal(h.reads,1);assert.equal(h.sent.length,0);}
 });
+
+test('registration success requests one self-overview refresh while unknown and forged results do not',async()=>{const h=harness();await h.login();h.create();h.reply('REGISTRATION_UNAVAILABLE');assert.equal(h.refreshes,0);h.reply('CREATED',{nonce:'0'.repeat(32)});assert.equal(h.refreshes,0);h.reply('CREATED');assert.equal(h.refreshes,1);assert.equal(h.reads,1);});
+
+test('closed signup directs to administrator and never suggests workforce invitation as an alternative',async()=>{const h=harness();await h.login();h.create();h.reply('SIGNUP_CLOSED');assert.match(h.n('account-create-status').textContent,/管理者/);assert.doesNotMatch(h.n('account-create-status').textContent,/招待コードがある方/);assert.equal(h.refreshes,0);});

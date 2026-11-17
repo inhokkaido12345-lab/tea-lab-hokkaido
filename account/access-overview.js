@@ -26,9 +26,9 @@
  async function verify(d,r){if(!exact(d,['type','phase','nonce','code','data','mac'])||d.type!==TYPE||d.phase!==PHASE||d.nonce!==r.nonce||!Object.hasOwn(messages,d.code)||typeof d.data!=='string'||d.data.length>65536||d.code!=='ACCOUNT_ACCESS_OVERVIEW_READY'&&d.data!==''||!hex(d.mac,64))return false;
  const enc=new TextEncoder(),key=await crypto.subtle.importKey('raw',enc.encode(r.responseKey),{name:'HMAC',hash:'SHA-256'},false,['verify']);return crypto.subtle.verify('HMAC',key,Uint8Array.from(d.mac.match(/../g),x=>parseInt(x,16)),enc.encode([TYPE,PHASE,d.nonce,d.code,d.data].join('\n')));}
  function init(options){const n=Object.fromEntries(['check','status','result','frame'].map(k=>[k,document.getElementById('access-overview-'+k)]));if(Object.values(n).some(v=>!v))return null;
- let pending=null,stopped=false,expected=null,shown=null,shownProof=null;
+ let pending=null,stopped=false,expected=null,shown=null,shownProof=null,refreshQueued=false;
  const clear=()=>{shown=null;shownProof=null;n.result.replaceChildren();options.onVerified?.(null);};
- function finish(){if(pending)clearTimeout(pending.timer);pending=null;n.check.disabled=stopped;n.status.setAttribute('aria-busy','false');}
+ function finish(){if(pending)clearTimeout(pending.timer);pending=null;n.check.disabled=stopped;n.status.setAttribute('aria-busy','false');if(refreshQueued&&!stopped){refreshQueued=false;load();}}
  function setAccount(accountId){expected=accountId;if(shown&&shown!==expected){clear();n.status.textContent='本人情報が一致しないため共通所属を表示できません。LINE本人確認をやり直してください。';}}
  function render(d){clear();options.onVerified?.(d);shown=d.accountId;shownProof=options.liff.getIDToken();const add=(parent,tag,text)=>{const el=document.createElement(tag);el.textContent=text;parent.appendChild(el);return el;};
   add(n.result,'p','TLHアカウント：'+d.accountId);
@@ -44,15 +44,16 @@
   add(n.result,'h4','個人用在庫（会社所属とは別）');add(n.result,'p','利用状態は未確認です。個人用在庫の台帳には、この確認では接続していません。');const link=add(n.result,'a','在庫アプリで確認する');link.href='/software/inventory/';
   add(n.result,'p','共通台帳の確認日時：'+d.checkedAtUtc+'。アプリ側の現在の設定・接続・認可は、アプリでの操作時に確認されます。');
  }
+ function refresh(){if(stopped)return;if(pending){refreshQueued=true;clear();return;}load();}
  function load(){if(stopped||pending||global!==global.top||!crypto.subtle)return;clear();let proof;try{proof=options.liff.getIDToken();}catch{}if(!proof){n.status.textContent=messages.COMMON_AUTH_REQUIRED;return;}
   const r={nonce:random(16),responseKey:random(32),proof};pending=r;n.check.disabled=true;n.status.setAttribute('aria-busy','true');n.status.textContent='本人の利用条件を確認しています…';
-  r.timer=setTimeout(()=>{if(pending!==r)return;clear();n.status.textContent='共通所属の応答を確認できません。所属なしとは判定しません。';finish();},30000);
+  r.timer=setTimeout(()=>{if(pending!==r)return;clear();options.onVerified?.(null,'error');n.status.textContent='共通所属の応答を確認できません。所属なしとは判定しません。';finish();},30000);
   const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhAccountAccessOverviewFrame';form.hidden=true;for(const [name,value]of Object.entries({action:'bridgeAccountAccessOverviewV1',phase:PHASE,nonce:r.nonce,responseKey:r.responseKey,idToken:proof})){const el=document.createElement('input');el.type='hidden';el.name=name;el.value=value;form.appendChild(el);}document.body.appendChild(form);try{form.submit();}catch{clear();n.status.textContent='共通所属に接続できません。';finish();}finally{form.remove();}}
  n.check.addEventListener('click',load);
  global.addEventListener('message',async e=>{const r=pending;if(stopped||!r||!related(e.source,n.frame.contentWindow)||!(e.origin==='null'||e.origin==='https://script.google.com'||e.origin==='https://script.googleusercontent.com'||/^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(e.origin)))return;
  let ok=false;try{ok=await verify(e.data,r);}catch{}if(!ok||pending!==r||stopped)return;let proof;try{proof=options.liff.getIDToken();}catch{}if(proof!==r.proof){clear();n.status.textContent='本人確認が変わったため表示しません。確認し直してください。';finish();return;}
- const d=e.data;if(d.code==='ACCOUNT_ACCESS_OVERVIEW_READY'){const value=parse(d.data);if(!value)return;if(expected&&value.accountId!==expected){clear();n.status.textContent='本人情報が一致しないため共通所属を表示できません。';finish();return;}render(value);}else clear();n.status.textContent=messages[d.code];finish();});
- global.addEventListener('pagehide',()=>{stopped=true;expected=null;clear();finish();n.status.textContent='共通所属の表示を消去しました。';});return Object.freeze({load,setAccount});
+ if(refreshQueued){finish();return;}const d=e.data;if(d.code==='ACCOUNT_ACCESS_OVERVIEW_READY'){const value=parse(d.data);if(!value)return;if(expected&&value.accountId!==expected){clear();n.status.textContent='本人情報が一致しないため共通所属を表示できません。';finish();return;}render(value);}else{clear();options.onVerified?.(null,'error');}n.status.textContent=messages[d.code];finish();});
+ global.addEventListener('pagehide',()=>{stopped=true;refreshQueued=false;expected=null;clear();finish();n.status.textContent='共通所属の表示を消去しました。';});return Object.freeze({load,refresh,setAccount});
  }
  global.TlhAccountAccessOverview=Object.freeze({init,parse,verify});
 })(window);

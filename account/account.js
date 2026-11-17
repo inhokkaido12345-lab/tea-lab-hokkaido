@@ -13,20 +13,21 @@
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let common=null,grants=null,access=null,staff=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
- const messages=Object.freeze({CREATED:'TLHアカウントを作成しました。利用するアプリへ戻り、LINEログインしてください。',
-  ALREADY_REGISTERED:'このLINEのTLHアカウントは登録済みです。利用するアプリへ戻れます。',
+ const messages=Object.freeze({CREATED:'登録処理の応答を受け取りました。本人情報を再確認しています。確認できたアカウントIDを管理者へ共有してください。',
+  ALREADY_REGISTERED:'登録済みの応答を受け取りました。最新の本人情報を再確認しています。',
   SIGNUP_RATE_LIMITED:'新規登録が集中しています。時間を置いて再試行してください。',
-  SIGNUP_CLOSED:'一般アカウントの新規登録は受付停止中です。従業員の招待コードがある方は、この画面で招待を受け取れます。',
+  SIGNUP_CLOSED:'一般アカウントの新規登録は受付停止中です。管理者に受付再開・登録方法を確認してください。在庫利用のために勤怠登録へ進む必要はありません。',
   IDENTITY_REVIEW_REQUIRED:'登録状態の確認が必要です。管理者に連絡してください。',
   INVALID_NONCE:'登録リクエストを確認できませんでした。',INVALID_ID_TOKEN_FORMAT:'本人確認情報を確認できませんでした。',
   LINE_VERIFY_REJECTED:'本人確認が拒否されました。保存状態を確認してから、画面を開き直してください。',
   REGISTRATION_UNAVAILABLE:'登録結果を確認できません。同じ登録の結果を確認してください。',
   REGISTRATION_ERROR:'登録結果を確認できません。同じ登録の結果を確認してください。'});
  let stopped=false,loggingIn=false,ready=false,viewer=null,request=null;
- const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy(),check:()=>common?.checkManagement()});
+ const tabs=global.TlhAccountTabs?.init({busy:()=>!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy(),check:()=>common?.checkManagement(),checkRoles:()=>access?.refresh()});
  const random=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),b=>b.toString(16).padStart(2,'0')).join('');
  // GAS応答は入れ子iframeから届く。別iframeの同名メッセージを受け付けない。
  function related(source,frame){try{for(let i=0;source&&i<8;i++){if(source===frame)return true;const p=source.parent;if(!p||p===source)return false;source=p;}}catch{}return false;}
+ function refreshSelf(){if(!stopped)access?.refresh();}
  function controls(){
   login.disabled=stopped||loggingIn||ready;
   create.disabled=stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
@@ -49,9 +50,9 @@
    const proof=Object.freeze({getIDToken:()=>stopped?null:global.TlhInventoryLogin.getToken()});
    viewer=global.TlhAccountInfo.init({gasUrl:endpoint,liff:proof});
    staff=global.TlhStaffEnrollment.init({gasUrl:endpoint,liff:proof,onState:controls});
-   common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onManagement:state=>tabs?.management(state,'common')});
-   grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onManagement:state=>tabs?.management(state,'grant')});
-   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:d=>{const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
+   common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'common')});
+   grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'grant')});
+   access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,onVerified:(d,state)=>{tabs?.roles(d,state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
    ready=true;tabs?.ready();$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
    status.textContent='LINEから本人確認情報を受け取りました。登録状態を確認しています。';viewer.load();access?.load();
   }catch{
@@ -92,7 +93,7 @@
   clearTimeout(current.timer);current.timer=null;createStatus.textContent=messages[d.code];
   if(['REGISTRATION_UNAVAILABLE','REGISTRATION_ERROR'].includes(d.code)){create.textContent='同じ登録の結果を確認';controls();return;}
   request=null;create.textContent='自分のTLHアカウントを作成';controls();
-  if(['CREATED','ALREADY_REGISTERED'].includes(d.code))viewer.load();
+  if(['CREATED','ALREADY_REGISTERED'].includes(d.code))refreshSelf();
  });
  global.addEventListener('pagehide',()=>{
   stopped=true;ready=false;if(request)clearTimeout(request.timer);request=null;viewer=null;
