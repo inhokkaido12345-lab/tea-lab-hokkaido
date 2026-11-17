@@ -19,7 +19,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
  const context=await browser.newContext({viewport,serviceWorkers:'block',locale:'ja-JP'}),page=await context.newPage(),requests=[],blocked=[],errors=[],name=scenario+'-'+viewport.width;
  const report={scenario,viewport,synthetic:true,realPhone:false,realOAuth:false,externalNetworkSent:0,passed:false};
  try{
-  page.on('pageerror',e=>errors.push(e.message));await page.clock.install();
+  page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{const u=new URL(r.url());if(u.origin===origin&&r.status()>=400&&/\.(?:js|css|woff2?)(?:$)/.test(u.pathname))errors.push('LOCAL_ASSET_MISSING:'+u.pathname);});await page.clock.install();
   await context.route('**/*',async route=>{const req=route.request(),url=new URL(req.url());
    if(url.origin===origin){
     if(url.pathname==='/software/inventory/employee-login.js')return route.fulfill({contentType:'application/javascript',body:"window.TlhInventoryLogin={clearToken(){},login:async()=>{},getToken:()=> 'synthetic.fixture.proof'};"});
@@ -53,8 +53,8 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
    }
   }
   if(scenario==='checking')assert.equal(await page.locator('#account-create').isVisible(),false,'CHECKING_IS_NOT_UNREGISTERED');
-  assert.deepEqual(errors,[],'BROWSER_OR_UNEXPECTED_CONTRACT_ERROR');
-  const metrics=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')})),visibleButtons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({id:e.id,label:e.textContent.trim(),disabled:e.disabled,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
+  await page.evaluate(()=>document.fonts.ready);assert.deepEqual(errors,[],'BROWSER_OR_UNEXPECTED_CONTRACT_ERROR');
+  const metrics=await page.evaluate(()=>({fonts:[...document.fonts].map(f=>({family:f.family,status:f.status})),width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')})),visibleButtons:[...document.querySelectorAll('button')].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>({id:e.id,label:e.textContent.trim(),disabled:e.disabled,width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))}));
   assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');report.metrics=metrics;report.requests=requests;report.blockedExternalResources=blocked;
   await page.screenshot({path:path.join(output,name+'-viewport.png')});await page.screenshot({path:path.join(output,name+'-full.png'),fullPage:true});
   if(scenario==='checking'){await page.clock.fastForward(31000);await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('data-state')==='error');assert.equal(await page.evaluate(spinner),false,'TIMEOUT_SPINNER_STUCK');report.timeoutSettled=true;await page.screenshot({path:path.join(output,name+'-timeout.png')});}
