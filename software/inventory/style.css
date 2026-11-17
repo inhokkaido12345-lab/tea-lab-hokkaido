@@ -144,3 +144,11 @@ nav button { min-width: 0; }
 .help-tasks li+li{margin-top:.5rem}
 .help-tasks button{min-height:44px;max-width:100%;white-space:normal}
 .help-tasks details details{font-size:.9rem}
+
+/* 初回と既存利用を明示選択。登録・利用権限の判定には使わない。 */
+.inventory-entry { border:0; padding:0; font-size:13px; }
+.inventory-entry .entry-primary,.inventory-entry .entry-personal { display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; padding:12px 16px; border-radius:8px; font-size:16px; font-weight:600; text-decoration:none; text-align:center; }
+.inventory-entry .entry-primary { background:var(--teal); color:#fff; border:1px solid var(--teal); }
+.inventory-entry .entry-personal { margin-top:8px; background:#fff; color:var(--teal); border:1px solid var(--sage); }
+.inventory-entry details { margin-top:10px; }
+#line-login.entry-login { background:#fff; color:var(--teal); border:1px solid var(--sage); min-height:48px; font-size:16px; }
