@@ -159,3 +159,6 @@ body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#sta
 #operation-recovery:empty { display:none; }
 /* 店舗選択や個人利用の内容がまだないhostだけ装飾を隠す。 */
 #inventory-stores.store-context:empty { display:none; }
+/* 成功した在庫読取の表示が揃った時だけ初回案内を畳む。
+ * 単なるLINE完了・空でないhostを成功とはみなさない。失敗/再認証で案内を戻す。 */
+body:has(#line-login[hidden]):has(#inventory-stores > label > select):has(#overview > div):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) .inventory-entry { display:none; }
