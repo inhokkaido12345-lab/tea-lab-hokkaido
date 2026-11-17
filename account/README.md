@@ -1,6 +1,6 @@
 # TLH Account 共通入口
 
-設計基準は既存の[TLH Platform全体設計思想 v0.1](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/reference/TLH_PLATFORM_ARCHITECTURE-v0.1.md)。特に§1（各アプリは共通基盤のクライアント）、§3（外部認証と内部Accountを分離）、§4（共通Account Management）、§13–14（権限・従業員情報の境界）、§22（正本と責務を決めてから画面を実装）に従う。会社・店舗の管理階層は既存の[運営管理設計](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/運営管理Web-保存と再構築.md)、実装済みの範囲は[STATUS](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/STATUS.md)で確認する。このREADMEを全体設計の代わりにしない。
+最初に[TLH Platform全体設計の現行適用ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/TLH_PLATFORM_ARCHITECTURE.md)を読む。2026-11-17、タイムカードWorkのPR #88で共通Account・所属API・既存DTO・登録受付の現在地が明記された。次に[実装構成](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/ARCHITECTURE.md)、[STATUS](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/STATUS.md)、[API契約](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/API.md)を確認する。[提供原文v0.1](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/reference/TLH_PLATFORM_ARCHITECTURE-v0.1.md)は上位思想の版固定資料で、共通所属APIの完成仕様とはみなさない。このREADMEを全体設計の代わりにしない。
 
 公開候補の入口は `/account/`。在庫・勤怠の両方から独立して、LINE本人確認、自分の登録情報、従業員招待の発行・受取を操作します。打刻や在庫保存を初期化しません。一般登録のサーバー受付をこの画面から開放することはできません。
 
@@ -11,7 +11,7 @@
 3. 管理者は勤務先を確認し、「この勤務先の管理者の方」から招待権限を確認して発行します。
 4. 在庫画面へ戻り、LINEログインします。在庫を使うために勤怠アプリを開く操作はありません。
 
-目的は、在庫・勤怠のどちらか一方しか使わない人にも、共通アカウントの登録入口を提供することです。所属はアプリ共通であり、この画面で配属・店舗の作成や独自の所属・招待制度を増やしません。既存の従業員登録APIは現在のThe TEA専用です。アカウントを作っただけでは管理者・従業員にはなりません。将来のECにも共通IDを使う前提ですが、この変更でECや独自パスワードは追加していません。
+目的は、在庫・勤怠のどちらか一方しか使わない人にも、共通アカウントの登録入口を提供することです。会社・店舗の所属を共通の正本から参照するのが上位目標ですが、横断的な所属APIは未完成で、画面の追加だけで統一済みとは扱いません。この画面で配属・店舗の作成や独自の所属・招待制度を増やしません。既存の従業員登録APIは現在のThe TEA専用で、従業員情報と勤怠の従業員権限も連携します。Accountだけの作成とは副作用が異なります。将来のECにも共通IDを使う前提ですが、この変更でECや独自パスワードは追加していません。
 
 ## 初学者向けの再構築・変更箇所
 
@@ -42,3 +42,7 @@ node --test tests/common-account.test.mjs tests/account-info.test.mjs tests/staf
 2026-11-17の検証では、公開UIの338件が成功しました。`qa/common-account-browser.cjs` で320/390/1280pxの画面を操作し、既存のログインbrokerと認証窓口の実コードを使ったpopup往復、招待発行・受取、登録情報の更新が成功しました。LINE SDKとGAS応答は模擬です。本人情報・招待応答のHMACも模擬鍵で検査し、画面エラー・横はみ出しはありませんでした。一般受付の閉鎖表示と、初回表示だけでは登録しないことも確認しました。
 
 ブラウザー検査は、Playwrightを導入後に `node qa/common-account-browser.cjs` で実行できます。既存依存を利用する場合は `PLAYWRIGHT_MODULE`、ブラウザーを指定する場合は `BROWSER_EXECUTABLE` に絶対パスを指定します。画像は一時フォルダーへ保存します。実LINEのログイン成功や実登録の成功を証明する検査ではありません。
+
+公開確認：UI PR #106をmainへ反映し、`https://tealabhokkaido.com/account/` と在庫ヘッダーのリンクを公開しました。画面・JS/CSS・在庫HTML・認証窓口の6ファイルが検証したソースと一致。実配信の在庫画面から共通登録画面が別窓で開き、ログインボタンが有効・未認証時の登録操作が隠れていること、画面エラーがないことを確認しました。LINE SDKとGASを模擬した成功経路と、実ユーザーの本人操作による受入れは別です。
+
+公開時の運用記録：Inventoryの配布workflowにscripts/README.mdの除外漏れがあり、変更していないGASソースの再配布が実行されました。配布と匿名拒否・health検査は成功。説明書を配布条件から除外し、回帰検査へ追加しました。Work TimeのGAS・所属・受付設定はこの作業では変更していません。

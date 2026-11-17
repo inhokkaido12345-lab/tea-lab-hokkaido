@@ -1325,4 +1325,6 @@ D8は**診断用**であり、管理者表示を今後の書込APIの認可代�
 
 ## TLH Account 共通入口
 
+全体設計は[2026-11-17の現行適用ガイド](https://github.com/inhokkaido12345-lab/tlh-platform/blob/main/docs/TLH_PLATFORM_ARCHITECTURE.md)から参照します。共通所属API・一般登録受付・全アプリSSOの完成と、登録画面の公開は別に判定します。
+
 在庫アプリだけを使う人も、`/account/` で本人情報の確認とThe TEAの従業員招待・受取を行えます。[利用手順・再構築・APIの境界](account/README.md)。打刻・在庫の業務処理や既存ID・保存先は変更しません。一般登録の受付開始は別の判断で、この画面の追加だけでは開放しません。
