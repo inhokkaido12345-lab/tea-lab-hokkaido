@@ -585,7 +585,7 @@ async function send(command){
   if(data.code==='RECOVERY_SAVED'){
    saved=true;pending=null;await load();
    $('lines').replaceChildren();addLine();tab('stock');
-   message('保存済みを確認しました。再送せず、最新の記録を表示しました。','RECOVERY_SAVED');return;
+   message('保存済みを確認しました。再送せず、最新の記録を表示しました。');return;
   }
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
   // サーバーが明示的に拒否した保存は未確定ではない。続くREADの失敗と混同しない。
