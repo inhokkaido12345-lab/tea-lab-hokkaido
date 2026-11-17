@@ -11,7 +11,7 @@ test('Account loads content-versioned scripts in unchanged dependency order',()=
  '/software/inventory/employee-login.js','/workforce/current-workplace.js',
  '/workforce/common-affiliation-info.js','/workforce/company-employment-info.js',
  '/workforce/account-info.js','/workforce/staff-enrollment.js',
- 'management-picker.js','activation-services.js','service-activation.js','common-affiliation.js','common-grants.js','access-overview.js','/workforce/operations.js','operations-panels.js','tabs.js','account.js']);
+ 'management-picker.js','activation-services.js','service-activation.js','common-affiliation.js','common-grants.js','access-overview.js','/workforce/operations.js','operations-panels.js','tabs.js','service-shell/signed-service-reader.js','service-shell/verified-overview-scopes.js','service-shell/service-management.js','service-shell/compatibility-launchers.js','service-shell/account-service-category.js','account.js']);
  for(const source of sources){
   const [name,query]=source.split('?');
   const asset=new URL(name.startsWith('/')?name.slice(1):`account/${name}`,root);
