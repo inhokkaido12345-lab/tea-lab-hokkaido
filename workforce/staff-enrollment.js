@@ -66,9 +66,9 @@
       'staff-employee-code','staff-name','staff-hire-date','staff-claim-code','staff-issue','staff-claim',
       'staff-invite-box','staff-issued-code','staff-copy','staff-revoke','staff-reset','staff-status'];
     const nodes=Object.fromEntries(ids.map(id=>[id,document.getElementById(id)]));
-    let pending=null, draft=null, adminReady=false, issued=false, registered=false, blocked=false, stopped=false;
+    let pending=null, unknown=null, draft=null, adminReady=false, issued=false, registered=false, blocked=false, stopped=false;
     const status=nodes['staff-status'];
-    function controls() {status.setAttribute?.('aria-busy',String(!!pending));
+    function controls() {status.setAttribute?.('aria-busy',String(!!pending||!!unknown));
       for(const id of ['staff-check','staff-issue','staff-claim','staff-revoke','staff-reset']) {
         nodes[id].disabled=!!pending||blocked;
       }
@@ -78,23 +78,26 @@
       nodes['staff-claim-code'].disabled=!!pending||registered||blocked;
       nodes['staff-fields'].disabled=!!pending||!!draft||blocked;
       nodes['staff-copy'].disabled=!!pending||!issued||blocked;
+      if(unknown){nodes['staff-check'].disabled=true;nodes['staff-reset'].disabled=true;nodes['staff-fields'].disabled=true;nodes['staff-claim-code'].disabled=true;for(const [id,action]of [['staff-issue','bridgeIssueStaffInvitation'],['staff-claim','bridgeClaimStaffInvitation'],['staff-revoke','bridgeRevokeStaffInvitation']])nodes[id].disabled ||= action!==unknown.action;}options.onState?.();
     }
     function finish() {
       if(pending)clearTimeout(pending.timer);
       pending=null;controls();
     }
     async function send(action, fields={}) {
-      if(pending||blocked)return;
+      if(pending||blocked||unknown&&action!==unknown.action)return;
+      if(unknown)fields=unknown.fields;
       if(global!==global.top||!crypto.subtle) {
         status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;
       }
       const idToken=options.liff&&options.liff.getIDToken();
       if(typeof idToken!=='string'||!idToken){status.textContent='LINE本人確認情報がありません。';return;}
-      const request={action,nonce:hexRandom(16),responseKey:hexRandom(32)};
+      if(unknown&&idToken!==unknown.idToken){status.textContent='本人確認が変わりました。保存結果は未確認です。管理者に確認し、画面を開き直してください。';return;}
+      const request={action,fields:{...fields},idToken,nonce:hexRandom(16),responseKey:hexRandom(32)};
       pending=request;controls();status.textContent='処理中です。';
       request.timer=setTimeout(()=>{
         if(pending!==request)return;
-        status.textContent='応答を確認できませんでした。同じ操作で再試行してください。';finish();
+        if(action!=='bridgeCheckStaffEnrollment')unknown=request;status.textContent='応答を確認できませんでした。同じ操作で結果を再確認してください。未確認のまま別の操作には移れません。';finish();
       },30000);
       const form=document.createElement('form');
       form.method='POST';form.action=options.gasUrl;form.target='tlhStaffFrame';form.hidden=true;
@@ -102,7 +105,7 @@
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });
       document.body.appendChild(form);
-      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信できませんでした。';finish();}finally{form.remove();}
+      try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){if(action!=='bridgeCheckStaffEnrollment')unknown=request;status.textContent='送信結果を確認できません。同じ操作で結果を再確認してください。';finish();}finally{form.remove();}
     }
     const invoke=(action,fields)=>send(action,fields).catch(()=>{if(stopped)return;status.textContent='安全な送信を開始できませんでした。';finish();});
     global.addEventListener('message',async event=>{
@@ -113,6 +116,10 @@
         const data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,mac:d&&d.mac};
         if(!await verifyResponse(data,request)||pending!==request||stopped)return;
         status.textContent=messages[data.code];
+        if(['WRITE_UNAVAILABLE','ENROLLMENT_UNAVAILABLE','WRITE_REVIEW_REQUIRED'].includes(data.code)&&request.action!=='bridgeCheckStaffEnrollment')unknown=request;
+        const confirmed={bridgeIssueStaffInvitation:['STAFF_INVITATION_READY'],bridgeClaimStaffInvitation:['STAFF_REGISTERED','STAFF_ALREADY_REGISTERED'],bridgeRevokeStaffInvitation:['STAFF_INVITATION_REVOKED','NO_PENDING_INVITATION']};
+        if(unknown&&confirmed[request.action]?.includes(data.code))unknown=null;
+        if(unknown)status.textContent+=' 保存結果は未確認です。同じ操作で確認してください。権限や保存先の問題が続く場合は管理者に確認してから画面を開き直してください。';
         if(data.code==='STAFF_ADMIN_READY'){adminReady=true;nodes['staff-admin'].hidden=false;}
         if(data.code==='TLH_ADMIN_REQUIRED'){adminReady=false;nodes['staff-admin'].hidden=true;}
         if(data.code==='STAFF_INVITATION_READY'&&draft){
@@ -152,7 +159,7 @@
       invoke('bridgeRevokeStaffInvitation',{employeeCode});
     });
     nodes['staff-reset'].addEventListener('click',()=>{
-      if(pending||blocked)return;
+      if(pending||blocked||unknown)return;
       if(draft&&!global.confirm('入力と表示中の招待コードを閉じます。この操作だけでは発行済み招待を取り消しません。続けますか？'))return;
       draft=null;issued=false;nodes['staff-issued-code'].value='';nodes['staff-invite-box'].hidden=true;
       status.textContent='';controls();
@@ -172,12 +179,12 @@
     // 退場は未完了のサーバー保存を取り消す操作ではない。返信/秘密表示/再送だけを停止する。
     // bfcache復元時はauto-read.jsが新規起動。新しい操作の前に登録状態を読んで確認する。
     global.addEventListener('pagehide',()=>{
-      stopped=true;blocked=true;adminReady=false;issued=false;draft=null;
+      stopped=true;blocked=true;unknown=null;adminReady=false;issued=false;draft=null;
       nodes['staff-admin'].hidden=true;nodes['staff-invite-box'].hidden=true;
       for(const id of ['staff-issued-code','staff-claim-code','staff-employee-code','staff-name','staff-hire-date'])nodes[id].value='';
       status.textContent='画面を離れたため操作を停止しました。再表示後に登録状態を確認してください。';finish();
     });
-    controls();
+    controls();return Object.freeze({busy:()=>!!pending||!!draft||!!unknown});
   }
   global.TlhStaffEnrollment=Object.freeze({init,verifyResponse});
 })(window);

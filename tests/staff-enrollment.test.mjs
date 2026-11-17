@@ -24,7 +24,7 @@ function harness() {
     setTimeout(fn){const n=++timerSeq;timers.set(n,fn);return n;},clearTimeout(n){timers.delete(n);},
   };
   vm.runInNewContext(fs.readFileSync(new URL('../workforce/staff-enrollment.js',import.meta.url),'utf8'),context);
-  window.TlhStaffEnrollment.init({gasUrl:'https://script.google.com/fake',liff:{getIDToken:()=> 'fake.jwt.proof'}});
+  const api=window.TlhStaffEnrollment.init({gasUrl:'https://script.google.com/fake',liff:{getIDToken:()=> 'fake.jwt.proof'}});
   const click=id=>node(id).events.click();
   const submit=id=>node(id).events.submit({preventDefault(){}});
   const reply=async(request,code,changes={},origin='null')=>{
@@ -33,7 +33,7 @@ function harness() {
     Object.assign(data,changes);await handlers.message({origin,data});
   };
   function fill(){node('staff-employee-code').value='EMP011';node('staff-name').value='Test Worker';node('staff-hire-date').value='';}
-  return {node,click,submit,reply,fill,window,sent,timers,leave:()=>handlers.pagehide()};
+  return {api,node,click,submit,reply,fill,window,sent,timers,leave:()=>handlers.pagehide()};
 }
 async function admin(h){h.click('staff-check');await h.reply(h.sent[0],'STAFF_ADMIN_READY');h.fill();}
 
@@ -100,3 +100,6 @@ test('copy uses deliberate clipboard action only; resetting issues a different s
   h.click('staff-reset');assert.equal(h.node('staff-issued-code').value,'');h.submit('staff-issue-form');
   assert.notEqual(h.sent[2].inviteToken,first);
 });
+
+test('claim timeout without draft stays busy, locks other actions and retries original invitation until confirmed',async()=>{const h=harness();h.node('staff-claim-code').value='b'.repeat(64);h.submit('staff-claim-form');[...h.timers.values()][0]();assert.equal(h.api.busy(),true);h.click('staff-check');h.click('staff-reset');assert.equal(h.sent.length,1);h.node('staff-claim-code').value='c'.repeat(64);h.submit('staff-claim-form');assert.equal(h.sent[1].inviteToken,'b'.repeat(64));await h.reply(h.sent[1],'LINE_VERIFY_REJECTED');assert.equal(h.api.busy(),true);h.submit('staff-claim-form');await h.reply(h.sent[2],'STAFF_ALREADY_REGISTERED');assert.equal(h.api.busy(),false);});
+test('revoke timeout with no issue draft remains busy and cannot switch employee target',async()=>{const h=harness();await admin(h);h.click('staff-revoke');[...h.timers.values()][0]();assert.equal(h.api.busy(),true);h.node('staff-employee-code').value='EMP999';h.click('staff-reset');h.click('staff-revoke');assert.equal(h.sent.at(-1).employeeCode,'EMP011');await h.reply(h.sent.at(-1),'NO_PENDING_INVITATION');assert.equal(h.api.busy(),false);});

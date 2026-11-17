@@ -1,0 +1,16 @@
+/** Account navigation only, never authorization. Signed picker facts unlock company/store UI;
+ * root operation links remain separate. Unknown writes prevent leaving their confirmation tray.
+ * No token, scope or role persisted. Server reauthorizes every PREVIEW/COMMIT. */
+(function(global){'use strict';
+ function init(o){const keys=['self','invite','workforce','manage'],buttons=keys.map(k=>document.getElementById('account-tab-'+k)),status=document.getElementById('account-tabs-status'),check=document.getElementById('account-management-check'),reason=document.getElementById('account-management-reason');let ready=false,stopped=false,current='self',scope='unknown',scopeSource='scope';
+  const allowed=k=>k!=='manage'||scope==='allowed';
+  function show(){for(let i=0;i<keys.length;i++){buttons[i].setAttribute('aria-selected',String(current===keys[i]));buttons[i].setAttribute('aria-disabled',String(!ready||!allowed(keys[i])));buttons[i].disabled=stopped||!ready||!!o.busy();}const panels=[...document.querySelectorAll('[data-account-panel]')];panels.forEach((panel,i)=>{panel.id||='account-panel-'+i;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby','account-tab-'+current);panel.hidden=!panel.getAttribute('data-account-panel').split(' ').includes(current);panel.inert=current==='manage'&&scope==='checking'&&panel.getAttribute('data-account-panel').split(' ').includes('manage');});keys.forEach((k,i)=>buttons[i].setAttribute('aria-controls',panels.filter(p=>p.getAttribute('data-account-panel').split(' ').includes(k)).map(p=>p.id).join(' ')));}
+  function sync(){check.disabled=!ready||stopped||scope==='checking'||!!o.busy();if(!allowed(current)&&scope!=='checking'&&!o.busy())current='self';show();}
+  function management(state,source='scope'){if(state==='checking')scopeSource=source;else if(['allowed','denied','error'].includes(state)&&source!==scopeSource)return;scope=state;reason.textContent=({unknown:'管理範囲は未確認です。下のボタンで確認できます。',checking:'会社・店舗の管理範囲を確認しています…',allowed:'管理できる会社・店舗があります。操作ごとに最新の権限を確認します。',denied:'会社・店舗を管理する権限がありません。本人の登録・招待受取・個人在庫は利用できます。',error:'管理権限を確認できません。権限なしとは判定していません。再確認してください。'})[state];sync();}
+  buttons.forEach((b,i)=>b.addEventListener('click',()=>{if(stopped||!ready)return;if(o.busy()){status.textContent='進行中の操作を確定・取消、または同じ操作の結果を確認してから切り替えてください。';return;}if(!allowed(keys[i])){status.textContent=reason.textContent;return;}current=keys[i];status.textContent='';show();}));
+  buttons.forEach((b,i)=>b.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)||stopped||!ready||o.busy())return;e.preventDefault();const eligible=keys.filter(allowed);const at=eligible.indexOf(keys[i]);const key=e.key==='Home'?eligible[0]:e.key==='End'?eligible.at(-1):eligible[(at+(e.key==='ArrowRight'?1:-1)+eligible.length)%eligible.length];current=key;show();buttons[keys.indexOf(key)].focus();}));
+  check.addEventListener('click',()=>{if(ready&&!stopped&&!o.busy()&&scope!=='checking')o.check();});
+  global.addEventListener('pagehide',()=>{stopped=true;ready=false;scope='unknown';current='self';sync();});management('unknown');return Object.freeze({sync,management,ready(){ready=true;sync();}});
+ }
+ global.TlhAccountTabs=Object.freeze({init});
+})(window);
