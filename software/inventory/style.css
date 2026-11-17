@@ -162,3 +162,14 @@ body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#sta
 /* 成功した在庫読取の表示が揃った時だけ初回案内を畳む。
  * 単なるLINE完了・空でないhostを成功とはみなさない。失敗/再認証で案内を戻す。 */
 body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stores > label > select):has(#overview > div):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) .inventory-entry { display:none; }
+
+/* Record coverage: quiet, optional, never a competitive score or an accuracy claim. */
+.information-coverage { margin:12px 0; padding:12px; border:1px solid #b8d1c9; border-radius:14px; background:#f2f8f5; }
+.information-coverage summary { min-height:44px; cursor:pointer; font-weight:700; padding:4px; }
+.information-caption { display:block; font-size:.8rem; font-weight:400; color:#45635a; margin-top:4px; }
+.information-records { list-style:none; padding:0; display:grid; gap:10px; }
+.information-records li { display:grid; gap:2px; border-bottom:1px solid #d5e5df; padding-bottom:8px; }
+.information-records span,.information-records small,.information-caution { font-size:.82rem; line-height:1.65; }
+.information-caution { color:#4d514e; }
+.information-next { width:100%; min-height:44px; margin-top:6px; white-space:normal; }
+.information-coverage summary:focus-visible,.information-next:focus-visible { outline:3px solid #146e61; outline-offset:3px; }

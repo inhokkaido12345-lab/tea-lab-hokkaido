@@ -377,6 +377,46 @@ function render(){
  showStockAction(stockAction);
 }
 /** 絞り込みではカードだけを描画し、棚卸・計測・仕入情報の未保存入力を作り直さない。 */
+/** Coverage is a hint to the next existing workspace, never a save or accuracy score. */
+function openInformationTask(kind,itemId){
+ if(busy||pending||!view||globalThis.TlhInventory?.hasPendingReceipt?.()===true)return;
+ const item=view.items.find(i=>i.id===itemId&&i.active!==false);
+ if(!item||!view.permissions.includes('inventory.receive'))return;
+ if(kind==='receipt'){tab('receiving');const h=document.querySelector('#receiving h2');if(h){h.setAttribute('tabindex','-1');h.focus();}return;}
+ if(!['count','measurement'].includes(kind))return;
+ const name=kind==='count'?'counting':'sampling';tab('stock');showStockAction(name);
+ const workspace=stockWorkspaces.get(name),select=workspace?.querySelector('select');
+ if(select&&[...select.options].some(o=>o.value===itemId)){select.value=itemId;select.onchange?.();select.focus();}
+}
+function renderInformationCoverage(card,item){
+ const info=item.information;if(!info||info.version!==1||!Array.isArray(info.categories))return;
+ const box=el('div','','information-coverage'),details=el('details',''),summary=el('summary','情報充実度 Lv '+info.level+' / '+info.maximum);
+ summary.append(el('span','記録の種類 '+info.level+' / '+info.maximum+' ・精度ではありません','information-caption'),el('span','由来未確認：初期値・試験の記録が含まれる可能性があります','information-caption'));
+ const ages=info.categories.filter(c=>c.count>0&&Number.isFinite(c.ageDays)).map(c=>c.ageDays);
+ if(ages.length)summary.append(el('span','各種類の最終記録：'+Math.min(...ages)+'〜'+Math.max(...ages)+'日前（Lvは古さを評価しません）','information-caption'));
+ details.append(summary,el('p','種類が揃うと手がかりが増えます。件数を増やす必要はありません。','muted'));
+ const labels={count:'棚卸形式の記録',receipt:'入荷の記録',measurement:'終了した消費計測',order:'発注の記録'};
+ const list=el('ul','','information-records');
+ for(const c of info.categories){
+  const line=el('li',''),label=el('strong',labels[c.kind]||'記録');line.append(label);
+  line.append(el('span',c.count?c.count+'件 ・ '+(c.ageDays===0?'24時間以内':c.ageDays+'日前')+' ・由来未確認':'まだ記録がありません'));
+  if(c.kind==='measurement'&&c.count===1)line.append(el('small','1件だけの傾向です。曜日・季節の違いは分かりません。'));
+  list.append(line);
+ }
+ details.append(list,el('p','記録だけでは実測・初期値・試験を区別できません。0の記録も実棚卸とは断定しません。Lvが揃っても数量の正確さは未確認です。','information-caution'));
+ box.append(details);
+ const byKind=Object.fromEntries(info.categories.map(c=>[c.kind,c]));
+ let kind='count',text='必要なときに、在庫を数えて確認';
+ if(!byKind.count?.count)text='まず数えてみる（任意）';
+ else if(!byKind.measurement?.count){kind='measurement';text='普段の1袋で消費を測る（任意）';}
+ else if(!byKind.receipt?.count){kind='receipt';text='次の納品が来たら入荷を記録';}
+ if(!view.permissions.includes('inventory.receive')){box.append(el('small','記録は閲覧できます。保存は担当者に確認してください。'));card.append(box);return;}
+ const action=el('button',text,'information-next');action.disabled=busy||!!pending||!view.permissions.includes('inventory.receive');
+ action.onclick=()=>openInformationTask(kind,item.id);box.append(action);
+ if(!view.permissions.includes('inventory.receive'))box.append(el('small','記録は閲覧できます。保存は担当者に確認してください。'));
+ card.append(box);
+}
+
 function renderStockCards(){
  $('cards').replaceChildren();
  if(!view.items.some(i=>i.active!==false))$('cards').append(el('p','現行の品目がありません。「仕入品情報」タブから登録するか、使用終了の品目を現行に戻してください。'));
@@ -411,7 +451,7 @@ function renderStockCards(){
   };
   box.append(save);c.append(box);
  };c.append(b);}
- const b=el('button','入荷を登録');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);stockCards.set(item.id,c);$('cards').append(c);
+ const b=el('button','入荷を登録');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);renderInformationCoverage(c,item);stockCards.set(item.id,c);$('cards').append(c);
  }
  if(view.items.some(i=>i.active!==false)&&!shown.length)$('cards').append(el('p','条件に合う品目がありません。カテゴリ・検索・発注状態の条件を変更してください。','muted'));
 }
