@@ -40,6 +40,9 @@
   if(stopped||loggingIn||ready||global!==global.top)return;
   loggingIn=true;controls();status.textContent='LINEで本人確認しています…';
   try{
+   // Explicit user login must use the broker's reauthentication path, not replay LIFF's
+   // possibly rejected cached proof after a page reload. Never run this on a save retry.
+   global.TlhInventoryLogin.clearToken();
    await global.TlhInventoryLogin.login();if(stopped)return;
    if(!global.TlhInventoryLogin.getToken())throw Error('AUTH_REQUIRED');
    const proof=Object.freeze({getIDToken:()=>stopped?null:global.TlhInventoryLogin.getToken()});
@@ -49,7 +52,7 @@
    grants=global.TlhCommonGrants?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!request||!!common?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls});
    access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof});
    ready=true;$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
-   status.textContent='LINE本人確認が完了しました。アカウントの登録・招待の受取ができます。';viewer.load();access?.load();
+   status.textContent='LINEから本人確認情報を受け取りました。登録状態を確認しています。';viewer.load();access?.load();
   }catch{
    if(!stopped)status.textContent='本人確認を開始できませんでした。ポップアップの許可と通信状態を確認し、もう一度お試しください。';
   }finally{loggingIn=false;controls();}
