@@ -19,6 +19,9 @@
  // Compatibility catalog only, not the general service registry. Query is display-only.
  const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');
  const personalPurpose=!!purposeMatch;
+ // Display hint only: exact reviewed service, never a scope or authorization.
+ const serviceMatch=/^\?service=([a-z][a-z0-9-]{0,79})$/.exec(global.location.search||'');
+ const serviceHint=!personalPurpose&&serviceMatch&&(global.TlhAccountServiceLaunchers||[]).filter(x=>x.serviceId===serviceMatch[1]).length===1?serviceMatch[1]:null;
  const matches=personalPurpose?(global.TlhActivationServices||[]).filter(x=>x.serviceId===purposeMatch[1]):[];
  // Same strict relative-path grammar as the activation return link; no URL decoding.
  const destination=matches.length===1&&typeof matches[0].path==='string'&&!/[\x00-\x20\x7f]/.test(matches[0].path)&&/^\/(?:[a-z0-9-]+\/)+$/.test(matches[0].path)?matches[0]:null;
@@ -63,7 +66,7 @@
   // A sibling operation can finish after this picker discarded an in-flight read.
   common?.syncPicker?.();grants?.syncPicker?.();tabs?.sync();activation?.activatePanel?.(['self','services','manage','company','platform'].find(key=>$('account-tab-'+key).getAttribute('aria-selected')==='true')||'self');
  }
- $('account-request-entry').addEventListener('click',()=>{if(registrationConfirmed&&global.TlhAccountNavigation.canLeave())$('account-tab-services').click();});
+ $('account-request-entry').addEventListener('click',()=>{if(registrationConfirmed&&global.TlhAccountNavigation.canLeave()){if(serviceHint)services?.openService(serviceHint);$('account-tab-services').click();}});
  $('account-read-retry').addEventListener('click',()=>{if(selfReadState==='error'&&ready&&global.TlhAccountNavigation.canLeave())access?.refresh();});
  $('account-details').addEventListener('toggle',()=>{if($('account-details').open&&ready&&!global.TlhAccountNavigation.canLeave())return;if($('account-details').open&&ready)viewer?.load();});
  login.addEventListener('click',async()=>{
