@@ -1,4 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import {currentWorkplaceHarness}from './helpers/current-workplace-harness.mjs';
+import {infoHarness} from './helpers/common-affiliation-info-harness.mjs';
+import {companyUi} from './helpers/company-employment-ui-harness.mjs';
 test('store/company display is visible without login, network, timers or personal-data storage',()=>{
  const h=currentWorkplaceHarness();assert.deepEqual(h.banner.children.map(n=>n.textContent),[h.api.config.workplaceName,h.api.config.organizationName]);assert.equal(h.sent.length,0);
  const js=fs.readFileSync(new URL('../workforce/current-workplace.js',import.meta.url),'utf8');assert.doesNotMatch(js,/localStorage|sessionStorage|fetch\(|setTimeout\(|console\./);
@@ -20,11 +22,16 @@ test('matching explicit URL is accepted, but foreign endpoints, embedding, dupli
  const foreign=h.form();foreign.action='https://evil.invalid/';assert.throws(()=>h.api.submit(foreign),/INVALID/);assert.throws(()=>h.api.submit(h.form({organizationId:c.organizationId})),/DUPLICATE/);h.leave();assert.throws(()=>h.api.submit(h.form()),/INVALID/);
  const framed=currentWorkplaceHarness({embedded:true});assert.throws(()=>framed.api.submit(framed.form()),/INVALID/);
 });
-// operations.jsは別の運営台帳・専用認可。勤怠の固定店舗scopeを付ける対象ではない。
-test('all ten business entry pages carry the same mark and load the scope helper before their controllers',()=>{
+// Operations and these two exact Platform self-read modules have independent server authorization.
+// Never append the fixed WorkTime workplace to them. Every other business form retains this guard.
+const platformSelfReads=Object.freeze({
+ 'common-affiliation-info.js':'bridgeCommonAffiliationV1',
+ 'company-employment-info.js':'bridgeCompanyEmploymentV1',
+});
+test('all legacy business entry pages carry the fixed mark and load scope helper before their controllers',()=>{
  const pages=['index','account-info','staff-code-change','recovery','timecard-records','admin-timecard-records','day-change','admin-day-change','schedule','admin-schedule','admin-schedule-bulk','labor-policy'];
  for(const page of pages){const html=fs.readFileSync(new URL('../workforce/'+page+'.html',import.meta.url),'utf8');assert.match(html,/data-current-workplace/);assert.match(html,/current-workplace\.js\?v=/);const scripts=[...html.matchAll(/src="([^"?]+\.js)/g)].map(m=>m[1]);const local=scripts.filter(s=>!s.startsWith('https:')&&s!=='/workforce/worktime-url.js');assert.equal(local[0],'current-workplace.js');}
- for(const file of fs.readdirSync(new URL('../workforce/',import.meta.url)).filter(n=>n.endsWith('.js')&&!['current-workplace.js','operations.js'].includes(n))){const js=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');if(js.includes('form.submit()'))assert.match(js,/TlhCurrentWorkplace\.submit\(form\)/,file);}
+ for(const file of fs.readdirSync(new URL('../workforce/',import.meta.url)).filter(n=>n.endsWith('.js')&&!['current-workplace.js','operations.js',...Object.keys(platformSelfReads)].includes(n))){const js=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');if(js.includes('form.submit()'))assert.match(js,/TlhCurrentWorkplace\.submit\(form\)/,file);}
 });
 test('changed business pages refresh their changed scripts and shared stylesheet together',()=>{
  const assets=new Set(['app.css','account-info.js','account-recovery.js','admin-access.js','admin-overview.js','attendance-journal.js','daily-summary.js','day-change.js','demo-invitation.js','labor-policy.js','monthly-work-summary.js','pending-approvals.js','punch.js','schedule.js','staff-code-change.js','staff-enrollment.js','staff-maintenance.js','work-state.js','current-workplace.js']);
@@ -33,4 +40,21 @@ test('changed business pages refresh their changed scripts and shared stylesheet
   const html=fs.readFileSync(new URL('../workforce/'+page+'.html',import.meta.url),'utf8');
   for(const m of html.matchAll(/(?:src|href)="([^"?]+)\?v=([^\"]+)"/g))if(assets.has(m[1]))assert.equal(m[2],versions[m[1]]||'20261105-store1',page+':'+m[1]);
  }
+});
+
+test('independent Platform self reads have exact allowlisted forms, not the fixed WorkTime workplace',async()=>{
+ for(const [file,action] of Object.entries(platformSelfReads)){
+  const source=fs.readFileSync(new URL('../workforce/'+file,import.meta.url),'utf8');
+  assert.match(source,new RegExp("action:'"+action+"'"),file);
+  assert.doesNotMatch(source,/TlhCurrentWorkplace|workplaceId|bridgeRecordPunch|bridgeCreateAccount|bridgeIssueStaffInvitation/,file);
+ }
+ const self=infoHarness();self.api.load();
+ assert.deepEqual(Object.keys(self.sent[0]).sort(),['action','idToken','nonce','phase','responseKey']);
+ assert.equal(self.sent[0].action,platformSelfReads['common-affiliation-info.js']);assert.equal(self.sent[0].phase,'READ_SELF');
+ const company=companyUi();await company.ready();
+ assert.deepEqual(Object.keys(company.sent[0]).sort(),['action','idToken','nonce','organizationId','phase','responseKey']);
+ assert.equal(company.sent[0].action,platformSelfReads['company-employment-info.js']);assert.equal(company.sent[0].phase,'READ_COMPANIES');assert.equal(company.sent[0].organizationId,'');
+ company.choose('orgB');assert.equal(company.sent[1].phase,'READ_SELF');assert.equal(company.sent[1].organizationId,'orgB');
+ assert.equal('workplaceId' in company.sent[1],false);
+ const count=company.sent.length;company.choose('not-a-returned-company');assert.equal(company.sent.length,count);
 });
