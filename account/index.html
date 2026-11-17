@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer">
 <title>TLH Account｜共通アカウント</title>
-<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=cbd3773ed4da8903">
+<link rel="stylesheet" href="/workforce/fonts/ibm-plex-sans-jp.css"><link rel="stylesheet" href="account.css?v=994f54c735d12e1a">
 <!-- 本人確認だけを既存の認証窓口で共用。Inventoryの業務controller、打刻controller、SDKの重複初期化は読み込まない。 -->
 <script src="/software/inventory/employee-login.js?v=6304a8f02a029d31" defer></script>
 <script src="/workforce/current-workplace.js?v=0c1479b7fa9c1d89" defer></script>
@@ -14,14 +14,14 @@
 <script src="/workforce/staff-enrollment.js?v=44698d443d4e06a7" defer></script>
 <script src="management-picker.js?v=5c747eae4c693a1c" defer></script>
 <script src="activation-services.js?v=4799bd43d2ebd34e" defer></script>
-<script src="service-activation.js?v=f511655fc737153a" defer></script>
+<script src="service-activation.js?v=ea3cd043d07136d1" defer></script>
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=00a4c7551e1148fe" defer></script>
 <script src="access-overview.js?v=ff277742d27bc34a" defer></script>
 <script src="/workforce/operations.js?v=fa3008658a347d8d" defer></script>
 <script src="operations-panels.js?v=f7e61f533419137f" defer></script>
 <script src="tabs.js?v=8a93e3d8892e282b" defer></script>
-<script src="account.js?v=28818afc2ed7ed75" defer></script>
+<script src="account.js?v=b19ffd444d2458d8" defer></script>
 </head>
 <body><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
@@ -29,10 +29,11 @@
 <p id="account-login-intro">招待を受け取るには、LINEでログインしてください。</p>
 <button id="account-login" type="button">LINEでログイン</button>
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
+<button id="account-read-retry" type="button" hidden>登録状態を再読込</button>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
 <div id="account-tools" hidden>
 <nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
-<section data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
+<section id="activation-section" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">招待を受け取る</h2><div data-account-panel="self"><div id="account-signup" hidden>
 <p>このLINEでアカウントを作成します。</p>
 <button id="account-create" type="button">アカウントを作成して続ける</button>
 <p id="account-create-status" role="status" aria-live="polite"></p>

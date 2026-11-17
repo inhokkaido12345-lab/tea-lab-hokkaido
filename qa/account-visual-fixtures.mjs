@@ -1,13 +1,15 @@
 // Synthetic contract fixtures only. No employee, secret, live request or API write.
 import {createHmac} from 'node:crypto';
 import {data as overviewData} from '../tests/helpers/account-access-overview-harness.mjs';
-export const scenarios=['unregistered','existing','checking','error','unknown','success'];
+export const scenarios=['unregistered','existing','checking','error','unknown','success','management-error'];
 export function fixtureReply(p,scenario){
  let r,parts;
  if(p.action==='bridgeAccountAccessOverviewV1'){
   if(scenario==='checking')return null;
   const code=scenario==='unregistered'?'COMMON_ACCOUNT_NOT_REGISTERED':scenario==='error'?'COMMON_AUTH_UNAVAILABLE':'ACCOUNT_ACCESS_OVERVIEW_READY';
-  r={type:'TLH_ACCOUNT_ACCESS_OVERVIEW_V1',phase:'READ_SELF',nonce:p.nonce,code,data:code==='ACCOUNT_ACCESS_OVERVIEW_READY'?JSON.stringify(overviewData()):''};parts=[r.type,r.phase,r.nonce,r.code,r.data];
+  r={type:'TLH_ACCOUNT_ACCESS_OVERVIEW_V1',phase:'READ_SELF',nonce:p.nonce,code,data:code==='ACCOUNT_ACCESS_OVERVIEW_READY'?JSON.stringify(scenario==='management-error'?{...overviewData(),operatingRoles:[{role:'ORGANIZATION_OPERATOR',organizationId:'fixture_org',organizationName:'合成試験会社',storeId:'',storeName:'',serviceId:'',effective:true}]}:overviewData()):''};parts=[r.type,r.phase,r.nonce,r.code,r.data];
+ }else if(p.action==='bridgeCommonManagementPickerV1'&&scenario==='management-error'){
+  r={type:'TLH_COMMON_MANAGEMENT_PICKER_V1',phase:p.phase,organizationId:p.organizationId||'',storeId:p.storeId||'',nonce:p.nonce,code:'COMMON_AFFILIATION_NOT_READY',data:''};parts=[r.type,r.phase,r.organizationId,r.storeId,r.nonce,r.code,r.data];
  }else if(p.action==='bridgeCommonServiceActivationV1'){
   if(p.phase==='COMMIT'&&scenario==='unknown')return null;
   const summary={organizationId:'fixture_org',organizationName:'合成試験会社',storeId:'fixture_store',storeName:'合成試験店舗',serviceId:'INVENTORY',permissions:['inventory.read','inventory.receive'],employmentCreated:false,validityMinutes:30,addedPermissions:['inventory.read','inventory.receive'],unchangedPermissions:[]};

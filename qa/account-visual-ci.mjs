@@ -38,13 +38,14 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
    // Mutation check: this assertion must detect a removed visual spinner.
    const mutation=await page.addStyleTag({content:'.account-tabs [aria-busy=true]::after{animation:none!important;content:none!important}'});assert.equal(await page.evaluate(spinner),false,'SPINNER_MUTATION_NOT_DETECTED');await mutation.evaluate(e=>e.remove());report.spinnerMutationDetected=true;
   }else if(scenario==='unregistered'){
-   await page.locator('#account-create').waitFor({state:'visible'});assert.equal(await page.locator('#activation-register').isVisible(),false,'DUPLICATE_REGISTER_CTA');assert.equal(await page.locator('#activation-code-entry').isVisible(),false,'CODE_SHOWN_BEFORE_REGISTRATION');
+   await page.locator('#account-create').waitFor({state:'visible'});assert.equal(await page.locator('#activation-register').isVisible(),false,'DUPLICATE_REGISTER_CTA');assert.equal(await page.locator('#activation-code-entry').isVisible(),false,'CODE_SHOWN_BEFORE_REGISTRATION');assert.equal(await page.locator('#activation-lock').isVisible(),false,'EMPTY_ACTIVATION_FIELDSET');
   }else if(scenario==='error'){
    await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('data-state')==='error');assert.equal(await page.locator('#account-create').isVisible(),false,'ERROR_IS_NOT_UNREGISTERED');
-   assert.equal(await page.locator('#account-management-details > summary').isVisible(),true,'ERROR_SUMMARY_MISSING');assert.equal(await page.locator('#account-management-details').evaluate(e=>e.open),false,'ERROR_DETAILS_AUTO_OPEN');assert.equal(await page.locator('#account-role-check').isVisible(),false,'RETRY_NOT_COLLAPSED');assert.match(await page.locator('#account-status').textContent(),/確認できません/,'ERROR_STILL_SHOWS_PENDING');
+   assert.equal(await page.locator('#account-management-details > summary').isVisible(),true,'ERROR_SUMMARY_MISSING');assert.equal(await page.locator('#account-management-details').evaluate(e=>e.open),false,'ERROR_DETAILS_AUTO_OPEN');assert.equal(await page.locator('#account-role-check').isVisible(),false,'RETRY_NOT_COLLAPSED');assert.match(await page.locator('#account-status').textContent(),/確認できません/,'ERROR_STILL_SHOWS_PENDING');assert.equal(await page.locator('#activation-code').isVisible(),false,'UNKNOWN_REGISTRATION_CODE_VISIBLE');assert.equal(await page.locator('#activation-claim').isVisible(),false,'UNKNOWN_REGISTRATION_CLAIM_VISIBLE');assert.equal(await page.locator('#account-read-retry').isVisible(),true,'SELF_RETRY_MISSING');
   }else{
    await page.waitForFunction(()=>document.getElementById('account-status').textContent.includes('登録済み'));
    assert.equal(await page.locator('#account-create').isVisible(),false,'REGISTER_SHOWN_FOR_EXISTING');
+   if(scenario==='management-error'){await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('data-state')==='error');assert.equal(await page.locator('#activation-code').isVisible(),true,'MANAGEMENT_FAILURE_HIDES_VALID_CLAIM');assert.equal(await page.locator('#activation-claim').isEnabled(),true);assert.equal(await page.locator('#account-read-retry').isVisible(),false,'MANAGEMENT_FAILURE_INVALIDATES_REGISTRATION');}
    if(['unknown','success'].includes(scenario)){
     await page.locator('#activation-code').fill('a'.repeat(64));await page.locator('#activation-claim').click();await page.locator('#activation-preview').waitFor({state:'visible'});
     assert.equal(await page.locator('#activation-inputs').isVisible(),false,'PREVIEW_DUPLICATES_INPUT');await page.locator('#activation-commit').click();
@@ -53,7 +54,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
     }else{await page.locator('#activation-open').waitFor({state:'visible'});assert.equal(await page.locator('#activation-open').evaluate(e=>{const other=document.getElementById('activation-cancel'),s=getComputedStyle(e);return !!(e.compareDocumentPosition(other)&Node.DOCUMENT_POSITION_FOLLOWING)&&e.getBoundingClientRect().height>=44&&s.backgroundColor!=='rgba(0, 0, 0, 0)';}),true,'SUCCESS_APP_NOT_PRIMARY');assert.equal(await page.evaluate(()=>window.TlhAccountNavigation.canLeave()),true);assert.equal(requests.filter(r=>r.phase==='COMMIT').length,1);}
    }
   }
-  if(scenario==='checking')assert.equal(await page.locator('#account-create').isVisible(),false,'CHECKING_IS_NOT_UNREGISTERED');
+  if(scenario==='checking'){assert.equal(await page.locator('#account-create').isVisible(),false,'CHECKING_IS_NOT_UNREGISTERED');assert.equal(await page.locator('#activation-code').isVisible(),false,'CHECKING_OFFERS_CLAIM');assert.equal(await page.locator('#account-status').getAttribute('aria-busy'),'true','SELF_SPINNER_MISSING');}
   await page.evaluate(()=>document.fonts.ready);assert.deepEqual(errors,[],'BROWSER_OR_UNEXPECTED_CONTRACT_ERROR');
   const metrics=await page.evaluate(()=>({fonts:[...document.fonts].map(f=>({family:f.family,status:f.status})),width:innerWidth,scrollWidth:document.documentElement.scrollWidth,tabStates:[...document.querySelectorAll('.account-tabs button')].map(e=>({id:e.id,state:e.dataset.state,busy:e.getAttribute('aria-busy')}))}));
   metrics.visibleButtons=await page.evaluate(collectViewportButtons);
@@ -63,7 +64,7 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}])for(c
   if(scenario==='error'){
    // Capture the initial collapsed error above, then verify its explicit recovery path.
    await page.locator('#account-management-details > summary').click();assert.equal(await page.locator('#account-role-check').isVisible(),true,'EXPANDED_RETRY_MISSING');
-   holdRetry=true;const retried=page.waitForRequest(r=>r.method()==='POST'&&new URLSearchParams(r.postData()).get('action')==='bridgeAccountAccessOverviewV1');await page.locator('#account-role-check').click();await retried;
+   holdRetry=true;const retried=page.waitForRequest(r=>r.method()==='POST'&&new URLSearchParams(r.postData()).get('action')==='bridgeAccountAccessOverviewV1');await page.locator('#account-read-retry').click();await retried;
    await page.waitForFunction(()=>document.getElementById('account-tab-manage').getAttribute('aria-busy')==='true');assert.equal(await page.evaluate(spinner),true,'RETRY_SPINNER_MISSING');
    await page.waitForFunction(()=>document.getElementById('account-status').textContent.includes('確認しています'));
    report.explicitRetrySpinner=true;await page.screenshot({path:path.join(output,name+'-retry.png')});
