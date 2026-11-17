@@ -85,12 +85,12 @@ const statusGuides={
  AUTH_REQUIRED:['本人確認情報が受け付けられませんでした。LINEでログインし直してください。','login'],
  AUTH_SERVICE_ERROR:['認証サービスの処理に問題があります。再ログインを繰り返さず、管理者へ確認コードを伝えてください。'],
  AUTH_RESPONSE_INVALID:['認証サービスの応答を確認できません。管理者へ確認コードを伝えてください。'],
- ACCOUNT_NOT_REGISTERED:['LINEの本人確認はできました。まず自分のTLHアカウントを作成してください。在庫の利用に勤怠登録は不要です。','signup'],
+ ACCOUNT_NOT_REGISTERED:['アカウントを作成して続けてください。勤怠登録は不要です。','signup'],
  ACCOUNT_INACTIVE:['TLHアカウントが停止されています。管理者に確認してください。別アカウント作成や勤怠登録では解決しません。'],
  LOGIN_POPUP_BLOCKED:['このサイトのポップアップを許可し、「LINEでログイン」を押してください。','login'],
  LOGIN_UNAVAILABLE:['通信状態を確認してLINEログインをやり直してください。','login'],
- STORE_SELECTION_REQUIRED:['会社の在庫が表示されない場合は、所属招待の受取りと在庫権限（閲覧を含む）の付与を管理者に確認してください。所属だけでは利用できません。個人在庫の作成は不要です。'],
- COMMON_MEMBERSHIP_REQUIRED:['会社・店舗への所属が確認できません。管理者からの所属招待をTLHアカウント画面で受け取ってください。勤怠登録は不要です。'],
+ STORE_SELECTION_REQUIRED:['会社の在庫が表示されない場合は、利用開始コードをアカウント画面で受け取ってください。受取済みなら管理者へ確認してください。'],
+ COMMON_MEMBERSHIP_REQUIRED:['会社・店舗への所属が確認できません。管理者の利用開始コードをアカウント画面で受け取ってください。勤怠登録は不要です。'],
  COMMON_SERVICE_PERMISSION_REQUIRED:['所属は在庫権限とは別です。管理者に在庫権限（閲覧を含む）の付与を確認してください。個人在庫の作成では会社在庫を利用できません。'],
  COMMON_ACCOUNT_INACTIVE:['TLHアカウントが停止されています。管理者に確認してください。勤怠登録や別アカウント作成は不要です。'],
  FORBIDDEN:['利用するアカウントと店舗を確認し、店舗管理者へ所属・権限の確認を依頼してください。'],
@@ -127,9 +127,8 @@ function message(text,code=''){
  details.append(el('p',guide[0]),el('p','確認コード：'+(unresolved?'SAVE_UNKNOWN':safe),'diagnostic-code'));
  const action=guide[1],labels={login:'LINEでログイン',retry:'同じ操作を再確認',refresh:'最新の記録を読む',sync:'一覧シートへ再同期'};
  if(action==='signup'){
-  const link=el('a','TLHアカウントを作成する');link.href='/account/';details.append(link);
-  details.append(el('p','会社で使う方：アカウント画面の本人IDを管理者へ共有 → 所属招待を受取り → 管理者が在庫権限（閲覧を含む）を付与。'));
-  details.append(el('p','「在庫管理を開く」で戻り、最新の記録を読み直してください。本人確認を求められたら同じLINEで再ログインしてください。'));return;
+  const link=el('a','アカウントを作成して続ける');link.href='/account/';details.append(link);
+  const help=el('details');help.append(el('summary','次の手順'),el('p','同じLINEで作成します。会社で使う方は利用開始コードを受け取り、在庫へ戻ってください。個人利用はコード不要です。'));details.append(help);return;
  }
  if(action){const button=el('button',labels[action]);button.type='button';button.dataset.recovery=action;
   button.onclick=()=>{if(busy)return;if(action==='login')$('line-login')?.onclick?.();else if(action==='retry')send();else if(action==='sync')send({type:'SYNC_CATALOG'});else refresh();};details.append(button);
