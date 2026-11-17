@@ -182,3 +182,6 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .information-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.information-tile{padding:10px;border:1px solid currentColor;border-radius:10px;display:flex;flex-direction:column;gap:6px;font-size:.83rem;overflow-wrap:anywhere}.information-tile strong{font-size:.95rem}
 .information-settings label{display:block;margin:8px 0}.information-settings input{min-height:44px;width:100%;box-sizing:border-box}.information-settings button{min-height:44px}.information-history{margin-top:10px}
 @media(forced-colors:active){.information-signal,.information-tile,.signal-icon{border:2px solid CanvasText}}
+
+/* One compact signal on the existing disclosure; operational controls stay first. */
+.forecast-explanation>summary{min-height:44px;cursor:pointer}.information-compact{display:inline-block;font-size:.72rem;font-weight:600;border:1px solid currentColor;border-radius:999px;padding:2px 7px;margin:4px 0 0 6px;vertical-align:middle;line-height:1.5;white-space:nowrap}.forecast-explanation .information-coverage{margin:10px 0 0;padding:10px}.forecast-explanation>summary:focus-visible{outline:3px solid #146e61;outline-offset:3px}

@@ -229,7 +229,7 @@ function renderConsumption(card, item) {
   card.append(dates);
   if(forecast.redlineQuantity!=null)card.append(el('p','安全側の発注目安 '+quantities(forecast.redlineQuantity,item.baseUnit)+
     ' ／実績納期 '+forecast.config.leadDays.toFixed(1)+'日＋余裕 '+forecast.config.safetyDays+'日','redline'));
-  const explanation=el('details','');explanation.append(el('summary','予測の根拠・消費速度を見る'));
+  const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));
   if (forecast.baselineAt) {
     explanation.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
       (forecast.baselineSource === 'RECEIPT' ? ' ／初回入荷前の在庫を0として推定' : ' ／棚卸実数から推定'), 'muted'));
@@ -243,6 +243,7 @@ function renderConsumption(card, item) {
   explanation.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
     el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
   if(item.delivery)explanation.append(el('p','発注から受取まで：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
+  renderInformationCoverage(explanation,item);
   card.append(explanation);
   if(view.permissions.includes('inventory.receive')){
     const adjustment=el('details','');adjustment.append(el('summary','発注の余裕を調整'));
@@ -402,6 +403,7 @@ function renderInformationCoverage(card,item){
  const byKind=Object.fromEntries(info.categories.map(c=>[c.kind,c]));
  const box=el('section','','information-coverage');box.setAttribute('aria-label','情報の更新目安');
  const display=el('div','','information-display'),settings=el('details','','information-settings');
+ const compact=el('span','','information-compact');card.querySelector('summary')?.append(compact);
  let countDays=7,measurementDays=30;
  const age=c=>!c?.count?'記録なし':Number.isFinite(c.ageDays)?(c.ageDays===0?'24時間以内':c.ageDays+'日前'):'日時不明';
  function paint(){
@@ -411,10 +413,10 @@ function renderInformationCoverage(card,item){
   const signals=active?[count]:[count,measurement];
   const priority=['due','unknown','soon','recent'];let overall=signals.slice().sort((a,b)=>priority.indexOf(a.state)-priority.indexOf(b.state))[0];
   if(active&&overall.state==='recent')overall={state:'unknown',symbol:'◷',label:'消費の計測を継続中'};
-  const banner=el('div','','information-signal signal-'+overall.state);
-  const icon=el('span',overall.symbol,'signal-icon');icon.setAttribute('aria-hidden','true');
-  banner.append(icon,el('strong',overall.label),el('span','更新の目安 · 正確さの判定ではありません','information-caption'));
-  display.append(banner);
+  compact.className='information-compact signal-'+overall.state;
+  compact.textContent=overall.symbol+' '+({due:'見直し目安超過',soon:'見直しが近い',unknown:overall.label==='消費の計測を継続中'?'計測中':'情報不足',recent:'更新目安内'}[overall.state]);
+  compact.setAttribute('aria-label','更新目安：'+overall.label+'。精度の判定ではありません');
+  display.append(el('p','更新の目安 · 正確さの判定ではありません','information-caution'));
   const tiles=el('div','','information-tiles');
   for(const [kind,label,signal,days] of [['count','棚卸',count,countDays],['measurement','消費計測',measurement,measurementDays]]){
    const c=byKind[kind],ongoing=kind==='measurement'&&active,tile=el('div','','information-tile signal-'+(ongoing?'unknown':signal.state));
@@ -480,7 +482,7 @@ function renderStockCards(){
   };
   box.append(save);c.append(box);
  };c.append(b);}
- const b=el('button','入荷を登録');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);renderInformationCoverage(c,item);stockCards.set(item.id,c);$('cards').append(c);
+ const b=el('button','入荷を登録');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};c.append(b);if(!item.forecast){const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));renderInformationCoverage(explanation,item);c.append(explanation);}stockCards.set(item.id,c);$('cards').append(c);
  }
  if(view.items.some(i=>i.active!==false)&&!shown.length)$('cards').append(el('p','条件に合う品目がありません。カテゴリ・検索・発注状態の条件を変更してください。','muted'));
 }
