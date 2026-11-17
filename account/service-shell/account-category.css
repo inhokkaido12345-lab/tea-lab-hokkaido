@@ -18,3 +18,12 @@
 .account-category-shell .service-pager { flex-wrap:wrap; }
 
 .account-category-shell .service-open { display:block; min-height:44px; padding:10px 14px; margin:12px 0; border-radius:8px; background:#2f5452; color:#fff; text-align:center; text-decoration:none; }
+
+/* Workflow shows only the current operation, not nested help panels. */
+.workflow-panel { gap:8px; }
+.workflow-panel p,.workflow-panel h3 { margin:4px 0; }
+.workflow-panel button { margin:4px 0; min-height:44px; }
+.workflow-panel .workflow-primary { color:#fff; background:#2f5452; border-color:#2f5452; }
+.workflow-panel input[type=checkbox] { display:inline-block; width:auto; margin-left:12px; }
+
+.account-procedure-entry { background:transparent; color:#2f5452; border-color:transparent; text-decoration:underline; }
