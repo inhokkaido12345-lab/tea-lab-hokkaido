@@ -23,7 +23,7 @@
 <section aria-labelledby="info-heading"><h2 id="info-heading">自分のアカウント</h2>
 <button id="account-info-check" type="button" disabled>登録情報を更新</button>
 <p id="account-info-status" role="status" aria-live="polite"></p>
-<details><summary>登録情報の詳細</summary><div id="account-info-result" hidden><dl id="account-info-fields"></dl></div></details>
+<details><summary>登録情報の詳細</summary><p>本人のTLHアカウントと、この勤務先の従業員情報・勤怠権限を表示します。ここに表示する管理者権限は勤怠の権限です。</p><div id="account-info-result" hidden><dl id="account-info-fields"></dl></div></details>
 <iframe id="account-info-frame" name="tlhAccountInfoFrame" title="本人アカウント情報の応答" hidden></iframe>
 <details><summary>TLHアカウントをまだ持っていない方</summary>
 <p>このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。一般登録の受付が停止中の場合は、その旨を表示します。従業員の招待コードがある方は、下の「従業員として登録」から登録できます。</p>
@@ -32,7 +32,7 @@
 <iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
 </details></section>
 <section aria-labelledby="staff-heading"><h2 id="staff-heading">従業員として登録</h2>
-<p data-current-workplace></p><p>この勤務先から受け取った招待コードを入力し、本人のLINEと従業員情報を紐づけます。打刻アプリを利用しない方も、この画面で登録できます。</p>
+<p data-current-workplace></p><p>この勤務先から受け取った招待コードを入力し、本人のLINEと従業員情報・勤怠の従業員権限を紐づけます。打刻アプリを利用しない方も、この画面で登録できます。アカウントだけを作る場合は、上の「TLHアカウントをまだ持っていない方」を使ってください。</p>
 <fieldset id="account-enrollment-lock" disabled><legend>従業員の招待・登録</legend>
 <form id="staff-claim-form"><label for="staff-claim-code">招待コード</label>
 <textarea id="staff-claim-code" rows="3" required maxlength="64" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
@@ -53,7 +53,7 @@
 </fieldset></section>
 </div>
 <section aria-labelledby="apps-heading"><h2 id="apps-heading">アプリへ戻る</h2>
-<p>登録が完了したら、利用するアプリでLINEログインしてください。従業員の所属は共通です。在庫を使うために勤怠アプリを開く必要はありません。</p>
+<p>登録が完了したら、利用するアプリでLINEログインしてください。在庫を使うために勤怠アプリを開く必要はありません。</p>
 <nav aria-label="TLHアプリ"><a href="/software/inventory/">在庫管理を開く</a><a href="/software/worktime/">勤怠・シフトを開く</a></nav></section>
 <noscript>アカウントの登録にはJavaScriptを有効にしてください。</noscript>
 </main><footer>TEA LABORATORY HOKKAIDO</footer></body></html>
