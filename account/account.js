@@ -51,6 +51,7 @@
   $('account-apps').hidden=true; // App discovery is centralized in the service category; P0 return CTAs stay local.
   $('account-personal-ready').hidden=!personalPurpose||!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
   if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
+  $('account-request-entry').hidden=!registrationConfirmed||personalPurpose;$('account-request-entry').disabled=!global.TlhAccountNavigation.canLeave();
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;
   create.disabled=!!services?.busy()||!!activation?.busy()||(!unregistered&&!request)||!!operations?.busy()||stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();
   enrollment.disabled=!!services?.busy()||!!activation?.busy()||!!operations?.busy()||stopped||!ready||!!request||!!common?.busy()||!!grants?.busy();
@@ -61,6 +62,7 @@
   // A sibling operation can finish after this picker discarded an in-flight read.
   common?.syncPicker?.();grants?.syncPicker?.();tabs?.sync();activation?.activatePanel?.(['self','services','manage','company','platform'].find(key=>$('account-tab-'+key).getAttribute('aria-selected')==='true')||'self');
  }
+ $('account-request-entry').addEventListener('click',()=>{if(registrationConfirmed&&global.TlhAccountNavigation.canLeave())$('account-tab-services').click();});
  $('account-read-retry').addEventListener('click',()=>{if(selfReadState==='error'&&ready&&global.TlhAccountNavigation.canLeave())access?.refresh();});
  $('account-details').addEventListener('toggle',()=>{if($('account-details').open&&ready&&!global.TlhAccountNavigation.canLeave())return;if($('account-details').open&&ready)viewer?.load();});
  login.addEventListener('click',async()=>{

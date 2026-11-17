@@ -28,15 +28,15 @@
 <script defer src="service-shell/signed-workflow-status.js?v=9a07b8f5ea126df0"></script>
 <script defer src="service-shell/workflow-discovery-view.js?v=b8cce65d203f0f41"></script>
 <script defer src="service-shell/workflow-records-view.js?v=86cfb3cff429b585"></script>
-<script defer src="service-shell/workflow-receipt.js?v=014c8e8c71622f56"></script>
+<script defer src="service-shell/workflow-receipt.js?v=a8e0c466326a4a06"></script>
 <script defer src="service-shell/workflow-confirmation.js?v=41eb3126089af285"></script>
-<script defer src="service-shell/workflow-panel.js?v=acfd9bff705e7be0"></script>
+<script defer src="service-shell/workflow-panel.js?v=7f3f05bf0178c588"></script>
 <script src="service-shell/verified-overview-scopes.js?v=dae5f1ab2ee29ad8" defer></script>
 <script src="service-shell/service-management.js?v=b29976af05ff28a9" defer></script>
 <script src="service-shell/compatibility-launchers.js?v=633e5f797c56e013" defer></script>
 <script src="service-shell/account-service-category.js?v=c5d07af46ea56872" defer></script>
-<script src="account.js?v=fbf5d32f57baec79" defer></script>
-<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=6f91a80dac2b117d">
+<script src="account.js?v=12aad6619c2e8f38" defer></script>
+<link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=2337be15aa61cc2a">
 </head>
 <body class="account-category-shell"><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
@@ -57,7 +57,7 @@
 <p id="account-create-status" role="status" aria-live="polite"></p>
 <iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
 </div></div><fieldset id="activation-lock" disabled><legend hidden>招待</legend>
-<div id="activation-inputs"><form data-account-panel="self" id="activation-claim-form"><label id="activation-code-entry">利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">次へ</button></form>
+<div id="activation-inputs"><form data-account-panel="self" id="activation-claim-form"><label id="activation-code-entry">利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">次へ</button><button id="account-request-entry" class="account-procedure-entry" type="button" hidden>コードがない方：申請先を確認</button></form>
 <div data-account-panel="manage" hidden><h3>招待を作る</h3><form id="activation-issue-form">
 <button id="activation-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="activation-picker-status" role="status" aria-live="polite"></p><label>会社<select id="activation-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="activation-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="activation-picker-frame" name="tlhManagementPickeractivation" title="管理できる範囲の応答" hidden></iframe>
 <p id="activation-service-name" hidden></p><label id="activation-service-choice">対象サービス<select id="activation-service"></select></label><fieldset><legend>付与する操作権限</legend><div id="activation-permissions"></div></fieldset><p>コードは発行から30分有効</p>
