@@ -163,25 +163,20 @@ body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#sta
  * 単なるLINE完了・空でないhostを成功とはみなさない。失敗/再認証で案内を戻す。 */
 body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stores > label > select):has(#overview > div):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) .inventory-entry { display:none; }
 
-/* Record coverage: quiet, optional, never a competitive score or an accuracy claim. */
-.information-coverage { margin:12px 0; padding:12px; border:1px solid #b8d1c9; border-radius:14px; background:#f2f8f5; }
-.information-coverage summary { min-height:44px; cursor:pointer; font-weight:700; padding:4px; }
-.information-caption { display:block; font-size:.8rem; font-weight:400; color:#45635a; margin-top:4px; }
-.information-records { list-style:none; padding:0; display:grid; gap:10px; }
-.information-records li { display:grid; gap:2px; border-bottom:1px solid #d5e5df; padding-bottom:8px; }
-.information-records span,.information-records small,.information-caution { font-size:.82rem; line-height:1.65; }
-.information-caution { color:#4d514e; }
-.information-next { width:100%; min-height:44px; margin-top:6px; white-space:normal; }
-.information-coverage summary:focus-visible,.information-next:focus-visible { outline:3px solid #146e61; outline-offset:3px; }
-
-/* Update hints use text and shape as well as color. They never rate accuracy. */
-.information-signal{display:grid;grid-template-columns:32px 1fr;gap:4px 8px;align-items:center;padding:10px;border:2px solid currentColor;border-radius:12px}
-.information-signal .information-caption{grid-column:2;font-size:.78rem}
-.signal-icon{border-radius:50%;border:2px solid currentColor;width:28px;height:28px;display:grid;place-items:center;font-weight:800}
-.signal-recent{color:#145235;background:#eef8f0}.signal-soon{color:#684500;background:#fff7d9}.signal-due{color:#8a2424;background:#fff0ef}.signal-unknown{color:#46505c;background:#f0f2f5}
-.information-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.information-tile{padding:10px;border:1px solid currentColor;border-radius:10px;display:flex;flex-direction:column;gap:6px;font-size:.83rem;overflow-wrap:anywhere}.information-tile strong{font-size:.95rem}
-.information-settings label{display:block;margin:8px 0}.information-settings input{min-height:44px;width:100%;box-sizing:border-box}.information-settings button{min-height:44px}.information-history{margin-top:10px}
-@media(forced-colors:active){.information-signal,.information-tile,.signal-icon{border:2px solid CanvasText}}
-
-/* One compact signal on the existing disclosure; operational controls stay first. */
-.forecast-explanation>summary{min-height:44px;cursor:pointer}.information-compact{display:inline-block;font-size:.72rem;font-weight:600;border:1px solid currentColor;border-radius:999px;padding:2px 7px;margin:4px 0 0 6px;vertical-align:middle;line-height:1.5;white-space:nowrap}.forecast-explanation .information-coverage{margin:10px 0 0;padding:10px}.forecast-explanation>summary:focus-visible{outline:3px solid #146e61;outline-offset:3px}
+/* The inventory quantity and daily actions lead; evidence stays in one disclosure. */
+.forecast-explanation { margin-top:16px; border-top:1px solid var(--line); padding-top:8px; }
+.forecast-explanation>summary { cursor:pointer; min-height:44px; font-size:.82rem; }
+.forecast-explanation>summary:focus-visible { outline:3px solid var(--teal); outline-offset:3px; }
+.information-compact { display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; margin:6px 0; font-size:.75rem; }
+.coverage-meter { display:flex; flex-wrap:wrap; gap:4px; }
+.coverage-meter>span { padding:2px 5px; border-radius:4px; border:1px solid var(--line); }
+.coverage-present { background:#e4efeb; color:#244e47; }
+.coverage-missing { background:#fff; color:#495c63; border-style:dashed!important; }
+.information-coverage { margin-top:12px; }
+.information-records { list-style:none; padding:0; display:grid; gap:6px; }
+.information-records li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 12px; border-bottom:1px solid var(--line); padding:6px 0; font-size:.82rem; }
+.information-caution { font-size:.8rem; color:var(--muted); }
+.stock-threshold { font-size:.78rem; color:var(--muted); margin:0 0 12px; }
+.card .qty { margin:8px 0 2px; font-size:clamp(1.5rem,6vw,2rem); overflow-wrap:anywhere; }
+@media(max-width:600px) { .forecast-dates { gap:8px; } .card { padding:16px; } }
+@media(forced-colors:active) { .coverage-meter>span { border-color:CanvasText; } }
