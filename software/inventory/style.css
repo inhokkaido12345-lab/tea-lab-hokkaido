@@ -213,3 +213,50 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .stock-operations>.pending-orders{flex-basis:100%;min-width:0;font-size:.8rem}.pending-order-notice{margin:0;font-size:.85rem;font-weight:600}.pending-orders>summary{min-height:32px;padding-top:6px}.pending-orders p{overflow-wrap:anywhere}
 
 .condition-box{border:1px solid #b8c3bd;border-radius:8px;padding:12px;margin:10px 0;background:#f3f4f2;min-width:0;overflow-wrap:anywhere}.condition-box.met{background:#edf6ee;border-color:#6e9974}.condition-box.unmet{background:#fff2e6;border-color:#c48c59}.condition-box h4{margin:0 0 6px}.condition-box p{font-size:.8rem;line-height:1.5;margin:7px 0}.condition-state{font-size:.85rem}.condition-box button{min-height:44px;margin:5px 5px 0 0}.level-rows{display:block;border:0}.stock-operations>button.primary{background:#2F5452;border-color:#2F5452;color:#fff}.stock-operations>button:not(.primary){background:#fff;color:#252829;border-color:#7C908E}
+
+/* Approved inventory-quest-mock: card geometry and condition grid, scoped to inventory cards. */
+#cards .card{font:14px/1.5 system-ui,sans-serif;padding:16px;border:1px solid #d7d9d0;border-radius:14px;color:#252829;background:#fff}
+#cards .card>.eyebrow{display:none}
+#cards .card>h3{font-size:21px;font-weight:700;margin:0 0 16px}
+#cards .stock-hero{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0}
+#cards .stock-hero .qty{font-size:32px;line-height:1.5;margin:0}
+#cards .stock-amount small{color:#495C63;font-size:12px}
+#cards .stock-hero .level-heading{display:block;text-align:right;font-size:12px;color:#495C63}
+#cards .reliability-stars{display:flex;flex-wrap:nowrap;justify-content:flex-end;max-width:170px;font-size:19px;letter-spacing:0;gap:0;line-height:1.5}
+#cards .reliability-stars .lit{color:#a86500}#cards .reliability-stars .unlit{color:#252829}
+#cards .item-alert{background:#fff4e9;border-left:3px solid #8E3F35;padding:8px;font-size:13px;line-height:1.5;margin:14px 0}
+#cards .stock-operations{display:flex;gap:8px;margin:14px 0;padding:0;border:0}
+#cards .card button{font:inherit;border:1px solid #7C908E;border-radius:8px;background:#fff;color:#252829;min-height:46px;padding:9px 10px;cursor:pointer;font-weight:400;width:auto;margin:0}
+#cards .stock-operations>button{flex:1;min-width:0}
+#cards .card button.primary{background:#2F5452;color:#fff;border-color:#2F5452}
+#cards .card button:focus-visible,#cards .card summary:focus-visible{outline:3px solid #2F5452;outline-offset:3px}
+#cards .level-journey{border:0;border-top:1px solid #d7d9d0;padding:14px 0 0;margin:14px 0 0;background:none;border-radius:0}
+#cards .level-journey>summary{min-height:44px;cursor:pointer;font-weight:600;color:#2F5452;font-size:14px;margin:0}
+#cards .level-current{margin:14px 0}
+#cards .row-legend{font-size:12px;line-height:1.5;color:#495C63;margin:14px 0}
+#cards .condition-box{border:1px solid #d9b394;border-radius:9px;padding:12px;margin:10px 0;background:#fff2e6;display:grid;grid-template-columns:1fr auto;gap:5px 8px}
+#cards .condition-box.met{background:#edf6ee;border-color:#9dbba1}
+#cards .condition-box.unmet,#cards .condition-box.unknown{background:#fff2e6;border-color:#d9b394}
+#cards .condition-box h4{font-size:14px;font-weight:700;margin:0;line-height:1.5}
+#cards .condition-state{font-size:12px;font-weight:700;color:#252829;white-space:nowrap}
+#cards .condition-body{grid-column:1/-1}
+#cards .condition-box p{font-size:14px;line-height:1.5;margin:0}
+#cards .condition-box .condition-benefit{font-weight:600;margin:0 0 8px!important;line-height:1.5}
+#cards .condition-box .condition-reason,#cards .condition-box .muted{color:#495C63;font-size:12px}
+#cards .condition-box button{justify-self:start;grid-column:1/-1}
+#cards .quest-feedback{background:#edf2ef;border:0;border-left:3px solid #2F5452;padding:10px;margin:12px 0;font-size:14px;line-height:1.5}
+#cards .quest-feedback[hidden]{display:none}
+#cards .reliability-feedback{font-size:14px;line-height:1.5;margin:12px 0}
+
+#cards .quest-feedback .reliability-feedback{margin:5px 0 0}
+
+#cards .stock-hero .qty{letter-spacing:normal;font-variant-numeric:normal}
+#cards .stock-hero .level-heading{font-size:14px;color:#252829}
+#cards .level-heading>span:first-child{font-size:12px;color:#495C63}
+#cards .reliability-stars{gap:normal;color:#252829}
+#cards .stock-alerts{display:grid;gap:6px;margin:14px 0}
+#cards .stock-alerts .item-alert{margin:0}
+#cards .row-legend{margin:12px 0}
+
+main:has(#stock:not([hidden])){max-width:650px;padding-left:12px;padding-right:12px}
+#cards{grid-template-columns:minmax(0,1fr)}
