@@ -154,7 +154,7 @@
 <div class="schedule-sheet-actions"><button id="schedule-management-sheet-create" type="button" disabled>該当月の入力シートを作成</button><a id="schedule-management-sheet-open" class="button secondary" href="#" target="_blank" rel="noopener" hidden>入力シートを開く</a></div>
 <!-- 作成確認は作成ボタン直下へ。公開・希望休の確認とは表示位置だけを分け、同じ保存確認を共用する。 -->
 <div id="schedule-management-sheet-confirm-slot"></div>
-<section class="management-section"><h3>シフトの公開</h3><input id="schedule-management-period" type="hidden" value="FIRST"><p id="schedule-management-phase" class="footnote"></p><p class="footnote">シートに記入した月全体を確認して公開します。希望休の受付期間や締切とは独立しています。空欄は未設定で、公休にはなりません。管理者が本人と確認済みの変更も、この公開で確定シフトへ反映します。本人からの未処理申請と重なる変更は止めてお知らせします。</p><button id="schedule-management-publish" type="button" disabled>公開</button></section>
+<section class="management-section"><h3>シフトの公開</h3><input id="schedule-management-period" type="hidden" value="FIRST"><p id="schedule-management-phase" class="footnote"></p><p class="footnote">シートに記入した月全体を確認して公開します。希望休の受付期間や締切とは独立しています。空欄は未設定で、公休にはなりません。管理者が本人と確認済みの変更も、この公開で確定シフトへ反映します。本人からの未処理申請と重なる変更は止めてお知らせします。</p><button id="schedule-management-publish" type="button" disabled>公開</button><p id="schedule-management-publish-result" role="status" aria-live="polite"></p></section>
 </section>
 <section id="schedule-management-requests-panel" role="tabpanel" aria-labelledby="schedule-management-requests-tab" hidden>
 <section class="management-section"><h3>希望休の締切を設定</h3><p class="footnote">ここからここまでの希望を、指定日時に締め切ります。締切未設定の日は申請できます。重なる日には後から設定した締切を適用し、既に届いた申請は残します。シフトの作成・公開範囲は制限しません。</p><div class="filters"><label>希望の開始日<input id="schedule-management-deadline-start" type="date" disabled></label><label>希望の終了日<input id="schedule-management-deadline-end" type="date" disabled></label><label>この期間の希望を締め切る日時（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label></div><button id="schedule-management-deadline-save" type="button" disabled>この期間の締切を設定</button><div id="schedule-management-deadline-rules"></div></section>
@@ -451,7 +451,7 @@
   <script src="/workforce/schedule-report.js?v=20261111-maint1"></script>
   <script src="/workforce/schedule.js?v=20261111-off1"></script>
   <script src="/workforce/schedule-management-contract.js?v=20261111-issues1"></script>
-  <script src="/workforce/schedule-management.js?v=20261111-issues1"></script>
+  <script src="/workforce/schedule-management.js?v=20261119-late-reply1"></script>
   <script src="/workforce/schedule-workspace.js?v=20261110-lazy-init1"></script>
   <script src="/workforce/layout.js?v=20261110-management1"></script>
   <script src="/workforce/admin-access.js?v=20261108-batch1"></script>

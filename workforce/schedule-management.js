@@ -29,10 +29,10 @@
   }
   /** DOMと既存LIFFを接続しloadを返す。初期化では保存しない。欠落したIDはビルド/検査で直す。 */
   function init(options){
-    const ids=['sheet-confirm-slot','default-confirm-slot','month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
+    const ids=['sheet-confirm-slot','default-confirm-slot','month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','publish-result','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
-    let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
+    let snapshot=null,pending=null,late=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
     const contract=global.TlhScheduleManagementContract;
     const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!confirmation||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。';}});
     const scopeKey=()=>{const c=global.TlhCurrentWorkplace?.config;return c?JSON.stringify([c.organizationId,c.workplaceId,c.endpoint]):'';};
@@ -93,7 +93,7 @@
       if(!requests.length)el('p','この月の承認待ちはありません。',n.requests);controls();
     }
     function canAct(part=n.period.value){return !stopped&&!pending&&!uncertain&&!confirmation&&!flow&&!login.locked()&&snapshot?.halves[part]?.inputMode==='SHEET';}
-    function clear(){snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
+    function clear(){snapshot=null;n['publish-result'].textContent='';n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     // 確認欄は1個を移動するだけ。イベント・固定ID・再送状態を複製/作り直さない。
@@ -104,9 +104,12 @@
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
       if(typeof proof!=='string'||!proof){failed=true;flow=null;confirmation=null;if(READS.has(command)){clear();login.require();}n.status.textContent='LINEログインが必要です。';controls();return;}
-      const request={scope:scopeKey(),command,input:typeof input==='string'?input:JSON.stringify(input),operationId,nonce:random(16),responseKey:random(32)};
-      pending=request;controls();n.status.textContent=command==='sheetPublish'?'公開して結果を確認しています。':READS.has(command)?'読み込み中です。':'保存して結果を確認しています。';
-      function unknown(){if(stopped||pending!==request)return;failed=true;if(!READS.has(command))uncertain={command,input:request.input,operationId};else flow=null;finish();n.status.textContent=READS.has(command)?'取得できませんでした。再読み込みしてください。':'保存結果を確認できません。同じ操作で結果を再確認してください。';}
+      late=null;
+      const request={proof,scope:scopeKey(),command,input:typeof input==='string'?input:JSON.stringify(input),operationId,nonce:random(16),responseKey:random(32)};
+      pending=request;if(command==='sheetPublish')n['publish-result'].textContent='公開処理中です。サーバーの確定結果を待っています。';controls();n.status.textContent=command==='sheetPublish'?'公開して結果を確認しています。':READS.has(command)?'読み込み中です。':'保存して結果を確認しています。';
+      // 30秒は応答待ちの目安で、保存失敗ではない。同じ現行公開の照合情報だけ
+      // メモリに保持し、後着署名返信を受理する。再送/退場で失効。秘密の永続化なし。
+      function unknown(){if(stopped||pending!==request)return;failed=true;if(!READS.has(command))uncertain={command,input:request.input,operationId};else flow=null;if(command==='sheetPublish')late=request;finish();n.status.textContent=READS.has(command)?'取得できませんでした。再読み込みしてください。':'保存結果を確認できません。同じ操作で結果を再確認してください。';if(command==='sheetPublish'){n.status.textContent='公開結果はまだ確認できていません。保存失敗とは限りません。この画面で返信を待っています。';n['publish-result'].textContent=n.status.textContent;}else if(command==='sheetRead')n['publish-result'].textContent='公開前の確認を取得できませんでした。この操作では公開していません。';}
       request.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhScheduleManagementFrame';form.hidden=true;
       for(const [name,value]of Object.entries({action:ACTION,command,input:request.input,operationId,idToken:proof,nonce:request.nonce,responseKey:request.responseKey})){const field=document.createElement('input');field.type='hidden';field.name=name;field.value=value;form.appendChild(field);}
@@ -114,8 +117,9 @@
     }
     async function load(){if(stopped||pending||uncertain||confirmation||flow||login.locked())return;try{contract.days(n.month.value);}catch(_e){n.status.textContent='月を確認してください。';return;}clear();await send('batchRead',{month:n.month.value,audience:'admin'});}
     global.addEventListener('message',async event=>{
-      const request=pending;if(!request||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(event.origin)))return;
-      let valid=false;try{valid=await verify(event.data,request);}catch(_e){}if(!valid||pending!==request||stopped||request.scope!==scopeKey())return;
+      const request=pending||late;if(!request||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(event.origin)))return;
+      let valid=false;try{valid=await verify(event.data,request);}catch(_e){}if(!valid||(pending||late)!==request||stopped||request.scope!==scopeKey())return;
+      if(late===request){let proof;try{proof=options.liff.getIDToken();}catch(_e){}if(proof!==request.proof||login.locked())return;}
       const reply=event.data,expected=JSON.parse(request.input);let value=null;
       if(reply.code==='LINE_VERIFY_REJECTED'&&READS.has(request.command)&&reply.data===''){finish();clear();flow=null;failed=true;login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;controls();return;}
       if(reply.data){try{value=JSON.parse(reply.data);}catch(_e){return;}
@@ -126,6 +130,8 @@
       }
       if(SUCCESS.has(reply.code)&&!value)return;
       if(request.command==='sheetPublish'&&SUCCESS.has(reply.code)&&(!['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE'].includes(reply.code)||!['FIRST','SECOND'].every(k=>value.halves[k].phase==='PUBLISHED'&&value.halves[k].publishedAt)))return;
+      if(request.command==='sheetPublish'&&value&&snapshot&&['FIRST','SECOND'].some(k=>value.halves[k].monthRevision<snapshot.halves[k].monthRevision))return;
+      late=null;
       if(!SUCCESS.has(reply.code)){
         failed=true;if(!READS.has(request.command)&&unknownCodes.has(reply.code))uncertain={command:request.command,input:request.input,operationId:request.operationId};
         else{uncertain=null;flow=null;}
@@ -137,7 +143,7 @@
           // Lock未取得は開始前の拒否。直前の別操作まで未保存と断定せず、READ/保存を分けて案内する。
           n.status.textContent=READS.has(request.command)?(request.command==='sheetRead'?'差分確認の読取り':'最新状態の読取り')+'を開始できませんでした。別の処理がデータを保護中です。この操作では取込み・公開は行っていません。しばらく待って「再読み込み」を押し、表示後にもう一度公開を確認してください。':
             '別の処理がデータを保護中のため、今回の操作は開始できませんでした。前の操作の保存結果が不明な場合は、その同じ操作で結果を確認してください。それ以外は、しばらく待って「再読み込み」から最新状態を確認してください。';
-        }else n.status.textContent=messages[reply.code];return;
+        }else n.status.textContent=messages[reply.code];if(request.command==='sheetPublish'||request.command==='sheetRead')n['publish-result'].textContent=n.status.textContent;return;
       }
       uncertain=null;failed=false;finish();
       if(['sheetRead','sheetCreate'].includes(request.command)){
@@ -150,7 +156,12 @@
         void send('sheetPublish',{month:flow.month,audience:'admin',sourceDigest:a.sourceDigest,targetDigest:a.targetDigest});return;
       }
       if(['batchRead','sheetPublish','deadlineRange'].includes(request.command))updateBatch(value);else{snapshot.halves[expected.period]=value;render();}
-      if(request.command==='sheetPublish'){flow=null;n.status.textContent='月全体の公開を確認しました。最新の確定シフトを取得すると、既存のPNG保存から出力できます。';}
+      if(request.command==='sheetPublish'){flow=null;
+        const title=reply.code==='SCHEDULE_READY'?'✓ 変更はありません。公開済み内容との一致を確認しました。':reply.code==='SCHEDULE_ALREADY_DONE'?'✓ この操作の公開済み記録を確認しました。':'✓ 公開しました。';
+        const stamps=['FIRST','SECOND'].map((k,i)=>(i?'後半':'前半')+' '+new Date(value.halves[k].publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})).join(' ／ ');
+        n['publish-result'].textContent=expected.month+' '+title+' 現在の公開版の時刻（日本時間）：'+stamps+'。PNG用データはまだ更新していません。「確定シフト」で最新を取得し、内容を確認してから既存のPNG保存へ進んでください。';
+        n.status.textContent='月全体の公開を確認しました。'+title;
+      }
       else if(request.command==='deadlineRange')n.status.textContent=expected.startDay+'〜'+expected.endDay+'の希望締切を '+new Date(expected.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）に設定しました。';
       else if(request.command==='review'){
         const approved=value.requests.find(r=>r.requestId===expected.requestId&&r.status==='APPROVED'&&r.payload.sheetPreference);
@@ -167,7 +178,7 @@
       try{const valid=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&new Date(d+'T00:00:00Z').toISOString().slice(0,10)===d;if(!valid(startDay)||!valid(endDay)||startDay>endDay||!n.deadline.value)throw Error();deadline=new Date(n.deadline.value+':00+09:00').toISOString();}catch(_e){n.status.textContent='希望の開始日・終了日・締切日時を確認してください。';return;}
       review({command:'deadlineRange',input:{month:snapshot.month,audience:'admin',startDay,endDay,deadline,expectedDeadlineRevision:snapshot.halves.FIRST.deadlineRevision||0}},startDay+'〜'+endDay+'の希望を、'+new Date(deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）に締め切ります。重なる日は今回の締切を優先し、既に届いた申請は残します。設定しますか？');
     });
-    n.publish.addEventListener('click',()=>{if(!canAct()||n.publish.disabled)return;flow={confirmed:true,month:n.month.value};options.onPublishStart?.();void send('sheetRead',{month:flow.month,audience:'admin'});});
+    n.publish.addEventListener('click',()=>{if(!canAct()||n.publish.disabled)return;flow={confirmed:true,month:n.month.value};n['publish-result'].textContent=n.month.value+' 公開内容を確認しています。完了まで押し直す必要はありません。';options.onPublishStart?.();void send('sheetRead',{month:flow.month,audience:'admin'});});
     n.approve.addEventListener('click',()=>{
       if(!confirmation||pending||uncertain||stopped)return;const job=confirmation;
       confirmation=null;void send(job.command,job.input);
@@ -175,7 +186,7 @@
     n.cancel.addEventListener('click',()=>{if(pending||uncertain||stopped)return;confirmation=null;flow=null;n.reason.value='';n.status.textContent='操作を取り消しました。';controls();});
     n.retry.addEventListener('click',()=>{if(uncertain&&!pending&&!stopped)void send(uncertain.command,uncertain.input,uncertain.operationId);});
     global.addEventListener('beforeunload',event=>{if(pending&&!READS.has(pending.command)||uncertain||flow?.confirmed){event.preventDefault();event.returnValue='';}});
-    global.addEventListener('pagehide',()=>{stopped=true;confirmation=null;flow=null;uncertain=null;finish();clear();n.reason.value='';controls();});controls();
+    global.addEventListener('pagehide',()=>{stopped=true;late=null;confirmation=null;flow=null;uncertain=null;finish();clear();n.reason.value='';controls();});controls();
     return Object.freeze({load});
   }
   global.TlhScheduleManagement=Object.freeze({init,verify});
