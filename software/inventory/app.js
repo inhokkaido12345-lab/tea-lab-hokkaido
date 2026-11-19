@@ -656,16 +656,25 @@ async function send(command){
  const receiptLeavesOrders=pending.type==='RECEIVE'&&!pending.completeCaseId&&view?.items?.some(i=>i.orders?.length&&pending.lines.some(l=>l.itemId===i.id))&&(view?.receivingEnabled===true||!canOperate('RECEIVE',{completeCaseId:'selection'}));
  const receiptCanLink=receiptLeavesOrders&&canOperate('LINK_RECEIPT_TO_ORDER');
  let saved=false;
+ // The recovery module clears pending before returning a confirmed status.
+ const retryContext=command?null:{type:pending.type,itemId:pending.itemId,storeId:pending.storeId,operationId:pending.operationId};
  try {
  const result = await TlhInventory.request('COMMAND', pending);
- const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code};
+ const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code, recovered: result.recovered};
  const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE','RECOVERY_UNKNOWN','RECOVERY_ACTOR_MISMATCH','RECOVERY_STORAGE_UNAVAILABLE','RECOVERY_LOCK_UNAVAILABLE','RECOVERY_IDENTITY_UNAVAILABLE','RECOVERY_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
   // Recovery transport confirms historical saving; it does not execute another COMMAND.
   if(data.code==='RECOVERY_SAVED'){
    saved=true;pending=null;await load();
-   $('lines').replaceChildren();addLine();tab('stock');
+   const restored=retryContext&&data.recovered&&data.recovered.operationId===retryContext.operationId
+     &&data.recovered.storeId===retryContext.storeId&&view?.storeId===retryContext.storeId
+     &&['SAVE_ITEM','SYNC_CATALOG'].includes(retryContext.type);
+   if(restored&&retryContext.type==='SAVE_ITEM'){
+    const item=view.items.find(item=>item.id===retryContext.itemId);
+    if(item){catalogSelection=item.id;catalogFilter=item.active===false?'RETIRED':'CURRENT';catalogDirty=true;}
+   }
+   $('lines').replaceChildren();addLine();tab(restored?'catalog':'stock');
    message('保存済みを確認しました。再送せず、最新の記録を表示しました。');return;
   }
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
