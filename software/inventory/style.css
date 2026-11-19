@@ -15,7 +15,7 @@
   --muted: #495C63;
   --danger: #8E3F35;
   --line: #d7d9d0;
-  font-family: "IBM Plex Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   color: var(--ink);
   background: var(--paper);
   color-scheme: light;
@@ -102,7 +102,7 @@ input,select { width: 100%; max-width: 100%; }
 .action-card { margin-top: 18px; }
 .action-card h4 { margin-top: 0; }
 nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: center; background: var(--paper); border-top: 1px solid var(--line); padding: 8px 16px max(8px,env(safe-area-inset-bottom)); }
-nav button { width: min(30%,240px); border: 0; background: transparent; color: var(--muted); border-radius: 6px; }
+nav button { flex:1 1 0; max-width:240px; padding:12px 4px; font-size:.875rem; overflow-wrap:anywhere; border: 0; background: transparent; color: var(--muted); border-radius: 6px; }
 nav [aria-current="page"] { background: var(--teal); color: #fff; }
 footer { border-top: 1px solid var(--line); margin-top: 36px; padding-top: 18px; font-size: 11px; color: var(--muted); }
 footer span { float: right; }
@@ -148,10 +148,10 @@ nav button { min-width: 0; }
 /* 初回と既存利用を明示選択。登録・利用権限の判定には使わない。 */
 .inventory-entry { border:0; padding:0; font-size:13px; }
 .inventory-entry .entry-primary,.inventory-entry .entry-personal { display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; padding:12px 16px; border-radius:8px; font-size:16px; font-weight:600; text-decoration:none; text-align:center; }
-.inventory-entry .entry-primary { background:var(--teal); color:#fff; border:1px solid var(--teal); }
+.inventory-entry .entry-primary { background:#fff; color:var(--teal); border:1px solid var(--sage); }
 .inventory-entry .entry-personal { margin-top:8px; background:#fff; color:var(--teal); border:1px solid var(--sage); }
 .inventory-entry details { margin-top:10px; }
-#line-login.entry-login { background:#fff; color:var(--teal); border:1px solid var(--sage); min-height:48px; font-size:16px; }
+#line-login.entry-login { background:var(--teal); color:#fff; border:1px solid var(--teal); min-height:48px; font-size:16px; }
 /* 未ログインの空画面だけ省略。警告・復旧・処理中は常に従来の操作を残す。
  * 認可/保存状態は変更しない。:has非対応では従来表示へ退避する。 */
 body:has(#line-login:not([hidden])):has(#operation-recovery:empty):not(:has(#status[aria-busy="true"],#status.status-needs-action,#status-detail:not([hidden]),#recovery:not([hidden]))) :is(#stock,#receiving,#history,#catalog,#refresh),
@@ -180,3 +180,8 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .card .qty { margin:8px 0 2px; font-size:clamp(1.5rem,6vw,2rem); overflow-wrap:anywhere; }
 @media(max-width:600px) { .forecast-dates { gap:8px; } .card { padding:16px; } }
 @media(forced-colors:active) { .coverage-meter>span { border-color:CanvasText; } }
+
+.inventory-entry summary { min-height:48px; padding:12px 4px; cursor:pointer; }
+.inventory-entry summary:focus-visible, #line-login:focus-visible { outline:3px solid var(--teal); outline-offset:3px; }
+
+@media (max-width:420px) { body > nav { padding-left:8px; padding-right:8px; gap:0; } body > nav [data-tab="catalog"] { flex-grow:1.4; } }

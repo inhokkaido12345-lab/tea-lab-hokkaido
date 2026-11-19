@@ -223,39 +223,23 @@ function renderStockCount(container, item) {
   container.append(count);
 }
 
-/** 納期は読取専用の実績。調整できるのは安全余裕だけ。 */
-function renderOrderBuffer(container, item) {
-  const forecast=item.forecast;
-  if (item.delivery) {
-    container.append(el('p','発注→受取完了：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）'));
-    container.append(el('p','予測に使用する納期 '+item.delivery.leadDays.toFixed(1)+'日（平均と直近の長い側）','muted'));
-    if(item.delivery.precision==='DATE')container.append(el('p','この受取は後日登録のため、日付単位の概算です。','muted'));
-  }else{
-    container.append(el('p','納期は未計測です。入荷時に対応する注文を受取完了にすると、自動で計算されます。','muted'));
-  }
-  const safety = appendNumberField(container, '安全余裕（日）', forecast.safetyDays ?? forecast.config?.safetyDays ?? '1');
-  const save = el('button', '安全余裕を保存');
-  save.onclick = () => {
-    if (safety.value === '') {message('安全余裕を入力してください');return;}
-    send({type: 'SET_FORECAST', itemId: item.id, safetyDays: Number(safety.value)});
-  };
-  container.append(save);
-}
-
 /** 基準単位/日へ統一した予測と根拠を表示する。g・mL・本数を混ぜない。 */
 /** Explicit historical association only. Receipt selection never adds stock. */
 function renderReceiptLink(card,item,order){
  if(!canOperate('LINK_RECEIPT_TO_ORDER')||!order.orderOperationId)return;
  const details=el('details','');details.append(el('summary','登録済みの入荷と照合（在庫は増やさない）'));
+ let mounted=false;card.append(details);
+ details.ontoggle=()=>{if(!details.open||mounted)return;mounted=true;
  const candidates=(view.history||[]).filter(h=>h.type==='RECEIVE'&&h.receiptOperationId&&h.lines.some(l=>l.itemId===item.id));
- if(!order.plannedLine||!candidates.length){details.append(el('p','予定量がある注文と、表示中の入荷履歴1件だけを照合できます。分納・合算は未対応です。','muted'));card.append(details);return;}
+ if(!order.plannedLine||!candidates.length){details.append(el('p','予定量がある注文と、表示中の入荷履歴1件だけを照合できます。分納・合算は未対応です。','muted'));return;}
  const choose=el('select','');choose.setAttribute('aria-label','照合する登録済み入荷');choose.append(new Option('入荷記録を選ぶ',''));
  for(const h of candidates){const line=h.lines.find(l=>l.itemId===item.id);choose.append(new Option((h.receivedOn||'日付不明')+' ／ '+item.name+' ／ '+quantities(line.amount,item.baseUnit)+' ／ 記録 '+formatRecordedAt(h.at),h.receiptOperationId));}
  const preview=el('p',''),label=el('label',''),checked=el('input','');checked.type='checkbox';label.append(checked,el('span','この入荷が、この注文の全量であると確認した'));
  choose.onchange=()=>{checked.checked=false;validation.textContent='';const h=candidates.find(h=>h.receiptOperationId===choose.value);preview.textContent=h?'注文：'+formatRecordedAt(order.at)+' ／ '+item.name+' ／ '+quantities(order.plannedLine.amount,item.baseUnit)+'。入荷：'+h.receivedOn+' ／ '+quantities(h.lines.find(l=>l.itemId===item.id).amount,item.baseUnit):'';};
  const validation=el('p','','muted');validation.setAttribute('role','status');
  const save=el('button','照合して注文を完了');save.onclick=()=>{if(busy||pending)return;if(!choose.value){validation.textContent='入荷記録を選んでください。';return;}if(!checked.checked){validation.textContent='注文の全量であることを確認し、チェックしてください。';return;}validation.textContent='';send({type:'LINK_RECEIPT_TO_ORDER',caseId:order.id,orderOperationId:order.orderOperationId,receiptOperationId:choose.value,confirmAssociation:true});};
- details.append(choose,preview,el('p','数量一致だけでは同じ注文と断定できません。伝票等で確認してください。分納・合算は未対応。入荷の再登録は不要です。','muted'),label,save,validation);card.append(details);
+ details.append(choose,preview,el('p','数量一致だけでは同じ注文と断定できません。伝票等で確認してください。分納・合算は未対応。入荷の再登録は不要です。','muted'),label,save,validation);lock(busy);
+ };
 }
 function renderConsumption(card, item) {
   const forecast = item.forecast;
@@ -269,7 +253,7 @@ function renderConsumption(card, item) {
   const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));
   explanation.append(el('p',forecastMessages[forecast.status]||forecast.status,'muted'));
   if(forecast.redlineQuantity!=null)explanation.append(el('p','安全側の発注目安 '+quantities(forecast.redlineQuantity,item.baseUnit)+
-    ' ／実績納期 '+forecast.config.leadDays.toFixed(1)+'日＋余裕 '+forecast.config.safetyDays+'日','redline'));
+    ' ／実績納期 '+forecast.config.leadDays.toFixed(1)+'日','redline'));
   if (forecast.baselineAt) {
     explanation.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
       (forecast.baselineSource === 'RECEIPT' ? ' ／初回入荷前の在庫を0として推定' : ' ／棚卸実数から推定'), 'muted'));
@@ -285,12 +269,6 @@ function renderConsumption(card, item) {
   if(item.delivery)explanation.append(el('p','発注から受取まで：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
   renderInformationCoverage(explanation,item);
   card.append(explanation);
-  if(canOperate('SET_FORECAST')){
-    const adjustment=el('details','');adjustment.append(el('summary','発注の余裕を調整'));
-    let mounted=false;
-    adjustment.ontoggle=()=>{if(!adjustment.open||mounted)return;mounted=true;renderOrderBuffer(adjustment,item);lock(busy);};
-    explanation.append(adjustment);
-  }
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
 }
 
@@ -394,6 +372,7 @@ function showStockAction(name){
 }
 
 function render(){
+ const finishRender=globalThis.TlhInventoryTiming?.start('render');
  if(renderedStoreId!==view.storeId){renderedStoreId=view.storeId;catalogSelection='new';catalogFilter='CURRENT';stockAction='overview';stockCategory=catalogCategory='all';stockSearch=catalogSearch='';$('lines').replaceChildren();}
  itemsById = new Map(view.items.map(item => [item.id, item]));
  stockWorkspaces.clear();
@@ -416,7 +395,7 @@ function render(){
  if($('receiving-association')){$('receiving-association').hidden=view.receivingEnabled!==true;$('receiving-association-confirm').checked=false;}
  if(activeTab==='history')renderHistory();
  if(activeTab==='catalog')renderCatalog();
- showStockAction(stockAction);
+ showStockAction(stockAction);finishRender?.();
 }
 /** 絞り込みではカードだけを描画し、棚卸・計測・仕入情報の未保存入力を作り直さない。 */
 /** Coverage is a hint to the next existing workspace, never a save or accuracy score. */

@@ -39,7 +39,9 @@
       if(!configured)await ready;
       if (stopped) return;
       if(global.TlhInventoryLogin){
-        await global.TlhInventoryLogin.login();
+        status('LINEで本人確認しています…');
+        const finishLogin=global.TlhInventoryTiming?.start('login');
+        try{await global.TlhInventoryLogin.login();}finally{finishLogin?.();}
         if(stopped)return;login.hidden=true;document.getElementById('refresh').click();return;
       }
       await ready;
@@ -73,6 +75,7 @@
     if (!current) return;
     pending = null;
     clearTimeout(current.timer);
+    current.finishTiming?.();
     current.responseKey = '';
     if(error)invalidateStoreContext();
     if (error) current.reject(Error(error)); else current.resolve(value);
@@ -125,6 +128,7 @@
     return new Promise((resolve, reject) => {
       const current = {command, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
       pending = current;
+      if(['ACCOUNT','READ'].includes(command))current.finishTiming=global.TlhInventoryTiming?.start(command==='ACCOUNT'?'initial-read':'refresh-read');
       current.timer = setTimeout(() => finish('RPC_TIMEOUT'), 45000);
       const form = document.createElement('form');
       form.method = 'POST';form.action = config.apiUrl;form.target = frame.name;form.hidden = true;
