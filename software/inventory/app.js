@@ -680,15 +680,17 @@ async function send(command){
  pending=null;
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
+ let inlineFeedback=null;
  if(['COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','SAVE_ITEM'].includes(savedType)){
  const feedbackItem=itemsById.get(savedItemId),feedbackNode=stockCards.get(savedItemId)?.querySelector('.quest-feedback');
  if(feedbackItem&&feedbackNode){
-  feedbackNode.hidden=false;const savedMessage=savedType==='SAVE_ITEM'?'品目情報を更新しました':savedType==='COUNT_STOCK'?'棚卸を登録しました':savedType==='START_MEASUREMENT'?'計測を開始しました（実測は継続中）':'消費の計測を更新しました';feedbackNode.replaceChildren(el('div',savedMessage));
+  inlineFeedback=feedbackNode;feedbackNode.hidden=false;const savedMessage=savedType==='SAVE_ITEM'?'品目情報を更新しました':savedType==='COUNT_STOCK'?'棚卸を登録しました':savedType==='START_MEASUREMENT'?'計測を開始しました（実測は継続中）':'消費の計測を更新しました';feedbackNode.replaceChildren(el('div',savedMessage));
  const current=confirmedReliability(feedbackItem);if(current)feedbackNode.append(el('p',reliabilityChange(previousRating,feedbackItem),'reliability-feedback'));
  }}
- $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
- if(savedType==='COUNT_STOCK')message('');
- if(['START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType))message('');
+ $('lines').replaceChildren();addLine();tab(savedTab);
+ // A successful action can cause a filtered item to disappear. Announce success in exactly one place.
+ const useInline=inlineFeedback?.isConnected&&!inlineFeedback.closest('[hidden]')&&['COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType);
+ if(useInline)message('');else message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
  if(receiptLeavesOrders)message(receiptCanLink?'入荷は保存しました。注文は未完了です。発注済み注文の「登録済みの入荷と照合」で確認してください。再入荷登録は不要です。':'入荷は保存しました。注文は未完了です。発注権限のある担当者に登録済み入荷との照合を依頼してください。再入荷登録は不要です。');
  }catch{
   if(saved){message('保存は成功しましたが表示の更新に失敗しました。「最新の記録を読む」を押してください。','SAVE_VIEW_FAILED');}
