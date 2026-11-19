@@ -1,0 +1,30 @@
+name: Inventory anonymous startup A-B benchmark
+on:
+  pull_request:
+    paths: ['qa/entry-startup-benchmark.mjs', '.github/workflows/startup-benchmark.yml']
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: |
+          mkdir .qa-baseline
+          git archive 20a2f8c1ad05ff2ba31fa595a9d1507babaed1fa | tar -x -C .qa-baseline
+          npm install --prefix .qa-tools --no-save --ignore-scripts playwright@1.56.1
+          .qa-tools/node_modules/.bin/playwright install --with-deps chromium
+      - run: node qa/entry-startup-benchmark.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: inventory-startup-benchmark-${{ github.sha }}
+          path: qa-artifacts/startup-benchmark/
+          retention-days: 7
