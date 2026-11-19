@@ -406,12 +406,13 @@ function informationSignal(category,days){
 function renderInformationCoverage(card,item){
  const f=item.forecast,g=item.guidance,box=el('div','','information-coverage');
  const count=g?.stocktake;
- if(g?.comparison){box.append(el('h4','棚卸直前の推定との照合'));
-  box.append(el('p',g.comparison.state==='MEASURED'?'直前の推定 '+quantities(g.comparison.predicted,item.baseUnit)+' ／棚卸 '+quantities(g.comparison.observed,item.baseUnit)+' ／差 '+quantities(g.comparison.difference,item.baseUnit):'未評価。過去の棚卸を更新後の値と比べて一致扱いにはしません。'));
-  box.append(el('p','差は測定結果です。許容誤差と継続評価の期間が未設定なので、正確・不正確の合否はまだ付けません。','muted'));
-  if(g.recentComparisons?.length){const recent=el('details','');recent.append(el('summary','最近の棚卸との照合'));for(const x of g.recentComparisons)recent.append(el('p',formatRecordedAt(x.at)+' ／ '+(x.state==='MEASURED'?'差 '+quantities(x.difference,item.baseUnit):'未評価')));box.append(recent);}
+ if(g?.evaluation)box.append(el('p','評価保留：'+(g.evaluation.reason==='FLAGGED_INPUT_HISTORY'?'関連する入力履歴に試験・初期化・転記由来があります。現在の計算への影響範囲も未確認です。':'予測の基準・入荷・消費計測・単位の由来をすべて確認できていません。')+' 現物を数えて基準を更新し、消費計測と規格も確認してください。棚卸だけで精度評価は解除しません。','evidence-hold'));
+ if(g?.comparison){box.append(el('h4','棚卸直前の参考計算（評価保留）'));
+  box.append(el('p',g.comparison.state==='REFERENCE'?'由来未確認の参考値 '+quantities(g.comparison.predicted,item.baseUnit)+' ／棚卸 '+quantities(g.comparison.observed,item.baseUnit)+' ／差 '+quantities(g.comparison.difference,item.baseUnit):'未評価。過去の棚卸を更新後の値と比べて一致扱いにはしません。'));
+  box.append(el('p','差は当時のモデル計算と入力実数の差です。開算基準・入荷・消費・単位の由来を検証できていないため、精度の実測結果ではありません。許容誤差・評価期間も未設定です。','muted'));
+  if(g.recentComparisons?.length){const recent=el('details','');recent.append(el('summary','過去に保存した参考差（継続実績には数えません）'));for(const x of g.recentComparisons)recent.append(el('p',formatRecordedAt(x.at)+' ／ '+(x.state==='REFERENCE'?'差 '+quantities(x.difference,item.baseUnit):'未評価')));box.append(recent);}
  }
- if(g?.lastOrderAssessment)box.append(el('p','直近の注文 '+formatRecordedAt(g.lastOrderAssessment.at)+'：'+({UNKNOWN:'未評価',NOT_REQUIRED:'要発注ではない時点の記録',ON_TIME:'その時点の期限内',LATE:'その時点の期限後'}[g.lastOrderAssessment.state]||'未評価'),'muted'));
+ if(g?.lastOrderAssessment)box.append(el('p','直近の注文 '+formatRecordedAt(g.lastOrderAssessment.at)+'：'+({UNKNOWN:'未評価',NOT_REQUIRED:'要発注ではない時点の記録',ON_TIME:'記録時点の計算上の期限内（実送信・到着の証拠ではありません）',LATE:'その時点の期限後'}[g.lastOrderAssessment.state]||'未評価'),'muted'));
  if(g)box.append(el('p','現在の発注判断：'+({UNKNOWN:'不明（納期や期限の根拠不足）',NOT_REQUIRED:'現時点で必要なし',ON_TIME:'記録時点の期限内',LATE:'記録時点で期限後',REQUIRED:'期限を確認して発注が必要'}[g.orderState]||'未評価')));
 
  box.append(el('h4','棚卸'),el('p',count?.lastAt?'前回 '+formatRecordedAt(count.lastAt)+' ／ '+count.ageDays+'日前':'未実施'));
@@ -426,6 +427,7 @@ function renderInformationCoverage(card,item){
 function renderDailyTasks(card,item){
  const g=item.guidance;if(!g)return;
  const box=el('div','','daily-tasks');box.setAttribute('role','region');box.setAttribute('aria-label','今やること');box.append(el('h4','今やること'));
+ box.append(el('p','予測の正確さは評価保留。基礎の準備完了とは別です。','evidence-hold'));
  if(g.management){const conditions=el('details','','quest-conditions');conditions.append(el('summary','基礎の準備：'+(g.management.level===1?'完了':'未完了')+' ／上位は未評価'),el('p',g.management.next));box.append(conditions);}
  if(!g.tasks.length)box.append(el('p','今すぐ必要な作業はありません。'));
  for(const [index,task] of g.tasks.entries()){

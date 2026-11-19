@@ -1,12 +1,12 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
 function harness(){
- const nodes=new Map(),controllers=[],reads=[],seen=new Set();let allowed=false,visible=true,adminVisible=false,editing=false,confirm=true;
+ const nodes=new Map(),controllers=[],reads=[],seen=new Set();let invalidations=0;let allowed=false,visible=true,adminVisible=false,editing=false,confirm=true;
  const node=id=>{if(!nodes.has(id))nodes.set(id,{value:id==='schedule-month'?'2026-11':id==='schedule-scope'?'FIRST':'',disabled:false,events:{},addEventListener(name,fn){this.events[name]=fn;}});return nodes.get(id);};
- const register=options=>{controllers.push(options);return{hasUnsavedInput:()=>editing};};const window={confirm:()=>confirm,TlhSchedule:{init:register},TlhScheduleManagement:{init:register}};
+ const register=options=>{controllers.push(options);return{hasUnsavedInput:()=>editing,invalidateSharedOutput(){invalidations++;}};};const window={confirm:()=>confirm,TlhSchedule:{init:register},TlhScheduleManagement:{init:register}};
  vm.runInNewContext(fs.readFileSync(new URL('../workforce/schedule-workspace.js',import.meta.url),'utf8'),{window,document:{getElementById:node}});
  const autoReads={once(key,guard){if(guard()&&!seen.has(key)){seen.add(key);reads.push(key);}},again(key,guard){if(guard())reads.push(key);},invalidate(keys){for(const key of keys)seen.delete(key);}};
  const api=window.TlhScheduleWorkspace.init({gasUrl:'https://offline.invalid',liff:{},autoReads,visible:()=>visible,adminVisible:()=>adminVisible,adminAllowed:()=>allowed});
- return{api,node,controllers,reads,editing:v=>editing=v,confirm:v=>confirm=v,allow:v=>allowed=v,showAdmin(){visible=false;adminVisible=true;},showEmployee(){visible=true;adminVisible=false;},hide(){visible=false;adminVisible=false;}};
+ return{api,node,controllers,reads,invalidations:()=>invalidations,editing:v=>editing=v,confirm:v=>confirm=v,allow:v=>allowed=v,showAdmin(){visible=false;adminVisible=true;},showEmployee(){visible=true;adminVisible=false;},hide(){visible=false;adminVisible=false;}};
 }
 test('employee tab never starts admin reads even for managers; management shift starts only its two reads once',()=>{
  const h=harness();h.allow(true);h.api.activate();h.api.activate();assert.deepEqual(h.reads,['schedule']);h.api.activateAdmin();assert.equal(h.reads.length,1);
@@ -47,4 +47,8 @@ test('management can initialize first and invalidate the still-unopened employee
 test('hidden refresh never initializes controllers, while first visible refresh initializes once and fetches once',()=>{
  const h=harness();h.hide();h.node('schedule-workspace-refresh').events.click();assert.equal(h.controllers.length,0);assert.equal(h.reads.length,0);
  h.showEmployee();h.node('schedule-workspace-refresh').events.click();assert.equal(h.controllers.length,1);assert.deepEqual(h.reads,['schedule']);h.api.activate();assert.equal(h.controllers.length,1);
+});
+
+test('direct publication start immediately invalidates old PNG while preserving unsent employee input, without a read or write',()=>{
+ const h=harness();h.allow(true);h.api.activate();h.editing(true);h.showAdmin();h.api.activateAdmin();const before=h.reads.length;h.controllers[1].onPublishStart();assert.equal(h.invalidations(),1);assert.equal(h.reads.length,before);assert.equal(h.node('schedule-draft-notice').hidden,false);h.showEmployee();h.api.activate();assert.equal(h.reads.length,before);h.controllers[1].onSaved();assert.equal(h.invalidations(),2);
 });
