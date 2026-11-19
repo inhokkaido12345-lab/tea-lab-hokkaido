@@ -83,6 +83,7 @@
     if(draft.command==='ISSUE'&&JSON.stringify(p.summary.permissions)!==JSON.stringify(draft.input.permissions))return;
     if(draft.command==='ISSUE'&&['organizationId','storeId','serviceId'].some(k=>p.summary[k]!==draft.input[k]))return;
     clearTimeout(r.timer);pending=null;unknown=false;draft.revision=p.revision;draft.summary=p.summary;
+    n.commit.textContent=draft.command==='CLAIM'?'確認した店舗・権限で参加する':'確認した内容でコードを発行';
     n.summary.textContent='会社：'+p.summary.organizationName+'\n店舗：'+p.summary.storeName+'\nサービス：'+supported.label+'\n操作：'+p.summary.permissions.map(x=>supported.permissions.find(y=>y.id===x).label).join('・')+'\n招待の受付期限：発行から30分';if(n['permission-details']){n['permission-details'].replaceChildren();for(const id of p.summary.permissions){const meta=supported.permissions.find(v=>v.id===id);if(!meta.includedOperations?.length)continue;const detail=document.createElement('details'),title=document.createElement('summary'),text=document.createElement('p');title.textContent='一括権限でできること';text.textContent=meta.includedOperations.join('・');detail.appendChild(title);detail.appendChild(text);n['permission-details'].appendChild(detail);}}n.identifiers.textContent='会社ID：'+p.summary.organizationId+'\n店舗ID：'+p.summary.storeId;n.commit.textContent=draft.command==='ISSUE'?'招待を発行':'受け取る';n.status.textContent=messages[d.code];controls();return;
    }
    if(['COMMON_ACTIVATION_SAVED','COMMON_ACTIVATION_ALREADY_SAVED','COMMON_ACTIVATION_ALREADY_CLAIMED'].includes(d.code)){
