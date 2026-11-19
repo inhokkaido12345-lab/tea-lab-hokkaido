@@ -107,7 +107,11 @@
         clearStoreView();contextHost()?.replaceChildren();showLogin();
       }
       if (data.code !== 'OK') {
-        if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN')invalidateStoreContext();
+        if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN'){
+          const sameIdentity=current.identitySession===(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken());
+          const hint=data.code==='BUSY'&&['READ','ACCOUNT'].includes(current.command)&&sameIdentity&&current.readStoreId?{storeId:current.readStoreId,identity:current.identitySession}:null;
+          invalidateStoreContext(hint);
+        }
         let rejection;
         if(current.command==='COMMAND'&&data.data!==''){try{rejection=JSON.parse(data.data);}catch{}}
         finish(null, {ok: false, code: data.code,...(rejection?{rejection}:{})}); return;
@@ -126,7 +130,7 @@
     if(expectedSession!==null&&idToken!==expectedSession)throw Error('AUTH_REQUIRED');
     if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {invalidateStoreContext();showLogin(); throw Error('AUTH_REQUIRED');}
     return new Promise((resolve, reject) => {
-      const current = {command, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
+      const current = {command, readStoreId:['READ','ACCOUNT'].includes(command)&&typeof input.storeId==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(input.storeId)?input.storeId:null, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
       pending = current;
       if(['ACCOUNT','READ'].includes(command))current.finishTiming=global.TlhInventoryTiming?.start(command==='ACCOUNT'?'initial-read':'refresh-read');
       current.timer = setTimeout(() => finish('RPC_TIMEOUT'), 45000);
@@ -148,17 +152,22 @@
   }
 
   global.addEventListener('pagehide', () => {
-    stopped = true;finish('PAGE_CLOSED');login.hidden = true;storeContext=null;selectedStore=null;clearStoreView();contextHost()?.replaceChildren();
+    stopped = true;finish('PAGE_CLOSED');login.hidden = true;storeContext=null;selectedStore=null;readRouteHint=null;contextIdentity=null;clearStoreView();contextHost()?.replaceChildren();
     for (const id of ['cards','logs','lines']) document.getElementById(id).replaceChildren();
     document.getElementById('status').textContent = '';
   });
   global.addEventListener('pageshow', event => {if (event.persisted) global.location.reload();});
   // 店舗選択はページ内だけに保持。選択したID自体は権限の証拠にならない。
-  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false;
+  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false, readRouteHint=null,contextIdentity=null;
   const contextHost=()=>document.getElementById('inventory-stores');
   const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
   const status=(text,code='')=>{if(global.TlhInventoryStatus)global.TlhInventoryStatus.show(text,code);else document.getElementById('status').textContent=text;};
-  function invalidateStoreContext(){storeContext=null;selectedStore=null;clearStoreView();contextHost()?.replaceChildren();}
+  function invalidateStoreContext(hint=null){storeContext=null;selectedStore=null;contextIdentity=null;readRouteHint=hint;clearStoreView();contextHost()?.replaceChildren();}
+  function readSelection(){
+    const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(readRouteHint&&readRouteHint.identity!==identity||contextIdentity&&contextIdentity!==identity)invalidateStoreContext();
+    return selectedStore||readRouteHint?.storeId||null;
+  }
   function clearStoreView(){
     global.TlhInventoryView?.invalidate?.();
     for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview'])document.getElementById(id)?.replaceChildren();
@@ -167,7 +176,7 @@
     const host=contextHost();if(!host||!storeContext)return;host.replaceChildren();
     const label=node('label','利用する在庫'),select=node('select');select.appendChild(new Option('在庫を選択してください',''));
     for(const store of storeContext.stores)select.appendChild(new Option((store.spaceType==='PERSONAL'||store.role==='PERSONAL'?'個人用：':'店舗：')+store.name,store.id));select.value=selectedStore||'';label.appendChild(select);host.appendChild(label);
-    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('在庫を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;storeContext=null;clearStoreView();host.replaceChildren();document.getElementById('refresh').click();};
+    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('在庫を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;readRouteHint=null;storeContext=null;clearStoreView();host.replaceChildren();document.getElementById('refresh').click();};
     if(storeContext.canCreatePersonal===true){const personal=node('button','自分の在庫を始める');personal.onclick=()=>contextAction({action:'PERSONAL_CREATE'});host.appendChild(personal);host.appendChild(node('p','会社への所属がなくても、自分だけの在庫を使えます。'));}
     const selected=storeContext.stores.find(s=>s.id===selectedStore);
     if(selected&&(selected.spaceType==='PERSONAL'||selected.role==='PERSONAL')){host.appendChild(node('p','本人専用の在庫です。会社・店舗とは分かれており、他の人は利用できません。'));return;}
@@ -218,16 +227,33 @@
       contextHost()?.appendChild(retry);
     }finally{contextBusy=false;}
   }
-  async function readView(){
-    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true,...(selectedStore?{storeId:selectedStore}:{})});if(!reply.ok)return reply;
+  async function readViewOnce(){
+    const requestedSelection=readSelection(),readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
+      if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
       // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
       const initialView=reply.value.view;
       const {view:_view,...context}=reply.value;storeContext=context;
-      selectedStore=storeContext.stores.some(s=>s.id===selectedStore)?selectedStore:storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;renderStores();
+      selectedStore=requestedSelection?(storeContext.stores.some(s=>s.id===requestedSelection)?requestedSelection:null):storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;readRouteHint=null;contextIdentity=readIdentity;renderStores();
       if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
     if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
     const result=await request('READ',{storeId:selectedStore});
+    if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
     return result;
+  }
+
+  // Only equivalent read callers join. No writes, identity changes or cross-store reuse.
+  let activeViewRead=null;
+  function readView(){
+    const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    const selection=readSelection();
+    if(activeViewRead){
+      if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection)return activeViewRead.promise;
+      return Promise.reject(Error('BUSY'));
+    }
+    const job={identity,selection,promise:null};
+    job.promise=readViewOnce().finally(()=>{if(activeViewRead===job)activeViewRead=null;});
+    activeViewRead=job;return job.promise;
   }
 
   // 未ログインは通常の開始状態。画面はこの時点ではACCOUNT/READを送らない。
