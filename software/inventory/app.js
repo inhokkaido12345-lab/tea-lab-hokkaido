@@ -428,9 +428,21 @@ function renderInformationCoverage(card,item){
 }
 function renderDailyTasks(card,item){
  const g=item.guidance;if(!g)return;
- const box=el('div','','daily-tasks');box.setAttribute('role','region');box.setAttribute('aria-label','今やること');box.append(el('h4','今やること'));
- box.append(el('p','予測の正確さは評価保留。基礎の準備完了とは別です。','evidence-hold'));
- if(g.management){const conditions=el('details','','quest-conditions');conditions.append(el('summary','基礎の準備：'+(g.management.level===1?'完了':'未完了')+' ／上位は未評価'),el('p',g.management.next));box.append(conditions);}
+ const box=el('div','','daily-tasks level-journey');box.setAttribute('role','region');box.setAttribute('aria-label','情報堅牢度 LEVEL と今やること');
+ const heading=el('div','','level-heading');heading.append(el('h4','情報堅牢度 LEVEL'),el('strong','未判定','level-state'));box.append(heading);
+ box.append(el('p',g.evaluation?.reason==='FLAGGED_INPUT_HISTORY'?'未判定の理由：試験・初期化・転記由来の履歴を検知。精度の根拠を確認できていません。':'未判定の理由：在庫基準・入荷・消費・単位の由来を確認できていません。','level-reason'));
+ box.append(el('p','上位は未解放。精度の判定条件が未合意のため、作業完了だけではLEVELは上がりません。','level-boundary'));
+ const countReady=g.stocktake.state==='CURRENT';
+ const rateReady=g.consumption.state==='CURRENT'&&g.attributes?.items.some(a=>a.key==='rate'&&a.state==='FILLED');
+ const steps=el('ol','','level-steps');steps.setAttribute('aria-label','LEVELの評価に向けた準備と確認');
+ const step=(title,state,reason,ready=false)=>{const li=el('li','',ready?'prepared':'pending'),top=el('div','','level-step-heading');top.append(el('strong',title),el('span',state,'level-step-state'));li.append(top,el('p',reason));steps.append(li);};
+ step('定期的に数える',countReady?'期限内の記録あり':'棚卸が必要',countReady?'この基準を使い、次の期限にも実物を数えます。':'現物の総量を数えて保存。次の棚卸期限を確認します。',countReady);
+ step('消費速度を実測・更新する',rateReady?'更新期限内の記録あり':g.consumption.days===null?'再確認間隔が未設定':'計測・再確認が必要',rateReady?'使用状況が変わったときと再確認期限に測り直します。':'実際の使用量と期間を記録。管理者が再確認間隔を設定します。',rateReady);
+ step('予測と実数を継続照合する','精度は未評価','次の棚卸で直前の参考予測との差を残します。由来と判定条件の確認後に精度を評価します。');
+ step('必要な補充を間に合わせる',g.orderState==='UNKNOWN'?'期限は未判定':'現物・注文の確認が必要','現物と未入荷注文を確認。実発注と受取を記録し、必要な時期に間に合ったか確かめます。');
+ box.append(steps);
+ box.append(el('p',g.management?.level===1?'基礎の準備：完了。期限内の棚卸と消費記録が揃いました。次は由来の確認と継続照合です。昇格ではありません。':'基礎の準備：未完了。下のクエストで棚卸・消費記録を揃えます。精度の評価はその後です。','level-next'));
+ box.append(el('h4','今すぐできるクエスト'));
  if(!g.tasks.length)box.append(el('p',predictionHeld(item)?'期限内の記録はあります。補充の要否は現物と入荷予定で確認してください。':'今すぐ必要な作業はありません。'));
  for(const [index,task] of g.tasks.entries()){
   const row=el('div','','daily-task');row.append(el('strong',task.title),el('p',task.reason));
