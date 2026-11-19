@@ -4,6 +4,8 @@
  * 本人の希望申請はschedule.js。CSV選択・月間セル編集・下書き一覧はここへ戻さない。
  * 一般化: state→検証済みDTO→表示。公開はREAD→明示確認→反映→公開の状態機械。
  * 削除影響: 管理者のシフト操作だけ停止。原打刻/シート/本人の申請は消えない。
+ * 本人確認済み経路: 公開差分プレビューの別ボタンだけmanagerConfirmedを付け、保存DTOで完了。
+ * 検証: tests/schedule-management.test.mjs（既定/本人確認済み/固定ID再送/失効/公開混在）。
  * 魔改造: command/署名/DTOはBridgeSchedule・Service・契約テストを同時に更新する。
  * 境界: 保存結果不明は同じIDで再確認。通信失敗を未保存と推測しない。Storage/ログに秘密を置かない。
  */
@@ -29,7 +31,7 @@
   }
   /** DOMと既存LIFFを接続しloadを返す。初期化では保存しない。欠落したIDはビルド/検査で直す。 */
   function init(options){
-    const ids=['sheet-confirm-slot','default-confirm-slot','month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','cancel','retry'];
+    const ids=['sheet-confirm-slot','default-confirm-slot','month','period','refresh','status','login','frame','edit-tab','requests-tab','edit-panel','requests-panel','sheet-create','sheet-open','deadline','deadline-save','deadline-start','deadline-end','deadline-rules','requests','publish','phase','confirm','question','reason-label','reason','approve','confirmed-apply','confirmed-help','preview-details','cancel','retry'];
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
@@ -49,6 +51,10 @@
       n.refresh.disabled=busy||login.locked();n.refresh.hidden=!failed;
       n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       n.confirm.hidden=!confirmation;n.approve.disabled=stopped||!!pending;n.cancel.disabled=stopped||!!pending;
+      const confirmedReady=confirmation?.command==='publish-flow'&&publishedChangesOnly();
+      n['confirmed-apply'].hidden=!confirmedReady;n['confirmed-help'].hidden=!confirmedReady;
+      n['confirmed-apply'].disabled=!confirmedReady||stopped||!!pending||!!uncertain||login.locked();
+      n['preview-details'].hidden=confirmation?.command!=='publish-flow';
       n['reason-label'].hidden=!confirmation?.reason;n.reason.disabled=!confirmation?.reason||!!pending;
       // 動的な申請ボタンにも同じ待機ガードを適用。disabledは表示用で、GASの認可は毎回行う。
       for(const button of n.requests.querySelectorAll('button'))button.disabled=busy||login.locked()||snapshot?.halves[button.dataset.period]?.inputMode!=='SHEET';
@@ -92,9 +98,15 @@
       if(!requests.length)el('p','この月の承認待ちはありません。',n.requests);controls();
     }
     function canAct(part=n.period.value){return !stopped&&!pending&&!uncertain&&!confirmation&&!flow&&!login.locked()&&snapshot?.halves[part]?.inputMode==='SHEET';}
-    function clear(){snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
+    function clear(){n['preview-details'].replaceChildren();snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
+    // 検証済み管理DTOの公開済み差分だけを対象にする。混在下書き・空差分は既定経路へ。
+    // これは表示ガードであり、管理者/最新権限/digest/既存申請の最終拒否はGASで毎回行う。
+    function publishedChangesOnly(){
+      const p=flow?.authority?.preview;
+      return !!snapshot&&selected()?.inputMode==='SHEET'&&!!p?.changes.length&&p.changes.every(c=>c.published)&&p.eventDetails.every(c=>c.published);
+    }
     // 確認欄は1個を移動するだけ。イベント・固定ID・再送状態を複製/作り直さない。
     function review(job,question,reason=false){n[job.command==='sheetCreate'?'sheet-confirm-slot':'default-confirm-slot'].appendChild(n.confirm);confirmation={...job,reason};n.question.textContent=question;n.reason.value='';controls();}
     // JSON本文/操作IDは保存前に固定。再確認でも同一内容、nonceと署名鍵だけ新しくする。
@@ -150,10 +162,19 @@
         if(!flow)return;
         const a=value.authority;if(!a){flow=null;n.status.textContent=messages.SCHEDULE_SHEET_SOURCE_REQUIRED;controls();return;}
         flow.digest=a.sourceDigest;flow.authority=a;
+        n['preview-details'].replaceChildren();
+        for(const c of a.preview.changes)el('li',c.employeeName+'（'+c.employeeCode+'） '+c.day+'：'+c.before+' → '+c.after+(c.published?'（公開済み）':'（未公開）'),n['preview-details']);
+        for(const c of a.preview.eventDetails)el('li','共有イベント '+c.day+'：'+c.before+' → '+c.after,n['preview-details']);
         const count=a.preview.changes.length,events=a.preview.eventDetails.length;
         review({command:'publish-flow'},value.month+'の勤務・備考等 '+count+'件、共有イベント '+events+'件を反映し、月全体を公開します。希望休の締切とは独立です。公開済み勤務の変更は本人同意・承認待ちになります。空欄は削除として反映し、未設定の日を公休にしません。シートを確認済みですか？',a.preview.changes.some(c=>c.published));return;
       }
       if(['batchRead','sheetImport','monthPublish','deadlineRange'].includes(request.command))updateBatch(value);else{snapshot.halves[expected.period]=value;render();}
+      if(request.command==='sheetImport'&&expected.managerConfirmed===true){
+        // 公開snapshotは同じ保存の署名付きDTO。追加monthPublish/申請承認を送らない。
+        flow=null;n['preview-details'].replaceChildren();
+        n.status.textContent=['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE'].includes(reply.code)?'本人確認済みの変更反映を確認しました。最新のシフトを表示しています。':messages[reply.code];
+        options.onSaved?.();controls();return;
+      }
       if(request.command==='sheetImport'&&flow){options.onSaved?.();publishImported();return;}
       if(request.command==='monthPublish'){flow=null;n.status.textContent='月全体の公開・変更反映を確認しました。公開済み勤務の変更は本人同意・承認後に反映します。';}
       else if(request.command==='deadlineRange')n.status.textContent=expected.startDay+'〜'+expected.endDay+'の希望締切を '+new Date(expected.deadline).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'})+'（日本時間）に設定しました。';
@@ -181,6 +202,13 @@
         flow.confirmed=true;const a=flow.authority;
         if(a.preview.changes.length||a.preview.eventChanges)void send('sheetImport',{month:snapshot.month,audience:'admin',sourceDigest:a.sourceDigest,targetDigest:a.targetDigest,reason:n.reason.value});else publishImported();
       }else void send(job.command,job.input);
+    });
+    // 別の明示操作だけがtrueを付ける。既定approve・再読込・保存完了で暗黙に有効化しない。
+    n['confirmed-apply'].addEventListener('click',()=>{
+      if(confirmation?.command!=='publish-flow'||!publishedChangesOnly()||pending||uncertain||stopped||login.locked())return;
+      if(!n.reason.value.trim()||n.reason.value.length>500){n.status.textContent='本人に確認した公開済み勤務の変更理由を入力してください。';n.reason.focus();return;}
+      const a=flow.authority;confirmation=null;flow.confirmed=true;
+      void send('sheetImport',{month:snapshot.month,audience:'admin',sourceDigest:a.sourceDigest,targetDigest:a.targetDigest,reason:n.reason.value,managerConfirmed:true});
     });
     n.cancel.addEventListener('click',()=>{if(pending||uncertain||stopped)return;confirmation=null;flow=null;n.reason.value='';n.status.textContent='操作を取り消しました。';controls();});
     n.retry.addEventListener('click',()=>{if(uncertain&&!pending&&!stopped)void send(uncertain.command,uncertain.input,uncertain.operationId);});
