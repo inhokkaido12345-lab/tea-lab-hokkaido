@@ -185,6 +185,7 @@ const forecastMessages = {
   NO_USAGE_OBSERVED: '観測した投入量は0です。在庫切れ日時はまだ算出しません',
 };
 
+function predictionHeld(item){return item.guidance?.evaluation?.state==='HELD';}
 function inventoryQuantityLabel(item) {
   const forecast = item.forecast;
   if (!forecast) return quantities(item.quantity,item.baseUnit);
@@ -243,11 +244,12 @@ function renderReceiptLink(card,item,order){
 }
 function renderConsumption(card, item) {
   const forecast = item.forecast;
-  if(['ORDER_NOW','OUT_OF_STOCK'].includes(forecast.status))card.append(el('p', forecastMessages[forecast.status] || forecast.status,
+  const held=predictionHeld(item);
+  if(['ORDER_NOW','OUT_OF_STOCK'].includes(forecast.status))card.append(el('p', (held?'参考・要確認：':'')+(forecastMessages[forecast.status] || forecast.status),
       forecast.status === 'ORDER_NOW' ? 'badge low' : 'muted'));
   const dates=el('div','','forecast-dates');
   for(const [label,date,cls] of [['在庫切れ予測',forecast.stockoutAt,''],['発注レッドライン',forecast.orderBy,'deadline']]){
-    if(!date)continue;const cell=el('div','',cls);cell.append(el('span',label),el('strong',calendarDate(date)));dates.append(cell);
+    if(!date)continue;const cell=el('div','',cls);cell.append(el('span',(held?'参考・要確認：':'')+label),el('strong',calendarDate(date)));dates.append(cell);
   }
   if(dates.children.length)card.append(dates);
   const explanation=el('details','','forecast-explanation');explanation.append(el('summary','在庫と納期の内訳'));
@@ -413,7 +415,7 @@ function renderInformationCoverage(card,item){
   if(g.recentComparisons?.length){const recent=el('details','');recent.append(el('summary','過去に保存した参考差（継続実績には数えません）'));for(const x of g.recentComparisons)recent.append(el('p',formatRecordedAt(x.at)+' ／ '+(x.state==='REFERENCE'?'差 '+quantities(x.difference,item.baseUnit):'未評価')));box.append(recent);}
  }
  if(g?.lastOrderAssessment)box.append(el('p','直近の注文 '+formatRecordedAt(g.lastOrderAssessment.at)+'：'+({UNKNOWN:'未評価',NOT_REQUIRED:'要発注ではない時点の記録',ON_TIME:'記録時点の計算上の期限内（実送信・到着の証拠ではありません）',LATE:'その時点の期限後'}[g.lastOrderAssessment.state]||'未評価'),'muted'));
- if(g)box.append(el('p','現在の発注判断：'+({UNKNOWN:'不明（納期や期限の根拠不足）',NOT_REQUIRED:'現時点で必要なし',ON_TIME:'記録時点の期限内',LATE:'記録時点で期限後',REQUIRED:'期限を確認して発注が必要'}[g.orderState]||'未評価')));
+ if(g)box.append(el('p','現在の発注判断：'+(predictionHeld(item)?'参考・要確認。補充の要否は現物と入荷予定で確認してください。':({UNKNOWN:'不明（納期や期限の根拠不足）',NOT_REQUIRED:'現時点で必要なし',ON_TIME:'記録時点の期限内',LATE:'記録時点で期限後',REQUIRED:'期限を確認して発注が必要'}[g.orderState]||'未評価'))));
 
  box.append(el('h4','棚卸'),el('p',count?.lastAt?'前回 '+formatRecordedAt(count.lastAt)+' ／ '+count.ageDays+'日前':'未実施'));
  box.append(el('p','棚卸間隔 '+(count?.days??7)+'日'+(count?.defaulted!==false?'（暫定の既定値）':'（品目設定）')+'。経過24時間単位で期限を判定。','muted'));
@@ -429,7 +431,7 @@ function renderDailyTasks(card,item){
  const box=el('div','','daily-tasks');box.setAttribute('role','region');box.setAttribute('aria-label','今やること');box.append(el('h4','今やること'));
  box.append(el('p','予測の正確さは評価保留。基礎の準備完了とは別です。','evidence-hold'));
  if(g.management){const conditions=el('details','','quest-conditions');conditions.append(el('summary','基礎の準備：'+(g.management.level===1?'完了':'未完了')+' ／上位は未評価'),el('p',g.management.next));box.append(conditions);}
- if(!g.tasks.length)box.append(el('p','今すぐ必要な作業はありません。'));
+ if(!g.tasks.length)box.append(el('p',predictionHeld(item)?'期限内の記録はあります。補充の要否は現物と入荷予定で確認してください。':'今すぐ必要な作業はありません。'));
  for(const [index,task] of g.tasks.entries()){
   const row=el('div','','daily-task');row.append(el('strong',task.title),el('p',task.reason));
   const kind=task.kind,allowed=kind==='order'?canOperate('MARK_ORDERED'):canOperate(kind==='count'?'COUNT_STOCK':'START_MEASUREMENT');
@@ -465,7 +467,8 @@ function renderStockCards(){
  shown.sort((a,b)=>(a.guidance?.tasks[0]?.priority??99)-(b.guidance?.tasks[0]?.priority??99));
  for(const item of shown){
  if(stockCards.has(item.id)){$('cards').append(stockCards.get(item.id));continue;}
- const c=el('article','',needsOrder(item)?'card attention':'card');c.append(el('p',categoryOf(item),'eyebrow'),el('h3',item.name),el('span',needsOrder(item)?'要確認・発注':'推定在庫',needsOrder(item)?'badge low':'badge'),el('p',inventoryQuantityLabel(item),'qty'),el('p','最低在庫目安 '+quantities(item.threshold,item.baseUnit),'stock-threshold'));
+ const held=predictionHeld(item);const c=el('article','',held||needsOrder(item)?'card attention':'card');c.append(el('p',categoryOf(item),'eyebrow'),el('h3',item.name),el('span',held?'参考・要確認':needsOrder(item)?'要確認・発注':'推定在庫',held||needsOrder(item)?'badge low':'badge'),el('p',(held?'参考：':'')+inventoryQuantityLabel(item),'qty'),el('p','最低在庫目安 '+quantities(item.threshold,item.baseUnit),'stock-threshold'));
+ if(held)c.append(el('p',(item.guidance.evaluation.reason==='FLAGGED_INPUT_HISTORY'?'試験・初期化・転記由来の履歴を検知。':'入力の由来は未確認。')+'予測在庫・発注目安は参考です。補充の要否は現物と未入荷の注文を確認してください。','prediction-caution'));
  renderDailyTasks(c,item);
  if(item.forecast)renderConsumption(c,item);
  const orders=item.orders||(item.order?[item.order]:[]);
@@ -481,7 +484,7 @@ function renderStockCards(){
  b.onclick=()=>{
   // 確認を先に済ませてから入力欄を作る。拒否した場合は画面も保存状態も変更しない。
   const notLow=!needsOrder(item);
-  if(notLow&&!confirm(item.name+'：要発注ではありませんが、発注しますか？'))return;
+  if(notLow&&!confirm(item.name+(predictionHeld(item)?'：予測は参考・要確認です。現物と未入荷注文を確認したうえで、実際の発注を記録しますか？':'：要発注ではありませんが、発注しますか？')))return;
   b.disabled=true;
   const box=el('div','','line'),row=addLine(item.id,box,true);
   const dateLabel=el('label','到着予定日（任意）'),date=el('input','');
