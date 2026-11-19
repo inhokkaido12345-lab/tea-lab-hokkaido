@@ -124,7 +124,7 @@ const statusGuides={
  RECOVERY_UNKNOWN:['保存済みか未確認です。復旧欄で結果だけ確認し、新しい同じ操作をしないでください。'],
  RECOVERY_LOCK_UNAVAILABLE:['保存の重複を防止できないブラウザです。対応ブラウザで開いてください。ログイン・読取はできます。'],
  RECOVERY_STORAGE_UNAVAILABLE:['復旧情報を安全に保存できないため、保存を停止しています。ブラウザの保存設定を確認してください。'],
- SAVE_UNKNOWN:['新しい保存を重ねず、「同じ操作を再確認」で保存済みか確認してください。','retry'],
+ SAVE_UNKNOWN:['登録結果未確認です。進捗はまだ更新しません。新しい保存を重ねず、「同じ操作を再確認」で保存済みか確認してください。','retry'],
  TENANT_SAVE_UNKNOWN:['店舗の作成や参加を繰り返さず、画面の「同じ店舗操作の結果を確認」を押してください。'],
  SAVE_VIEW_FAILED:['保存は完了しています。再登録せず、最新の記録を読み直してください。','refresh'],
  CATALOG_SYNC_REQUIRED:['アプリの保存は完了しています。商品を再登録せず、一覧シートだけ再同期してください。','sync'],
@@ -426,14 +426,24 @@ function renderInformationCoverage(card,item){
  if(!item.delivery)box.append(el('p','数値を入力して埋める必要はありません。注文した時に発注、届いた時に入荷と受取完了を記録してください。','muted'));
  card.append(box);
 }
+function nextLevelAction(item){
+ const g=item.guidance;if(!g)return '最新の記録を読み直してください。';
+ if(g.stocktake.state!=='CURRENT')return '現物の総量を数えて棚卸を保存してください。';
+ if(item.forecast?.measurement||item.forecast?.open)return '使用を続け、使い切ったときに計測の終了を記録してください。';
+ if(g.tasks.some(t=>t.kind==='measurement'))return 'この品目の消費を確認し、実際の使用量と期間を計測してください。';
+ if(g.consumption.days===null)return '管理者は消費の再確認間隔を設定。現場は次の棚卸で参考予測との差を残してください。';
+ return '次の棚卸でも参考予測との差を残し、現物・未入荷注文から必要な補充を確認してください。';
+}
 function renderDailyTasks(card,item){
  const g=item.guidance;if(!g)return;
  const box=el('div','','daily-tasks level-journey');box.setAttribute('role','region');box.setAttribute('aria-label','情報堅牢度 LEVEL と今やること');
  const heading=el('div','','level-heading');heading.append(el('h4','情報堅牢度 LEVEL'),el('strong','未判定','level-state'));box.append(heading);
+ const feedback=el('div','','quest-feedback');feedback.hidden=true;feedback.setAttribute('role','status');box.append(feedback);
  box.append(el('p',g.evaluation?.reason==='FLAGGED_INPUT_HISTORY'?'未判定の理由：試験・初期化・転記由来の履歴を検知。精度の根拠を確認できていません。':'未判定の理由：在庫基準・入荷・消費・単位の由来を確認できていません。','level-reason'));
  box.append(el('p','上位は未解放。精度の判定条件が未合意のため、作業完了だけではLEVELは上がりません。','level-boundary'));
  const countReady=g.stocktake.state==='CURRENT';
  const rateReady=g.consumption.state==='CURRENT'&&g.attributes?.items.some(a=>a.key==='rate'&&a.state==='FILLED');
+ box.append(el('p','現在地：'+(!countReady?'実物の在庫基準を揃える':!rateReady?'消費速度の実測・更新を揃える':'基礎準備完了・継続確認へ'),'level-position'),el('p','次の一手：'+nextLevelAction(item),'level-next-action'));
  const steps=el('ol','','level-steps');steps.setAttribute('aria-label','LEVELの評価に向けた準備と確認');
  const step=(title,state,reason,ready=false)=>{const li=el('li','',ready?'prepared':'pending'),top=el('div','','level-step-heading');top.append(el('strong',title),el('span',state,'level-step-state'));li.append(top,el('p',reason));steps.append(li);};
  step('定期的に数える',countReady?'期限内の記録あり':'棚卸が必要',countReady?'この基準を使い、次の期限にも実物を数えます。':'現物の総量を数えて保存。次の棚卸期限を確認します。',countReady);
@@ -442,6 +452,7 @@ function renderDailyTasks(card,item){
  step('必要な補充を間に合わせる',g.orderState==='UNKNOWN'?'期限は未判定':'現物・注文の確認が必要','現物と未入荷注文を確認。実発注と受取を記録し、必要な時期に間に合ったか確かめます。');
  box.append(steps);
  box.append(el('p',g.management?.level===1?'基礎の準備：完了。期限内の棚卸と消費記録が揃いました。次は由来の確認と継続照合です。昇格ではありません。':'基礎の準備：未完了。下のクエストで棚卸・消費記録を揃えます。精度の評価はその後です。','level-next'));
+ box.append(el('p','管理側の未確定条件：由来の確認方法・許容差・評価期間・昇格条件。現場の記録を増やすだけでは、この判定待ちは解除されません。','level-admin-pending'));
  box.append(el('h4','今すぐできるクエスト'));
  if(!g.tasks.length)box.append(el('p',predictionHeld(item)?'期限内の記録はあります。補充の要否は現物と入荷予定で確認してください。':'今すぐ必要な作業はありません。'));
  for(const [index,task] of g.tasks.entries()){
@@ -580,12 +591,18 @@ async function send(command){
  }
  saved=true;
  if(pending.type==='SAVE_ITEM'){catalogSelection=pending.itemId;catalogFilter=pending.catalog.status==='RETIRED'?'RETIRED':'CURRENT';}
- const savedType=pending.type;
+ const savedType=pending.type,savedItemId=pending.itemId;
  const savedTab=['SAVE_ITEM','SYNC_CATALOG'].includes(pending.type)?'catalog':'stock';
  if(['RECEIVE','MARK_ORDERED','COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','CANCEL_MEASUREMENT'].includes(pending.type))stockAction='overview';
  pending=null;
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
+ if(['COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType)){
+ const feedbackItem=itemsById.get(savedItemId),feedbackNode=stockCards.get(savedItemId)?.querySelector('.quest-feedback');
+ if(feedbackItem&&feedbackNode){
+  const achieved=savedType==='COUNT_STOCK'?'棚卸の実数と実施日時を登録し、在庫基準を更新しました。':savedType==='START_MEASUREMENT'?'計測の開始量と開始日時を登録しました。消費速度の実測はまだ完了していません。':'使用量と期間の計測記録を更新しました。';
+  feedbackNode.hidden=false;feedbackNode.append(el('strong','保存・最新記録の確認が完了'),el('p',achieved),el('p','次の一手：'+nextLevelAction(feedbackItem)),el('p','作業は進みました。精度は未評価のため、LEVELの昇格はしていません。'));
+ }}
  $('lines').replaceChildren();addLine();tab(savedTab);message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
  if(savedType==='COUNT_STOCK')message('棚卸を保存しました。最新の現在量と次の棚卸期限を表示しています。');
  if(['START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType))message('計測を保存しました。「今やること」と消費速度を最新記録で更新しました。');
