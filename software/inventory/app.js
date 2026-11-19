@@ -407,13 +407,13 @@ function renderInformationCoverage(card,item){
  const info=item.information;if(!info||info.version!==1||!Array.isArray(info.categories))return;
  const labels={count:'棚卸',receipt:'入荷',measurement:'消費',order:'発注'};
  const compact=el('span','','information-compact');
- compact.append(el('strong','記録 Lv '+info.level+' / '+info.maximum));
+ compact.append(el('strong','記録の種類 '+info.level+' / '+info.maximum));
  const meter=el('span','','coverage-meter');meter.setAttribute('aria-hidden','true');
  for(const c of info.categories)meter.append(el('span',c.count?'✓':'−',c.count?'coverage-present':'coverage-missing'));
- compact.append(meter);compact.setAttribute('aria-label','情報充実度 '+info.level+' / '+info.maximum+'。記録種類の充実度で、在庫精度の保証ではありません');
+ compact.append(meter);compact.setAttribute('aria-label','記録の種類 '+info.level+' / '+info.maximum+'。記録種類の充実度で、在庫精度の保証ではありません');
  card.querySelector('summary')?.append(compact);
  const box=el('div','','information-coverage');
- box.append(el('p','Lvは記録種類の数です。在庫精度の保証ではありません。発注記録がなくても、在庫数の信憑性を下げる判定はしません。','information-caution'));
+ box.append(el('p','ここには棚卸・入荷・消費・発注の記録の有無を表示しています。在庫精度の保証ではありません。予測に使えるか・未計測かは各項目で確認できます。発注記録は在庫数を変えません。','information-caution'));
  const list=el('ul','','information-records'),orderList=el('ul','','information-records');
  for(const c of info.categories){
   const f=item.forecast;
