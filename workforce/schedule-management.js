@@ -36,7 +36,9 @@
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
     const contract=global.TlhScheduleManagementContract;
+    const savedOutput=global.TlhScheduleSavedOutput?.init({onTiming:options.onTiming});
     const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!confirmation||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。';}});
+    const replyScope=()=>JSON.stringify([global.TlhCurrentWorkplace?.config?.organizationId||'',global.TlhCurrentWorkplace?.config?.workplaceId||'']);
     const selected=()=>snapshot?.halves[n.period.value];
     // 表示と操作待機の担当。ここで権限を作らず、通信ごとのGAS認可を残す。
     function controls(){
@@ -98,7 +100,7 @@
       if(!requests.length)el('p','この月の承認待ちはありません。',n.requests);controls();
     }
     function canAct(part=n.period.value){return !stopped&&!pending&&!uncertain&&!confirmation&&!flow&&!login.locked()&&snapshot?.halves[part]?.inputMode==='SHEET';}
-    function clear(){n['preview-details'].replaceChildren();snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
+    function clear(){savedOutput?.clear();n['preview-details'].replaceChildren();snapshot=null;n.requests.replaceChildren();n['sheet-open'].hidden=true;n['sheet-open'].removeAttribute('href');n.phase.textContent='';n.deadline.value='';n['deadline-start'].value='';n['deadline-end'].value='';n['deadline-rules'].replaceChildren();}
     function updateBatch(value){snapshot=value;if(value.inputSheetUrl){n['sheet-open'].href=value.inputSheetUrl;n['sheet-open'].hidden=false;}render();}
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     // 検証済み管理DTOの公開済み差分だけを対象にする。混在下書き・空差分は既定経路へ。
@@ -115,7 +117,8 @@
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       let proof;try{proof=options.liff.getIDToken();}catch(_e){}
       if(typeof proof!=='string'||!proof){failed=true;flow=null;confirmation=null;if(READS.has(command)){clear();login.require();}n.status.textContent='LINEログインが必要です。';controls();return;}
-      const request={command,input:typeof input==='string'?input:JSON.stringify(input),operationId,nonce:random(16),responseKey:random(32)};
+      savedOutput?.clear();
+      const request={scopeKey:replyScope(),startedAt:(global.performance?.now?.()??Date.now()),command,input:typeof input==='string'?input:JSON.stringify(input),operationId,nonce:random(16),responseKey:random(32)};
       pending=request;controls();n.status.textContent=READS.has(command)?'読み込み中です。':'保存して結果を確認しています。';
       function unknown(){if(stopped||pending!==request)return;failed=true;if(!READS.has(command))uncertain={command,input:request.input,operationId};else flow=null;finish();n.status.textContent=READS.has(command)?'取得できませんでした。再読み込みしてください。':'保存結果を確認できません。同じ操作で結果を再確認してください。';}
       request.timer=setTimeout(unknown,30000);
@@ -131,7 +134,8 @@
       void send('monthPublish',{month:snapshot.month,audience:'admin',expectedRevisions:{FIRST:snapshot.halves.FIRST.monthRevision,SECOND:snapshot.halves.SECOND.monthRevision},sourceDigest:flow.digest});
     }
     global.addEventListener('message',async event=>{
-      const request=pending;if(!request||stopped||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(event.origin)))return;
+      const receivedAt=(global.performance?.now?.()??Date.now());
+      const request=pending;if(!request||stopped||request.scopeKey!==replyScope()||!related(event.source,n.frame.contentWindow)||!(event.origin==='null'||/^https:\/\/[a-zA-Z0-9.-]+\.googleusercontent\.com$/.test(event.origin)))return;
       let valid=false;try{valid=await verify(event.data,request);}catch(_e){}if(!valid||pending!==request||stopped)return;
       const reply=event.data,expected=JSON.parse(request.input);let value=null;
       if(reply.code==='LINE_VERIFY_REJECTED'&&READS.has(request.command)&&reply.data===''){finish();clear();flow=null;failed=true;login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;controls();return;}
@@ -155,6 +159,7 @@
             '別の処理がデータを保護中のため、今回の操作は開始できませんでした。前の操作の保存結果が不明な場合は、その同じ操作で結果を確認してください。それ以外は、しばらく待って「再読み込み」から最新状態を確認してください。';
         }else n.status.textContent=messages[reply.code];return;
       }
+      const verifiedAt=(global.performance?.now?.()??Date.now());
       uncertain=null;failed=false;finish();
       if(['sheetRead','sheetCreate'].includes(request.command)){
         updateBatch(value.snapshot);n['sheet-open'].href=value.sheet.url;n['sheet-open'].hidden=false;
@@ -172,6 +177,7 @@
       if(request.command==='sheetImport'&&expected.managerConfirmed===true){
         // 公開snapshotは同じ保存の署名付きDTO。追加monthPublish/申請承認を送らない。
         flow=null;n['preview-details'].replaceChildren();
+        if(['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE'].includes(reply.code))savedOutput?.accept(value,expected.month,verifiedAt-request.startedAt,receivedAt);
         n.status.textContent=['SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE'].includes(reply.code)?'本人確認済みの変更反映を確認しました。最新のシフトを表示しています。':messages[reply.code];
         options.onSaved?.();controls();return;
       }
@@ -214,7 +220,7 @@
     n.retry.addEventListener('click',()=>{if(uncertain&&!pending&&!stopped)void send(uncertain.command,uncertain.input,uncertain.operationId);});
     global.addEventListener('beforeunload',event=>{if(pending&&!READS.has(pending.command)||uncertain||flow?.confirmed){event.preventDefault();event.returnValue='';}});
     global.addEventListener('pagehide',()=>{stopped=true;confirmation=null;flow=null;uncertain=null;finish();clear();n.reason.value='';controls();});controls();
-    return Object.freeze({load});
+    return Object.freeze({load,measurements:()=>savedOutput?.measurements()||[]});
   }
   global.TlhScheduleManagement=Object.freeze({init,verify});
 if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
