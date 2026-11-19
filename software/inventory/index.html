@@ -16,7 +16,7 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=c32c55186e36"><script src="load-timing.js?v=c32c55186e36" defer></script><script src="config.js?v=c32c55186e36" defer></script><script src="employee-login.js?v=c32c55186e36" defer></script><script src="operation-recovery.js?v=c32c55186e36" defer></script><script src="employee-transport.js?v=c32c55186e36" defer></script><script src="app.js?v=c32c55186e36" defer></script>
+<link rel="stylesheet" href="style.css?v=eb8bd1c59b05"><script src="load-timing.js?v=eb8bd1c59b05" defer></script><script src="config.js?v=eb8bd1c59b05" defer></script><script src="employee-login.js?v=eb8bd1c59b05" defer></script><script src="operation-recovery.js?v=eb8bd1c59b05" defer></script><script src="employee-transport.js?v=eb8bd1c59b05" defer></script><script src="app.js?v=eb8bd1c59b05" defer></script>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p></header>
@@ -46,7 +46,7 @@
 <button data-stock-action="counting" aria-pressed="false" aria-controls="stock-workspaces">在庫を数える</button>
 </div>
 <div id="stock-overview">
-<div id="stock-item-filters"></div>
+<details class="stock-search"><summary>品目を探す・絞り込む</summary><div id="stock-item-filters"></div></details>
 <div class="filters" aria-label="在庫の絞り込み"><button data-filter="all" aria-pressed="true">すべて</button><button data-filter="low" aria-pressed="false">要発注</button><button data-filter="ordered" aria-pressed="false">発注済み</button></div>
 <div id="cards"></div>
 </div>

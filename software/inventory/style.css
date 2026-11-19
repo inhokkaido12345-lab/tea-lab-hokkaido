@@ -185,3 +185,6 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .inventory-entry summary:focus-visible, #line-login:focus-visible { outline:3px solid var(--teal); outline-offset:3px; }
 
 @media (max-width:420px) { body > nav { padding-left:8px; padding-right:8px; gap:0; } body > nav [data-tab="catalog"] { flex-grow:1.4; } }
+/* Work first; administrative completeness stays inside the catalog editor. */
+.daily-tasks{margin:1rem 0;border-top:1px solid #d6dfda;padding-top:.75rem}.daily-tasks h4{margin:.25rem 0}.daily-task{padding:.65rem 0}.daily-task p{margin:.3rem 0;color:#46524d}.daily-task button{width:100%;margin:.35rem 0}.attribute-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid #d6dfda}.attribute-row strong{flex:1 1 10rem}.attribute-row small{flex-basis:100%}.review-settings,.attribute-level{margin:1rem 0}.review-settings label{display:block;margin:.6rem 0}.review-settings input[type=checkbox]{width:auto}.stock-workspace>button{margin:.4rem .4rem .6rem 0}
+.overview:has(>p){display:block;margin:.5rem 0;padding:0}.overview>p{font-size:.9rem}.stock-search{margin:.75rem 0}.quest-conditions{margin:.35rem 0;font-size:.85rem}.secondary-quest{margin:.65rem 0}.secondary-quest summary{font-weight:600}
