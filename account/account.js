@@ -23,8 +23,8 @@
  const serviceMatch=/^\?service=([a-z][a-z0-9-]{0,79})$/.exec(global.location.search||'');
  const serviceHint=!personalPurpose&&serviceMatch&&(global.TlhAccountServiceLaunchers||[]).filter(x=>x.serviceId===serviceMatch[1]).length===1?serviceMatch[1]:null;
  // Reviewed presentation labels only. Query hints never select permissions or grant access.
- const entryName=serviceHint==='inventory'?'店舗の在庫管理':serviceHint==='worktime'?'タイムカード':'店舗アプリ';
- if(serviceHint){$('account-login-intro').textContent=entryName+'の登録状態・利用権限を確認します。まずLINEで本人確認してください。';$('activation-heading').textContent=entryName+'の利用手続き';$('account-request-entry').textContent='コードがない方：'+entryName+'の利用状況・申請先を見る';}
+ const entryName=serviceHint==='inventory'?'店舗の在庫管理':'店舗アプリ';
+ if(serviceHint){$('account-login-intro').textContent=entryName+'の登録状態・利用権限を確認します。まずLINEで本人確認してください。';$('activation-heading').textContent=entryName+'の利用手続き';$('account-request-entry').textContent='コードがない方：利用状況・申請先を見る';}
  const matches=personalPurpose?(global.TlhActivationServices||[]).filter(x=>x.serviceId===purposeMatch[1]):[];
  // Same strict relative-path grammar as the activation return link; no URL decoding.
  const destination=matches.length===1&&typeof matches[0].path==='string'&&!/[\x00-\x20\x7f]/.test(matches[0].path)&&/^\/(?:[a-z0-9-]+\/)+$/.test(matches[0].path)?matches[0]:null;

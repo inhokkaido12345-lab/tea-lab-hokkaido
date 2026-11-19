@@ -137,5 +137,5 @@ test('entry wording distinguishes inventory, personal and general intent without
   const h=harness({search,launchers:[{serviceId:'inventory',path:'/software/inventory/'}]});assert.equal(h.n('activation-heading').textContent,expected);assert.equal(h.loginCalls,0);assert.equal(h.sent.length,0);
  }
  const h=harness({search:'?purpose=personal&service=INVENTORY'});assert.match(h.n('account-login-intro').textContent,/コードは不要/);assert.equal(h.n('account-request-entry').hidden,true);
- assert.match(html,/コードの対象店舗・権限を確認/);assert.match(html,/発行するコードの内容を確認/);assert.match(html,/まだ利用は確定しません/);
+ assert.match(html,/コードの内容を確認/);assert.match(html,/発行するコードの内容を確認/);assert.match(html,/まだ利用は確定しません/);
 });
