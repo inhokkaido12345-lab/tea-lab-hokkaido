@@ -251,22 +251,6 @@ function renderConsumption(card, item) {
   }
   if(dates.children.length)card.append(dates);
   const explanation=el('details','','forecast-explanation');explanation.append(el('summary','予測の根拠・消費速度を見る'));
-  explanation.append(el('p',forecastMessages[forecast.status]||forecast.status,'muted'));
-  if(forecast.redlineQuantity!=null)explanation.append(el('p','安全側の発注目安 '+quantities(forecast.redlineQuantity,item.baseUnit)+
-    ' ／実績納期 '+forecast.config.leadDays.toFixed(1)+'日','redline'));
-  if (forecast.baselineAt) {
-    explanation.append(el('p', '在庫の基準 '+formatRecordedAt(forecast.baselineAt)+
-      (forecast.baselineSource === 'RECEIPT' ? ' ／初回入荷前の在庫を0として推定' : ' ／棚卸実数から推定'), 'muted'));
-  }
-  if (forecast.rate) {
-    explanation.append(el('p', '計測 '+forecast.sampleCount+'件 ／平均 '+measurementQuantity(forecast.averageRate,item.baseUnit)+
-      '/日 ／7日換算 '+measurementQuantity(forecast.averageRate*7,item.baseUnit)));
-    explanation.append(el('p', '直近/平均の速度 '+forecast.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定します。'));
-    explanation.append(el('p', '最後に使用量を確認した日時：'+formatRecordedAt(forecast.lastMeasuredAt), 'muted'));
-  }
-  explanation.append(el('p', '推定在庫切れ '+formatRecordedAt(forecast.stockoutAt)),
-    el('p', '発注期限（安全側） '+formatRecordedAt(forecast.orderBy)));
-  if(item.delivery)explanation.append(el('p','発注から受取まで：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）','muted'));
   renderInformationCoverage(explanation,item);
   card.append(explanation);
   if ((item.orders || []).length) card.append(el('p', '発注済みあり。未入荷は在庫に含めません。', 'muted'));
@@ -409,6 +393,7 @@ function openInformationTask(kind,itemId){
  const workspace=stockWorkspaces.get(name),select=workspace?.querySelector('select');
  if(select&&[...select.options].some(o=>o.value===itemId)){select.value=itemId;select.onchange?.();select.focus();}
 }
+const stockCountReviewDays=7; // Restored provisional default from 55974c0, elapsed 24-hour days.
 /** Display-only review intervals. No ledger write, accuracy claim or inferred seasonality. */
 function informationSignal(category,days){
  if(!category?.count||!Number.isFinite(category.ageDays)||category.ageDays<0)return {state:'unknown',symbol:'?',label:'まだ判断できません',remaining:null};
@@ -424,18 +409,39 @@ function renderInformationCoverage(card,item){
  const compact=el('span','','information-compact');
  compact.append(el('strong','記録 Lv '+info.level+' / '+info.maximum));
  const meter=el('span','','coverage-meter');meter.setAttribute('aria-hidden','true');
- for(const c of info.categories)meter.append(el('span',(c.count?'✓ ':'− ')+labels[c.kind],c.count?'coverage-present':'coverage-missing'));
+ for(const c of info.categories)meter.append(el('span',c.count?'✓':'−',c.count?'coverage-present':'coverage-missing'));
  compact.append(meter);compact.setAttribute('aria-label','情報充実度 '+info.level+' / '+info.maximum+'。記録種類の充実度で、在庫精度の保証ではありません');
  card.querySelector('summary')?.append(compact);
  const box=el('div','','information-coverage');
- box.append(el('p','Lvは記録種類の充実度です。在庫精度の保証ではありません。','information-caution'));
- const list=el('ul','','information-records');
+ box.append(el('p','Lvは記録種類の数です。在庫精度の保証ではありません。発注記録がなくても、在庫数の信憑性を下げる判定はしません。','information-caution'));
+ const list=el('ul','','information-records'),orderList=el('ul','','information-records');
  for(const c of info.categories){
+  const f=item.forecast;
   const age=Number.isFinite(c.ageDays)?(c.ageDays===0?'24時間以内':c.ageDays+'日前'):'日時不明';
-  const row=el('li','');row.append(el('strong',(c.count?'✓ ':'− ')+labels[c.kind]),el('span',c.count?c.count+'件 · 最終 '+age:'未記録'));
-  list.append(row);
+  const row=el('li','');row.append(el('strong',labels[c.kind]));
+  if(c.kind==='count'){
+   const signal=informationSignal(c,stockCountReviewDays);
+   const state=!c.count?'未実施':signal.state==='unknown'?'日時不明':signal.state==='due'?'要棚卸（仮目安）':'目安内';
+   row.append(el('span',state+(c.count&&Number.isFinite(c.ageDays)?' ／前回から '+c.ageDays+'日':'')));
+   row.append(el('small','仮目安 '+stockCountReviewDays+'日以上で要棚卸（24時間単位）。精度の合否ではありません。'));
+   if(c.latestAt)row.append(el('small','前回 '+formatRecordedAt(c.latestAt)));
+  }else{
+   row.append(el('span',c.count?c.count+'件 · 最終 '+age:'未記録'));
+  }
+  if(c.kind==='receipt'&&f?.baselineSource==='RECEIPT')row.append(el('small','最初の入荷前を0として推定。実数は棚卸で確認してください。'));
+  if(c.kind==='measurement'&&f){
+   if(f.rate!=null){row.append(el('span','予測に使用 '+f.sampleCount+'標本 ／平均 '+measurementQuantity(f.averageRate,item.baseUnit)+'/日'));
+    row.append(el('small','直近/平均 '+f.relativeSpeed.toFixed(2)+'倍。残量は平均、発注警告は速い側で推定。'));}
+   else row.append(el('small','消費速度は未計測です。'));
+  }
+  if(c.kind==='order'){
+   if(item.delivery)row.append(el('span','実績納期：直近 '+item.delivery.lastDays.toFixed(1)+'日 ／平均 '+item.delivery.averageDays.toFixed(1)+'日（'+item.delivery.count+'件）'),el('small','予測には平均と直近の長い側を使用。'+(item.delivery.precision==='DATE'?'受取日は日付単位の概算。':'')));
+   else row.append(el('small','納期は未計測。対応する発注と全量受取の記録から計算します。'));
+   if(f?.redlineQuantity!=null)row.append(el('small','発注目安 '+quantities(f.redlineQuantity,item.baseUnit)));
+  }
+  (c.kind==='order'?orderList:list).append(row);
  }
- box.append(list,el('p','由来未確認：過去記録が実運用かは判定できません。明示された試験・初期化記録はLvと納期実績から除外します。入荷・発注は発生したときだけ記録してください。','information-caution'));
+ box.append(el('h4','在庫推定に使う記録'),list,el('h4','納期・発注予測に使う記録'),orderList,el('p','由来未確認：過去記録が実運用かは判定できません。明示された試験・初期化記録はLvと納期実績から除外します。入荷・発注は発生したときだけ記録してください。','information-caution'));
  card.append(box);
 }
 
