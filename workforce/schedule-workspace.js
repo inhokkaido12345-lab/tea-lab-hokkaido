@@ -40,7 +40,8 @@
       managementUi=global.TlhScheduleManagement.init({
         embedded:true,gasUrl:options.gasUrl,liff:options.liff,loginBlocked,
         onNavigationLock:value=>lock('management',value),
-        onSaved:()=>invalidate(['schedule'])
+        onPublishStart:()=>{employeeUi?.invalidateSharedOutput?.();invalidate(['schedule']);},
+        onSaved:()=>{employeeUi?.invalidateSharedOutput?.();invalidate(['schedule']);}
       });
     }
     return Object.freeze({
