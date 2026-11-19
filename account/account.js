@@ -22,6 +22,9 @@
  // Display hint only: exact reviewed service, never a scope or authorization.
  const serviceMatch=/^\?service=([a-z][a-z0-9-]{0,79})$/.exec(global.location.search||'');
  const serviceHint=!personalPurpose&&serviceMatch&&(global.TlhAccountServiceLaunchers||[]).filter(x=>x.serviceId===serviceMatch[1]).length===1?serviceMatch[1]:null;
+ // Reviewed presentation labels only. Query hints never select permissions or grant access.
+ const entryName=serviceHint==='inventory'?'店舗の在庫管理':'店舗アプリ';
+ if(serviceHint){$('account-login-intro').textContent=entryName+'の登録状態・利用権限を確認します。まずLINEで本人確認してください。';$('activation-heading').textContent=entryName+'の利用手続き';$('account-request-entry').textContent='コードがない方：利用状況・申請先を見る';}
  const matches=personalPurpose?(global.TlhActivationServices||[]).filter(x=>x.serviceId===purposeMatch[1]):[];
  // Same strict relative-path grammar as the activation return link; no URL decoding.
  const destination=matches.length===1&&typeof matches[0].path==='string'&&!/[\x00-\x20\x7f]/.test(matches[0].path)&&/^\/(?:[a-z0-9-]+\/)+$/.test(matches[0].path)?matches[0]:null;
@@ -54,7 +57,8 @@
   $('account-read-retry').hidden=selfReadState!=='error';$('account-read-retry').disabled=!ready||!global.TlhAccountNavigation.canLeave();status.setAttribute('aria-busy',String(selfReadState==='checking'));
   $('account-apps').hidden=true; // App discovery is centralized in the service category; P0 return CTAs stay local.
   $('account-personal-ready').hidden=!personalPurpose||!destination||!registrationConfirmed||!global.TlhAccountNavigation.canLeave();
-  if(personalPurpose)$('activation-heading').textContent=unregistered?'アカウントを作成':'招待コードをお持ちの方（任意）';
+  if(personalPurpose)$('activation-heading').textContent=unregistered?'個人利用のTLHアカウントを作成':'店舗からの招待コードをお持ちの方（任意）';
+  else $('activation-heading').textContent=unregistered?'まずTLHアカウントを作成':entryName+'の利用手続き';
   $('account-request-entry').hidden=!registrationConfirmed||personalPurpose;$('account-request-entry').disabled=!global.TlhAccountNavigation.canLeave();
   create.hidden=!unregistered&&!request;$('account-signup').hidden=!unregistered&&!request;
   create.disabled=!!services?.busy()||!!activation?.busy()||(!unregistered&&!request)||!!operations?.busy()||stopped||!ready||!!request?.timer||!!common?.busy()||!!grants?.busy();

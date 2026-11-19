@@ -1,0 +1,30 @@
+name: Test Account Entry Wording
+on:
+  pull_request:
+    paths:
+      - 'account/**'
+      - 'tests/common-account.test.mjs'
+      - 'qa/account-entry-wording-ci.mjs'
+      - '.github/workflows/test-account-entry-wording.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-entry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/common-account.test.mjs tests/service-activation.test.mjs
+      - run: npm install --prefix .qa-tools --no-save playwright@1.56.1
+      - run: .qa-tools/node_modules/.bin/playwright install --with-deps chromium
+      - run: node qa/account-entry-wording-ci.mjs
+        env:
+          PLAYWRIGHT_MODULE: '${{ github.workspace }}/.qa-tools/node_modules/playwright'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: account-entry-wording-synthetic
+          path: qa-artifacts/account-entry-wording

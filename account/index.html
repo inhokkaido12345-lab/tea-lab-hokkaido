@@ -15,7 +15,7 @@
 <script src="management-picker.js?v=85bf69ead273643e" defer></script>
 <script src="granular-readiness.js?v=af921130c5efd279" defer></script>
 <script src="activation-services.js?v=5435dba5de4f3435" defer></script>
-<script src="service-activation.js?v=7f4979e513753ee0" defer></script>
+<script src="service-activation.js?v=f060344867a92a2b" defer></script>
 <script src="common-affiliation.js?v=a9dab9ffa582ef52" defer></script>
 <script src="common-grants.js?v=25731cd139808f90" defer></script>
 <script src="access-overview.js?v=e5f0695e05f8e2b1" defer></script>
@@ -36,14 +36,14 @@
 <script src="service-shell/service-management.js?v=757c6408a3cfe8c7" defer></script>
 <script src="service-shell/compatibility-launchers.js?v=633e5f797c56e013" defer></script>
 <script src="service-shell/account-service-category.js?v=b8eae46280ba17d6" defer></script>
-<script src="account.js?v=da305b34b2eef783" defer></script>
+<script src="account.js?v=e3df5f456d0a1e9f" defer></script>
 <link rel="stylesheet" href="service-shell/management-layout.css?v=1bd281c95519e8b4"><link rel="stylesheet" href="service-shell/account-category.css?v=9b9a2043d6e036cb">
 </head>
 <body class="account-category-shell"><header><a href="/">TEA LABORATORY HOKKAIDO</a><h1>TLH Account</h1><p>アプリ共通のアカウント</p></header>
 <main>
 <section id="account-login-section" aria-labelledby="login-heading"><h2 id="login-heading">LINEで本人確認</h2>
-<p id="account-login-intro">利用を始めるには、LINEでログインしてください。</p>
-<button id="account-login" type="button">LINEでログイン</button>
+<p id="account-login-intro">TLH共通アカウントの登録状態と、店舗アプリの利用権限を確認する画面です。まずLINEで本人確認してください。</p>
+<button id="account-login" type="button">LINEでアカウントを確認</button>
 <p id="account-status" role="status" aria-live="polite">ログインすると、自分の登録情報を確認できます。</p>
 <button id="account-read-retry" type="button" hidden>登録状態を再読込</button>
 <a id="account-reload" href="./" hidden>本人確認をやり直す</a></section>
@@ -52,17 +52,17 @@
 <select id="account-mobile-category" aria-label="表示する項目"><option value="self">アカウント基本情報</option><option value="services">サービス管理</option><option value="manage">店舗管理</option><option value="company">社内管理</option><option value="platform">TLH管理</option></select><nav aria-label="アカウントの管理範囲" role="tablist" class="account-tabs"><button id="account-tab-self" type="button" role="tab" aria-selected="true">アカウント基本情報</button><button id="account-tab-services" type="button" role="tab" aria-selected="false">サービス管理</button><button id="account-tab-manage" type="button" role="tab" aria-selected="false">店舗管理</button><button id="account-tab-company" type="button" role="tab" aria-selected="false">社内管理</button><button id="account-tab-platform" type="button" role="tab" aria-selected="false">TLH管理</button></nav><p id="account-tabs-status" role="status"></p>
 <section id="account-service-panel" data-account-panel="services" hidden><h2>サービス管理</h2><div id="account-service-content"></div><iframe id="account-service-frame" name="tlhServiceRegistryFrame" title="サービス利用状態の応答" hidden></iframe></section>
 <section id="account-managed-store-panel" data-account-panel="manage" hidden><h2>管理する店舗</h2><div id="account-managed-stores"></div></section>
-<section id="activation-section" data-inventory-management="true" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">利用を始める</h2><div data-account-panel="self"><div id="account-signup" hidden>
+<section id="activation-section" data-inventory-management="true" data-account-panel="self manage" hidden aria-labelledby="activation-heading"><h2 id="activation-heading" data-account-panel="self">店舗アプリの利用手続き</h2><div data-account-panel="self"><div id="account-signup" hidden>
 <p>このLINEでアカウントを作成します。</p>
 <button id="account-create" type="button">アカウントを作成して続ける</button>
 <p id="account-create-status" role="status" aria-live="polite"></p>
 <iframe id="account-create-frame" name="tlhCommonAccountCreateFrame" title="アカウント作成の応答" hidden></iframe>
 </div></div><fieldset id="activation-lock" disabled><legend hidden>招待</legend>
-<div id="activation-inputs"><form data-account-panel="self" id="activation-claim-form"><label id="activation-code-entry">利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">次へ</button><button id="account-request-entry" class="account-procedure-entry" type="button" hidden>コードがない方：申請先を確認</button></form>
+<div id="activation-inputs"><form data-account-panel="self" id="activation-claim-form"><p id="activation-code-help">管理者から受け取った利用開始コードで、対象店舗と追加される操作権限を確認します。まだ利用は確定しません。</p><label id="activation-code-entry">利用開始コード<textarea id="activation-code" rows="2" required maxlength="64" autocomplete="off" spellcheck="false"></textarea></label><button id="activation-register" type="button" hidden>Accountを作成して受取りを続ける</button><button id="activation-claim" type="submit">コードの内容を確認</button><button id="account-request-entry" class="account-procedure-entry" type="button" hidden>コードがない方：使えるサービス・申請先を見る</button></form>
 <div data-account-panel="manage" hidden><h3>招待を作る</h3><form id="activation-issue-form">
 <button id="activation-picker-load" type="button">管理できる会社・店舗を読み込む</button><p id="activation-picker-status" role="status" aria-live="polite"></p><label>会社<select id="activation-org" required disabled><option value="">一覧を読み込んでください</option></select></label><label>店舗<select id="activation-store" required disabled><option value="">会社を先に選択</option></select></label><iframe id="activation-picker-frame" name="tlhManagementPickeractivation" title="管理できる範囲の応答" hidden></iframe>
 <p id="activation-service-name" hidden></p><label id="activation-service-choice">対象サービス<select id="activation-service"></select></label><fieldset><legend>付与する操作権限</legend><div id="activation-permissions"></div></fieldset><p>コードは発行から30分有効</p>
-<button id="activation-issue" type="submit">次へ</button></form></div>
+<button id="activation-issue" type="submit">発行するコードの内容を確認</button></form></div>
 </div><div id="activation-preview" hidden><p id="activation-summary"></p><div id="activation-permission-details"></div><details><summary>識別情報</summary><p id="activation-identifiers"></p></details><button id="activation-commit" type="button">確認して確定</button></div>
 <button id="activation-retry" type="button" hidden>同じ操作の結果を確認</button>
 <div id="activation-issued" hidden><label>招待コード（30分有効）<textarea id="activation-issued-code" rows="2" readonly autocomplete="off" spellcheck="false"></textarea></label><button id="activation-copy-code" type="button" disabled>招待をコピー</button><button id="activation-copy-page" type="button" disabled hidden>受取りページをコピー</button><a href="https://tealabhokkaido.com/account/" hidden>受取りページ</a><button id="activation-close-code" type="button" disabled>コード表示を閉じる</button><p>コードと受取りページを本人へ送ってください。コードはこの画面でのみ確認できます。</p></div>
