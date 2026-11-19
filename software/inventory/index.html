@@ -16,7 +16,7 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=97d5d2744292"><script src="load-timing.js?v=97d5d2744292" defer></script><script src="config.js?v=97d5d2744292" defer></script><script src="employee-login.js?v=97d5d2744292" defer></script><script src="operation-recovery.js?v=97d5d2744292" defer></script><script src="employee-transport.js?v=97d5d2744292" defer></script><script src="app.js?v=97d5d2744292" defer></script>
+<link rel="stylesheet" href="style.css?v=55377cd9710a"><script src="load-timing.js?v=55377cd9710a" defer></script><script src="config.js?v=55377cd9710a" defer></script><script src="employee-login.js?v=55377cd9710a" defer></script><script src="operation-recovery.js?v=55377cd9710a" defer></script><script src="employee-transport.js?v=55377cd9710a" defer></script><script src="app.js?v=55377cd9710a" defer></script>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p></header>
@@ -27,6 +27,7 @@
 <summary>使い方・困ったとき</summary>
 <p class="help-intro">やりたいことを選ぶ → 手順を確認 → 操作画面へ。開いても入力は消えません。</p>
 <div class="help-tasks"><details><summary>ホーム画面への追加・元の画面へ戻る</summary><p>iPhoneはSafariの共有、AndroidはChromeのメニューからホーム画面に追加します。単独アプリとして起動したときは、戻る履歴がないことがあります。他の画面へは端末のアプリ切替・ホーム操作で戻れます。</p><p>アカウントを別画面で確認した後は、元の在庫画面へ切り替えてLINEでログインしてください。認証画面が閉じない場合も、元の在庫画面で結果を確認してください。</p></details>
+<details><summary>予測・納期・更新条件の読み方</summary><p>予測は実在庫の保証ではありません。実数は棚卸で更新します。棚卸の期限は登録日時を基準に経過24時間単位で判定し、設定が7日なら7日ちょうどで期限超過になります。消費は実測終了日時が基準です。期限内の記録と在庫数の信頼度は別です。</p><p>実績納期は発注と単一全量入荷の有効な対応から計算します。入荷日は日付のみです。同日登録では登録時刻を計算に使いますが、実到着の秒時刻ではありません。分納・合算・由来不足などで標本にならない場合は未計測です。</p></details>
 <details><summary>届いたものを入荷登録</summary><ol><li>「入荷」で届いた日・品目・袋やケースの単位・数量を入力。</li><li>注文の全量が届いたら「今回で受取完了」を選ぶ。分納なら未選択。</li><li>「入荷をまとめて保存」→ 保存完了を確認。</li></ol><p>発注しただけの物は登録せず、実際に届いた分だけ。</p><button type="button" data-help-task="receiving">入荷を開く</button></details>
 <details><summary>今ある在庫を数える（棚卸）</summary><ol><li>「在庫」→「在庫を数える」で品目を選ぶ。</li><li>未開封＋使いかけの総量を、欄に表示された単位（g・mL・本など）で入力。</li><li>「数えた量を保存」→ 保存完了を確認。</li></ol><p>追加量ではなく今ある総量。分からないときは0で埋めないでください。</p><button type="button" data-help-task="counting">在庫を数える</button></details>
 <details><summary>発注したことを記録</summary><ol><li>仕入先への注文は、いつもの方法で別に行う。</li><li>「在庫・発注」で品目の「発注を記録」を押す。</li><li>数量・到着予定日（任意）を入れ「発注済みにする」→ 保存完了を確認。</li></ol><p>このアプリから仕入先へ注文は送信されません。未入荷の注文は在庫に加算しません。</p><button type="button" data-help-task="ordering">在庫・発注を開く</button></details>

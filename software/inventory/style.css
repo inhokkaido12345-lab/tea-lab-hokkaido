@@ -203,7 +203,7 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 /* Daily use: ordering and receiving stay visible; evidence and maintenance are folded. */
 .level-journey{padding:.65rem 0 0;margin:.65rem 0 0}.level-journey>summary{font-size:.8rem;font-weight:600;color:#2f5452;min-height:28px}.level-journey[open]>summary{margin-bottom:.5rem}.stock-operations{display:flex;flex-wrap:wrap;gap:6px;border:0;padding:0;margin:.7rem 0 0}.stock-operations>button{flex:1;min-width:110px;margin:0}.stock-operations>p,.stock-operations>.line{flex-basis:100%}.stock-hero .level-heading{font-size:.7rem}.stock-hero .qty{font-size:clamp(1.6rem,5vw,2.2rem)}
 
-.reliability-stars{display:flex;gap:2px;font-size:1.55rem;line-height:1.2;white-space:nowrap}.reliability-stars .lit{color:#2f5452}.reliability-stars .unlit{color:#76837e}
+.reliability-stars{display:flex;gap:2px;font-size:1.55rem;line-height:1.2;white-space:nowrap}.reliability-stars .lit{color:#b77900}.reliability-stars .unlit{color:#252829}
 
 .card .item-alert button{width:auto;flex:0 0 auto;margin:0}.item-alert>span{flex:1 1 auto;min-width:0}.item-alert{flex-wrap:nowrap}
 
@@ -211,3 +211,5 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 .stock-actions{display:none}
 
 .stock-operations>.pending-orders{flex-basis:100%;min-width:0;font-size:.8rem}.pending-order-notice{margin:0;font-size:.85rem;font-weight:600}.pending-orders>summary{min-height:32px;padding-top:6px}.pending-orders p{overflow-wrap:anywhere}
+
+.condition-box{border:1px solid #b8c3bd;border-radius:8px;padding:12px;margin:10px 0;background:#f3f4f2;min-width:0;overflow-wrap:anywhere}.condition-box.met{background:#edf6ee;border-color:#6e9974}.condition-box.unmet{background:#fff2e6;border-color:#c48c59}.condition-box h4{margin:0 0 6px}.condition-box p{font-size:.8rem;line-height:1.5;margin:7px 0}.condition-state{font-size:.85rem}.condition-box button{min-height:44px;margin:5px 5px 0 0}.level-rows{display:block;border:0}.stock-operations>button.primary{background:#2F5452;border-color:#2F5452;color:#fff}.stock-operations>button:not(.primary){background:#fff;color:#252829;border-color:#7C908E}
