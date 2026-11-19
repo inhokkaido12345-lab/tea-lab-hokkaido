@@ -85,3 +85,11 @@ node --test tests/*.mjs
 管理者がアプリ外で本人へ確認した公開済みシフト差分に限り、既存の差分確認欄に「本人確認済み・変更を反映」を追加する案。通常ボタンは従来の本人同意・承認待ちを維持する。差分一覧が全て公開済みの時だけ別ボタンを表示し、理由・source/target digest・固定操作IDを既存sheetImportへ渡す。結果不明時は同じmanagerConfirmed:trueを含む入力とIDで照合し、自動再送や既存申請の承認はしない。混在下書き・空差分にはこの経路を表示しない。
 
 サーバー側managerConfirmed契約の実装・認可/競合/監査試験との組合せ確認後にのみ配備を検討する。公開snapshotは署名付き保存結果から更新し、この経路では追加monthPublishを送らない。現在の本番動作が変更済みという意味ではない。検証はtests/schedule-management.test.mjs。次はバックエンド草案との結合確認です。
+
+### 保存結果→即時表示→PNGの分離草案
+
+本人確認済み反映の署名・要求相関・店舗・月・DTO検査後、同じ応答の公開plans/eventsだけを共有表と既存PNGへ投影する。両半月が公開済みの月に限る。追加READ/月公開/画像サービス/LINE送信はゼロ。初回公開・通常の申請承認は変更しない。新要求、結果不明、拒否、店舗変更、退場では旧出力を失効する。PNGは画像生成終了時にも世代を照合し、改訂された10時開始が含まれることを試験する。
+
+`node scripts/measure-saved-shift-browser.mjs` は既存ChromeとNode標準WebSocketだけを使う。30回・架空1人1変更日・430×932・システムフォント・実DOM/Canvas/toBlobの再現試験。外部通信・実データなし。apply-confirmは模擬署名返信であり、実GAS/LINE待機を含まない。confirm-paintは受信から二重rAFまで、png-readyは明示操作からblob生成まで。各1秒の本番要件は未達成ではなく未検証であり、ローカルCPU値で達成を主張しない。初期化・フォント冷キャッシュ・Android端末・実GASのp95は別途必要。
+
+この環境のChromeはOS socket制限で起動不可だったため、既存CI runnerのインストール済みChromeで同じ計測を行う。追加npm依存なし。次はCI実描画結果と実GAS待機の切り分けです。
