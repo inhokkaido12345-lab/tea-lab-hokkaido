@@ -476,11 +476,9 @@ function renderDailyTasks(card,item){
  const rows=el('div','','level-rows');
  const benefit=label=>el('p',{'規格と単位を実物で確認':'「1袋」を実際の重さに正しく換算できているか？','仕入れの引き継ぎ':'担当者が休みでも、同じ品を発注できるか？','棚卸':'いま店にある量を、数字で確かめられるか？','消費速度':'このペースで使うと、あと何日持つか？','実績納期':'切らさないために、何日前に発注すればいいか？','予測と実物の一致':'本当に消費速度が合っていたのか？','欠品を防ぐ補充':'一定期間、在庫切れなく仕入れられたか？'}[label],'condition-benefit');
  const validTime=x=>conditionTime(x)!=='未提供';
- const flagged=!g.evaluation||g.evaluation.state==='HELD';
  const makeRow=(label,schedule)=>{
   const x=schedule||{},hasTime=validTime(x.lastAt),configured=Number.isInteger(x.days)&&x.days>0;
-  const state=!configured||!hasTime?'unknown':x.state==='DUE'?'unmet':x.state==='CURRENT'&&validTime(x.dueAt)&&!flagged?'met':'unknown';
-  const row=el('div','','condition-box '+state);row.append(el('h4',label),benefit(label),el('strong',state==='met'?'✓ 達成：記録は期限内':state==='unmet'?'未達成：更新期限を超過':!configured?'未判定：間隔未設定':!hasTime?'未判定：日時の根拠不足':'要確認：記録は期限内・由来未確認','condition-state'));
+  const row=el('div','','condition-box unknown');row.append(el('h4',label),benefit(label),el('strong','未評価：確認済みの評価結果が必要','condition-state'));
   row.append(el('p','設定間隔：'+(configured?x.days+'日'+(x.defaulted?'（既定）':'（品目設定）'):'未設定')));
   row.append(el('p','次期限：'+(configured&&hasTime&&validTime(x.dueAt)?conditionTime(x.dueAt):'算出不可（'+(!configured?'間隔未設定':!hasTime?'基準日時が未提供':'期限日時が未提供')+'）')));
   rows.append(row);return row;
@@ -517,7 +515,7 @@ function renderDailyTasks(card,item){
  handover.append(el('p','登録情報が揃っても達成にはしません。担当者以外が同じ品・規格・注文先を特定できるか確認が必要です。納期や欠品の評価とは別です。'));
  if(canOperate('SAVE_ITEM')){const b=el('button','この品目の仕入情報を編集');b.onclick=()=>{catalogSelection=item.id;catalogDirty=true;tab('catalog');const d=document.querySelector('.catalog-suppliers');if(d)d.open=true;d?.querySelector('input')?.focus();};handover.append(b);}else handover.append(el('p','仕入情報の更新は品目編集権限のある担当者へ依頼してください。'));
  rows.append(handover);
- const delivery=el('div','','condition-box '+(item.delivery?'unknown':'unmet'));delivery.append(el('h4','実績納期'),benefit('実績納期'),el('strong',item.delivery?'要確認：記録あり・実到着の証拠は未評価':'未達成：対応する実績なし','condition-state'));
+ const delivery=el('div','','condition-box unknown');delivery.append(el('h4','実績納期'),benefit('実績納期'),el('strong','未評価：確認済みの評価結果が必要','condition-state'));
  delivery.append(el('p','記録ベースの参考：'+(Number.isFinite(item.delivery?.leadDays)?item.delivery.leadDays.toFixed(1)+'日':'未計測')),el('p','更新条件：実際の発注と単一全量入荷の対応を確認。定期間隔・次期限は非適用。'),el('p','実到着日：'+(item.delivery?.receivedOn||'未提供')+' ／ 実到着時刻：未提供'),el('p','発注・入荷の登録日時：標本DTOに未提供'));
  if(!item.delivery)delivery.append(el('p','不足：予定量のある発注と全量入荷の有効な対応。架空入力で埋めません。'));
  const hasOrder=(item.orders||(item.order?[item.order]:[])).some(o=>o.status==='ORDERED');
