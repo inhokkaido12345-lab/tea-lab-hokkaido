@@ -209,3 +209,5 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 
 /* Maintenance starts from the relevant item or alert; its workspace retains Back/Cancel. */
 .stock-actions{display:none}
+
+.stock-operations>.pending-orders{flex-basis:100%;min-width:0;font-size:.8rem}.pending-order-notice{margin:0;font-size:.85rem;font-weight:600}.pending-orders>summary{min-height:32px;padding-top:6px}.pending-orders p{overflow-wrap:anywhere}

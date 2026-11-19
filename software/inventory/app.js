@@ -497,19 +497,22 @@ function renderStockCards(){
  renderDailyTasks(c,item);
  const operations=el('div','','stock-operations');c.append(operations);
  const orders=item.orders||(item.order?[item.order]:[]);
- for(const order of orders.filter(o=>o.status==='ORDERED')){
- operations.append(el('p',order.actor+'が発注済み'+(order.at?' '+formatRecordedAt(order.at) :'')));
- if(!order.plannedLine)operations.append(el('p','発注数量：未記入'));
- operations.append(el('p','到着予定日：'+(order.expectedOn||'不明')));
- renderReceiptLink(operations,item,order);
- if(order.plannedLine)operations.append(el('p','発注数量 '+order.plannedLine.quantity+' '+(item.units.find(u=>u.id===order.plannedLine.unitId)?.label||order.plannedLine.unitId)+'（'+quantities(order.plannedLine.amount,item.baseUnit)+'）'));
+ const pendingOrders=orders.filter(o=>o.status==='ORDERED');
+ const orderDetails=el('details','','pending-orders');
+ if(pendingOrders.length){operations.append(el('p','発注済み・入荷待ち（'+pendingOrders.length+'件）','pending-order-notice'));orderDetails.append(el('summary','注文の明細・入荷との照合'));}
+ for(const order of pendingOrders){
+ orderDetails.append(el('p',order.actor+'が発注済み'+(order.at?' '+formatRecordedAt(order.at) :'')));
+ if(!order.plannedLine)orderDetails.append(el('p','発注数量：未記入'));
+ orderDetails.append(el('p','到着予定日：'+(order.expectedOn||'不明')));
+ renderReceiptLink(orderDetails,item,order);
+ if(order.plannedLine)orderDetails.append(el('p','発注数量 '+order.plannedLine.quantity+' '+(item.units.find(u=>u.id===order.plannedLine.unitId)?.label||order.plannedLine.unitId)+'（'+quantities(order.plannedLine.amount,item.baseUnit)+'）'));
  }
  if(view.permissions.includes('inventory.order')){
  const b=el('button','発注を記録');
  b.onclick=()=>{
   // 確認を先に済ませてから入力欄を作る。拒否した場合は画面も保存状態も変更しない。
   const notLow=!needsOrder(item);
-  if(notLow&&!confirm(item.name+(predictionHeld(item)?'：予測は参考・要確認です。現物と未入荷注文を確認したうえで、実際の発注を記録しますか？':'：要発注ではありませんが、発注しますか？')))return;
+  if((notLow||pendingOrders.length)&&!confirm((pendingOrders.length?'未入荷の発注が'+pendingOrders.length+'件あります。同じ発注の重複登録でないことを確認してください。\n':'')+item.name+(predictionHeld(item)?'：予測は参考・要確認です。現物と未入荷注文を確認したうえで、実際の発注を記録しますか？':notLow?'：要発注ではありませんが、発注しますか？':'：別の発注を記録しますか？')))return;
   b.disabled=true;
   const box=el('div','','line'),row=addLine(item.id,box,true);
   const dateLabel=el('label','到着予定日（任意）'),date=el('input','');
@@ -523,7 +526,7 @@ function renderStockCards(){
   };
   box.append(save);operations.append(box);
  };operations.append(b);}
- const b=el('button','入荷を登録');b.hidden=!canOperate('RECEIVE');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};operations.append(b);if(!item.forecast){const explanation=el('details','','forecast-explanation');explanation.append(el('summary','在庫と納期の内訳'));renderInformationCoverage(explanation,item);c.append(explanation);}const detail=c.querySelector?.('.level-journey')||c.querySelector?.('.forecast-explanation');if(detail)c.append(detail);stockCards.set(item.id,c);$('cards').append(c);
+ const b=el('button','入荷を登録');b.hidden=!canOperate('RECEIVE');b.onclick=()=>{$('lines').replaceChildren();addLine(item.id);tab('receiving');};operations.append(b);if(pendingOrders.length)operations.append(orderDetails);if(!item.forecast){const explanation=el('details','','forecast-explanation');explanation.append(el('summary','在庫と納期の内訳'));renderInformationCoverage(explanation,item);c.append(explanation);}const detail=c.querySelector?.('.level-journey')||c.querySelector?.('.forecast-explanation');if(detail)c.append(detail);stockCards.set(item.id,c);$('cards').append(c);
  }
  if(view.items.some(i=>i.active!==false)&&!shown.length)$('cards').append(el('p','条件に合う品目がありません。カテゴリ・検索・発注状態の条件を変更してください。','muted'));
 }
