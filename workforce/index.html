@@ -518,13 +518,22 @@
       if(name==='more'){autoReads.once('account',visible);} // 初回だけ本人読取。タブの往復で重複送信しない。
       if(name==='manager'&&homeAdminAllowed&&homeManagerCategory==='employees'){const permitted=()=>visible()&&homeAdminAllowed&&homeManagerCategory==='employees';autoReads.once('enrollment',permitted);}
     }
+    // 管理への直行は権限READだけを先に行う。非表示の打刻/今日の原簿を待たない。
+    // GAS認可・署名・自動読取queueは変更しない。通常起動/従業員表示は従来の同時READ。
+    // 削除影響: 管理deep linkが再び不要な2機能の読取を待つ。検証: admin-entry-startup.test.mjs。
+    function startHomeReads(){
+      const managerEntry=['#manager','#manager-schedule'].includes(window.location.hash);
+      homeReady=true;autoReads.together(managerEntry?['access']:['access','punch','today'],()=>homeReady);
+      // 管理者gate完了まで初期employee paneを読まない。拒否時はonStateで通常画面へ戻す。
+      if(!managerEntry)loadVisiblePane(homePane);
+    }
     const layoutNavigation = TlhWorkforceLayout.init({onActivate:loadVisiblePane});
     // 初期表示は管理不可。署名付きの読取成功だけでナビを有効化し、保存処理は従来どおり毎回認可。
     const adminOverview = TlhAdminOverview.init({gasUrl:GAS_URL,liff:window.liff,autoLoad:false,select:document.getElementById('maintenance-code'),canRefresh:()=>!document.getElementById('maintenance-target-fields').disabled});
     // 別ページから#managerへ戻るときも、最新権限の確認成功後だけ管理タブを開く。
     const adminAccess = TlhAdminAccess.init({gasUrl:GAS_URL,liff:window.liff,readTransport:homeReads,
       frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
-      onState:allowed=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager-schedule')layoutNavigation.open('manager','schedule');else if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed,true);loadVisiblePane(homePane);}}});
+      onState:(allowed,reason)=>{homeAdminAllowed=allowed;layoutNavigation.setAdminAllowed(allowed);adminOverview.setAllowed(allowed);document.getElementById('admin-demo-panel').hidden=!allowed;document.getElementById('personal-demo-panel').hidden=!allowed;if(allowed){if(window.location.hash==='#manager-schedule')layoutNavigation.open('manager','schedule');else if(window.location.hash==='#manager')layoutNavigation.open('manager');autoReads.once('overview',()=>homeReady&&homeAdminAllowed,true);loadVisiblePane(homePane);}else if(homeReady&&['denied','unavailable'].includes(reason)){loadVisiblePane(homePane);}}});
     TlhWorkforceShell.init();
     // 既存LIFFを共用し、ここでは初期化だけ。その他を開くまで本人情報の追加通信を行わない。
     // data-bootstrapを付けると単独ページ用のliff.init/即時loadも動くため、このscriptには付けない。
@@ -1365,7 +1374,7 @@
         document.getElementById('staff-load-status').hidden = true;
         document.getElementById('workforce-tabs').hidden = false;
         // 固定3読取を同じPOSTへまとめ、GASで共有Lockを1回取得。失敗後の自動再試行はしない。
-        homeReady=true;autoReads.together(['access','punch','today'],()=>homeReady);loadVisiblePane(homePane);
+        startHomeReads();
       } catch (error) {
         document.getElementById('staff-load-status').textContent = 'LINEの初期化に失敗しました。';
         document.querySelector('.diagnostics').open = true;
