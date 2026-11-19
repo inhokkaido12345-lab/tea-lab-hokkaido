@@ -63,3 +63,28 @@ for(const [code,pattern]of [['SCHEDULE_SHEET_BINDING_REQUIRED',/月別シート�
  const h=await ready();h.click('sheet-create');h.click('approve');assert.equal(h.sent[1].command,'sheetCreate');
  await h.reply(h.sent[1],null,code);assert.match(h.n('status').textContent,pattern);assert.equal(h.sent.length,2);
 });
+
+async function publishedPreview(){const h=await ready(),s=managementSnapshot();s.halves.FIRST.phase='PUBLISHED';const c={...change(),published:true};h.click('publish');await h.reply(h.sent[1],sheetReply(s,[c]),'SCHEDULE_SHEET_READY');return {h,s};}
+test('manager-confirmed action is separate, reason-required, digest-bound and ends at verified saved snapshot',async()=>{
+ const {h,s}=await publishedPreview();assert.equal(h.n('confirmed-apply').hidden,false);assert.equal(h.n('confirmed-apply').disabled,false);assert.ok(h.walk(h.n('preview-details')).some(n=>n.textContent.includes('架空社員1（EMP001） 2026-11-05')));
+ h.click('confirmed-apply');assert.equal(h.sent.length,2);h.n('reason').value='本人へ連絡し変更を確認済み';h.click('confirmed-apply');h.click('confirmed-apply');assert.equal(h.sent.length,3);
+ const req=h.sent[2],p=JSON.parse(req.input);assert.equal(req.command,'sheetImport');assert.equal(p.managerConfirmed,true);assert.equal(p.sourceDigest,'a'.repeat(64));assert.equal(p.targetDigest,'b'.repeat(64));assert.equal(p.reason,'本人へ連絡し変更を確認済み');
+ s.halves.FIRST.monthRevision=2;await h.reply(req,s,'SCHEDULE_SAVED');assert.equal(h.sent.length,3);assert.match(h.n('status').textContent,/本人確認済みの変更反映を確認/);assert.equal(h.n('confirm').hidden,true);assert.equal(h.n('publish').disabled,false);
+});
+test('normal approval never adds managerConfirmed, even for published changes',async()=>{const {h}=await publishedPreview();h.n('reason').value='変更案';h.click('approve');assert.equal(Object.hasOwn(JSON.parse(h.sent[2].input),'managerConfirmed'),false);});
+test('confirmed action unavailable before authorized snapshot, empty preview, drafts and mixed changes',async()=>{
+ const early=managementHarness();early.click('confirmed-apply');assert.equal(early.sent.length,0);assert.equal(early.n('confirmed-apply').disabled,true);
+ for(const type of ['empty','draft','mixed']){const h=await ready(),s=managementSnapshot();const changes=type==='empty'?[]:[change()];if(type==='mixed'){s.halves.FIRST.phase='PUBLISHED';changes[0].published=true;changes.push({...change(),day:'2026-11-20',plan:{...plan(),day:'2026-11-20'}});}h.click('publish');await h.reply(h.sent[1],sheetReply(s,changes),'SCHEDULE_SHEET_READY');assert.equal(h.n('confirmed-apply').hidden,true);h.n('reason').value='確認済み';h.click('confirmed-apply');assert.equal(h.sent.length,2);}
+});
+test('confirmed action cannot include an unpublished shared-event change',async()=>{
+ const h=await ready(),s=managementSnapshot();s.halves.FIRST.phase='PUBLISHED';const v=sheetReply(s,[{...change(),published:true}]);v.authority.preview.eventChanges=1;v.authority.preview.eventDetails=[{day:'2026-11-20',before:'',after:'架空イベント',published:false}];h.click('publish');await h.reply(h.sent[1],v,'SCHEDULE_SHEET_READY');assert.equal(h.n('confirm').hidden,false);assert.equal(h.n('confirmed-apply').hidden,true);h.click('confirmed-apply');assert.equal(h.sent.length,2);
+});
+test('unknown manager-confirmed import retries identical flag/input/ID and never issues monthPublish',async()=>{
+ const {h,s}=await publishedPreview();h.n('reason').value='確認済み';h.click('confirmed-apply');const original=h.sent[2];h.expire();assert.equal(h.n('retry').hidden,false);h.click('confirmed-apply');h.click('approve');assert.equal(h.sent.length,3);h.click('retry');const retry=h.sent[3];assert.equal(retry.input,original.input);assert.equal(retry.operationId,original.operationId);assert.notEqual(retry.nonce,original.nonce);await h.reply(retry,s,'SCHEDULE_ALREADY_DONE');assert.equal(h.sent.length,4);assert.match(h.n('status').textContent,/変更反映を確認/);
+});
+for(const code of ['SCHEDULE_REQUEST_PENDING','SCHEDULE_PERMISSION_REQUIRED','SCHEDULE_SHEET_CHANGED','SCHEDULE_CHANGED'])test('manager-confirmed rejection '+code+' never approves requests or publishes',async()=>{
+ const {h}=await publishedPreview();h.n('reason').value='確認済み';h.click('confirmed-apply');await h.reply(h.sent[2],null,code);assert.equal(h.sent.length,3);assert.doesNotMatch(h.n('status').textContent,/変更反映を確認しました/);assert.equal(h.n('confirmed-apply').hidden,true);h.click('confirmed-apply');assert.equal(h.sent.length,3);
+});
+test('manager-confirmed late or forged replies cannot report success or revive departed screen',async()=>{
+ const {h,s}=await publishedPreview();h.n('reason').value='確認済み';h.click('confirmed-apply');const r=h.sent[2];await h.reply(r,s,'SCHEDULE_SAVED',{mac:'0'.repeat(64)});assert.doesNotMatch(h.n('status').textContent,/変更反映を確認しました/);h.depart();await h.reply(r,s,'SCHEDULE_SAVED');assert.equal(h.sent.length,3);assert.equal(h.n('confirm').hidden,true);assert.equal(h.n('confirmed-apply').disabled,true);
+});

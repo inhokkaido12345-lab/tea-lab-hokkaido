@@ -160,7 +160,7 @@
 <section class="management-section"><h3>希望休の締切を設定</h3><p class="footnote">ここからここまでの希望を、指定日時に締め切ります。締切未設定の日は申請できます。重なる日には後から設定した締切を適用し、既に届いた申請は残します。シフトの作成・公開範囲は制限しません。</p><div class="filters"><label>希望の開始日<input id="schedule-management-deadline-start" type="date" disabled></label><label>希望の終了日<input id="schedule-management-deadline-end" type="date" disabled></label><label>この期間の希望を締め切る日時（日本時間）<input id="schedule-management-deadline" type="datetime-local" disabled></label></div><button id="schedule-management-deadline-save" type="button" disabled>この期間の締切を設定</button><div id="schedule-management-deadline-rules"></div></section>
 <section class="management-section"><h3>希望休承認</h3><div id="schedule-management-requests"></div></section>
 </section>
-<div id="schedule-management-default-confirm-slot"><section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><button id="schedule-management-cancel" type="button">やめる</button></section>
+<div id="schedule-management-default-confirm-slot"><section id="schedule-management-confirm" class="session-notice" role="region" aria-labelledby="schedule-management-question" hidden><h3 id="schedule-management-question"></h3><ul id="schedule-management-preview-details" hidden></ul><label id="schedule-management-reason-label" hidden>公開済み勤務の変更理由<textarea id="schedule-management-reason" rows="2" maxlength="500" disabled></textarea></label><button id="schedule-management-approve" type="button">確認した内容を実行する</button><p id="schedule-management-confirmed-help" hidden>上の変更内容を対象者本人にアプリ外で確認済みの場合だけ選んでください。追加の本人承認は求めず、公開済みシフトへ反映します。既存の未処理申請は承認しません。</p><button id="schedule-management-confirmed-apply" type="button" hidden disabled>本人確認済み・変更を反映</button><button id="schedule-management-cancel" type="button">やめる</button></section>
 </div>
 <button id="schedule-management-retry" type="button" hidden disabled>同じ操作で結果を再確認</button>
 <iframe id="schedule-management-frame" name="tlhScheduleManagementFrame" title="管理シフトの署名付き応答" hidden></iframe>
@@ -451,7 +451,7 @@
   <script src="schedule-report.js?v=20261111-maint1"></script>
   <script src="schedule.js?v=20261111-off1"></script>
   <script src="schedule-management-contract.js?v=20261111-issues1"></script>
-  <script src="schedule-management.js?v=20261111-issues1"></script>
+  <script src="schedule-management.js?v=20261119-confirmed-draft1"></script>
   <script src="schedule-workspace.js?v=20261110-lazy-init1"></script>
   <script src="layout.js?v=20261110-management1"></script>
   <script src="admin-access.js?v=20261108-batch1"></script>
