@@ -14,7 +14,9 @@ jobs:
       - run: python3 scripts/sync-worktime-url.py --check
       - run: node --test tests/*.mjs
       # Existing runner Chrome only; synthetic file:// page, no external service/auth.
-      - run: node scripts/measure-saved-shift-browser.mjs | tee saved-shift-browser.json
+      - run: |
+          set -o pipefail
+          node scripts/measure-saved-shift-browser.mjs | tee saved-shift-browser.json
       - uses: actions/upload-artifact@v4
         with:
           name: synthetic-saved-shift-browser-timings
