@@ -11,8 +11,7 @@
 (function(global){'use strict';
   function init(options){
     const month=document.getElementById('schedule-month'),refresh=document.getElementById('schedule-workspace-refresh'),notice=document.getElementById('schedule-draft-notice');
-    const locks=new Map();let employeeUi=null,managementUi=null,initializing=false;
-    global.TlhWorktimeNavigation?.register('schedule-workspace',()=>!initializing&&!Array.from(locks.values()).some(Boolean)&&!employeeUi?.hasUnsavedInput());
+    const locks=new Map();let employeeUi=null,managementUi=null;
     const employeePermitted=()=>options.visible(),employeeReadPermitted=()=>employeePermitted()&&!employeeUi?.hasUnsavedInput(),adminPermitted=()=>options.adminVisible()&&options.adminAllowed();
     const loginBlocked=()=>Array.from(locks.values()).some(Boolean);
     function controls(){const locked=!!locks.get('employee');month.disabled=locked;refresh.disabled=locked||!employeePermitted();}
@@ -28,26 +27,22 @@
     /** 本人側のフォームと購読を一度だけ接続する。未送信入力の維持用で、本人認可のcacheではない。 */
     function ensureEmployee(){
       if(employeeUi)return;
-      initializing=true;
       employeeUi=global.TlhSchedule.init({
         gasUrl:options.gasUrl,liff:options.liff,loginBlocked,audience:'employee',monthly:true,
         onMonthChange:employeeMonthChanged,
         onNavigationLock:value=>lock('employee',value),
         onSaved:()=>{notice.hidden=true;invalidate(['scheduleManagement']);}
       });
-      initializing=false;
     }
     /** 表示時の最新gateを通った管理側だけ接続。保存の最新認可は既存GASが毎回行う。 */
     function ensureManagement(){
       if(managementUi)return;
-      initializing=true;
       managementUi=global.TlhScheduleManagement.init({
         embedded:true,gasUrl:options.gasUrl,liff:options.liff,loginBlocked,
         onNavigationLock:value=>lock('management',value),
         onPublishStart:()=>{employeeUi?.invalidateSharedOutput?.();invalidate(['schedule']);},
         onSaved:()=>{employeeUi?.invalidateSharedOutput?.();invalidate(['schedule']);}
       });
-      initializing=false;
     }
     return Object.freeze({
       activate(){

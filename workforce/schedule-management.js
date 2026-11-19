@@ -33,8 +33,6 @@
     const n=Object.fromEntries(ids.map(id=>[id,document.getElementById('schedule-management-'+id)]));
     if(Object.values(n).some(node=>!node))throw Error('SCHEDULE_MANAGEMENT_DOM_MISSING');
     let snapshot=null,pending=null,uncertain=null,confirmation=null,flow=null,stopped=false,failed=false,category='edit';
-    // Navigation reads the live state, including unknown writes after request timeout.
-    global.TlhWorktimeNavigation?.register('schedule-management',()=>!stopped&&!pending&&!uncertain&&!confirmation&&!flow);
     const contract=global.TlhScheduleManagementContract;
     const login=global.TlhSchedule.createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!confirmation||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。';}});
     const scopeKey=()=>{const c=global.TlhCurrentWorkplace?.config;return c?JSON.stringify([c.organizationId,c.workplaceId,c.endpoint]):'';};
