@@ -16,13 +16,18 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   await context.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin===origin&&u.pathname==='/software/inventory/employee-transport.js'){const source=await fs.readFile(path.join(root,'software/inventory/employee-transport.js'),'utf8'),guard="global.location.origin !== 'https://tealabhokkaido.com'";assert.equal(source.split(guard).length,2,'ORIGIN_FIXTURE_CONTRACT_CHANGED');return route.fulfill({contentType:'application/javascript',body:source.replace(guard,'global.location.origin !== '+JSON.stringify(origin))});}if(u.origin===origin)return route.continue();blocked.push({origin:u.origin,method:route.request().method()});return route.abort();});
   page.on('pageerror',e=>errors.push(e.message));page.on('response',r=>{if(new URL(r.url()).origin===origin&&r.status()>=400)errors.push('LOCAL_ASSET_MISSING:'+new URL(r.url()).pathname);});
   await page.goto(origin+'/software/inventory/',{waitUntil:'networkidle'});await page.locator('#line-login').waitFor({state:'visible'});await page.evaluate(()=>document.fonts.ready);
-  for(const selector of ['.entry-primary','.entry-personal','#line-login'])assert.equal(await page.locator(selector).isVisible(),true,selector+' missing');
-  assert.equal((await page.locator('.entry-primary').textContent()).trim(),'店舗で利用を始める');assert.match(await page.locator('.entry-personal').textContent(),/個人利用のアカウント作成・確認/);assert.equal(await page.locator('.entry-personal-note').isVisible(),true);assert.match(await page.locator('.entry-personal-note').textContent(),/コード不要。在庫はこの画面に戻って開始/);assert.match(await page.locator('#line-login').textContent(),/利用中/);
+  assert.equal(await page.locator('#line-login').isVisible(),true);
+  assert.equal(await page.locator('header a').count(),0);
+  for(const selector of ['.entry-primary','.entry-personal'])assert.equal(await page.locator(selector).isVisible(),false);
+  await page.locator('#inventory-start>summary').click();
+  for(const selector of ['.entry-primary','.entry-personal'])assert.equal(await page.locator(selector).isVisible(),true);
+  assert.match(await page.locator('#line-login').textContent(),/LINEでログインして在庫を開く/);
   assert.equal(await page.locator('.entry-primary').getAttribute('href'),'/account/?service=inventory');assert.equal(await page.locator('.entry-personal').getAttribute('href'),'/account/?purpose=personal&service=INVENTORY');
   const metrics=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,controls:['.entry-primary','.entry-personal','#line-login'].map(s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),css=getComputedStyle(e);return {selector:s,label:e.textContent.trim(),top:r.top,bottom:r.bottom,height:r.height,width:r.width,background:css.backgroundColor};}),openDetails:[...document.querySelectorAll('.inventory-entry details')].filter(e=>e.open).length}));
-  assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');assert.equal(metrics.openDetails,0);assert.ok(metrics.controls.every(x=>x.height>=44),'SMALL_ENTRY_TARGET');assert.ok(metrics.controls[0].top<metrics.controls[1].top&&metrics.controls[1].top<metrics.controls[2].top,'ENTRY_ORDER');assert.ok(metrics.controls[0].bottom<=viewport.height,'PRIMARY_BELOW_FOLD');assert.notEqual(metrics.controls[0].background,'rgba(0, 0, 0, 0)','PRIMARY_UNSTYLED');
+  assert.ok(metrics.scrollWidth<=metrics.width,'HORIZONTAL_OVERFLOW');assert.equal(metrics.openDetails,1);assert.ok(metrics.controls.every(x=>x.height>=44),'SMALL_ENTRY_TARGET');assert.ok(metrics.controls[2].top<metrics.controls[0].top&&metrics.controls[0].top<metrics.controls[1].top,'ENTRY_ORDER');assert.ok(metrics.controls[2].bottom<=viewport.height,'PRIMARY_BELOW_FOLD');assert.notEqual(metrics.controls[2].background,'rgba(0, 0, 0, 0)','PRIMARY_UNSTYLED');
   assert.deepEqual(errors,[],'BROWSER_OR_ASSET_ERROR');assert.deepEqual(blocked,[],'UNAUTHENTICATED_PAGE_ATTEMPTED_EXTERNAL_REQUEST');
   report.metrics=metrics;
+  await page.locator('#inventory-start>summary').click();
   // The initial state above is actual startup. Following states project DOM only,
   // never authenticate, create a receipt, or claim that server recovery succeeded.
   const shellSelectors=['#stock','#refresh','body > nav'];
