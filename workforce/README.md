@@ -93,3 +93,11 @@ node --test tests/*.mjs
 既存PNGのみを維持。管理公開開始時に旧共有出力を失効し、最新の署名済み従業員READまで再開しません。未送信の本人希望は保持します。失効前に開始されたREADやPNG処理で旧出力を復活させません。
 
 再現検査：`WORKTIME_BACKEND_SOURCE_DIR=<対応backend> node scripts/verify-direct-sheet-publish.mjs`。実Bridge/HMAC→UIを接続し、架空Sheet初回公開30回・一致manager pending・employee pending拒否を検査します。CPU/仮想DOM測定であり、ネットワーク/Android/GAS実時間ではありません。各待機1秒以内の目標は未達成確認。次は対応backendとのexact-head CIと、承認された環境で実往復時間を測定することです。
+
+### 公開結果の後着返信対策（未配備ドラフト）
+
+- 公開の保存POSTが30秒を超えた場合も、現在の同じ要求に対する署名付き返信をメモリ内で待つ。30秒は失敗判定ではない。再送開始・ページ退場で以前の返信待ちは失効する。
+- 送信元・nonce・command・HMAC・店舗・月・DTO検査を維持し、遅延返信では現在のLINE tokenとの一致、月版の後退拒否も行う。保存や再送を自動化しない。token、返信鍵、入力はログ/Storageへ保存しない。
+- 公開ボタン直下へ対象月・公開確認結果・サーバーの前後半公開時刻を残す。変更なし、結果未確認、保存取り消しは区別。既存PNG用データの取得は別であり、公開成功だけでPNGの更新完了とは表示しない。
+- この対策は『正しい返信が遅れて到着したのに捨てられる』挙動への対処。GAS処理時間、通信断、返信が届かない原因の解消・1秒以内の実証ではない。現行の再確認ボタンは同じ保存操作の再送で、読取専用ではない。read-only receipt照会は別設計で本差分に含めない。
+- 検証: `node --test tests/schedule-late-reply.test.mjs tests/schedule-management.test.mjs`。全体: `node --test tests/*.mjs`。本番データへの公開試験なし。
