@@ -92,3 +92,14 @@ test('latest review commits only after signed preview and confirmation; unknown 
  [...h.timers.values()][0]();assert.equal(h.n('employee').disabled,true);assert.equal(h.editor.selectRequest('EMP030','chg_'+'f'.repeat(32)),false);
  h.click('preview');assert.equal(h.sent[2].command,'latestPreview');assert.equal(h.sent[2].groupId,h.sent[0].groupId);await h.reply(h.sent[2],'CHANGE_APPLIED');assert.equal(h.n('commit').disabled,true);
 });
+
+test('hint selection never overwrites dirty input or pending/unknown correction; success alone reports the date',async()=>{
+ const done=[],h=dayChangeHarness({audience:'employee',onRequested:d=>done.push(d)});
+ assert.equal(h.editor.selectDay('2026-10-30'),false);assert.equal(h.n('day').value,'2026-11-01');
+ h.click('preview');assert.equal(h.editor.selectDay('2026-10-30'),false);await h.reply(h.sent[0]);assert.deepEqual(done,[]);
+ h.click('commit');await h.reply(h.sent[1],'CHANGE_REQUESTED',{mac:'0'.repeat(64)});assert.deepEqual(done,[]);
+ await h.reply(h.sent[1],'CHANGE_REQUESTED');assert.deepEqual(done,['2026-11-01']);
+ assert.equal(h.editor.selectDay('2026-10-30'),true);assert.equal(h.n('day').value,'2026-10-30');for(const k of ['in','out','reason'])assert.equal(h.n(k).value,'');assert.equal(h.sent.length,2);
+ assert.equal(h.editor.selectDay('2026-02-30'),false);
+ const u=dayChangeHarness({audience:'employee'});u.click('preview');await u.reply(u.sent[0]);u.click('commit');[...u.timers.values()][0]();assert.equal(u.editor.selectDay('2026-10-30'),false);
+});

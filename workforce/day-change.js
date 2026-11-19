@@ -142,6 +142,7 @@
       }else if(['CHANGE_REQUESTED','CHANGE_APPLIED'].includes(d.code)){completed=true;uncertain=false;n.receipt.textContent='申請番号: '+draft.groupId;n.copy.hidden=false;
         for(const k of ['day','in','out','break-start','break-end','reason'])n[k].value='';
         clearExtras();
+        if(d.code==='CHANGE_REQUESTED'&&r.command==='commit'&&r.fields.mode==='SELF'&&typeof options.onRequested==='function')options.onRequested(r.fields.day);
         if(d.code==='CHANGE_APPLIED'&&typeof options.onApplied==='function')options.onApplied(draft.groupId);
       }
       if(['WRITE_REVIEW_REQUIRED','CHANGE_REVIEW_REQUIRED'].includes(d.code))stopped=true;
@@ -161,7 +162,12 @@
       try{draft=Object.freeze(input());send('latestPreview',draft);return true;}catch(_e){return false;}
     }
     function setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){review=null;clear();}controls();}
-    return Object.freeze({selectRequest,setAdminAllowed});
+    function selectDay(day){
+      if(!employeePage||pending||uncertain||stopped||!/^\d{4}-\d{2}-\d{2}$/.test(day)||!Number.isFinite(Date.parse(day+'T00:00:00Z'))||new Date(day+'T00:00:00Z').toISOString().slice(0,10)!==day)return false;
+      if(!completed&&(draft||review||extras.length||(n.day.value&&n.day.value!==day)||['in','out','break-start','break-end','reason'].some(k=>n[k].value))){n.status.textContent='入力中の内容を残しています。先にこの日の申請を完了してください。';return false;}
+      completed=false;draft=null;clear();n.receipt.textContent='';n.copy.hidden=true;n.mode.value='SELF';n.day.value=day;controls();n.day.focus?.();return true;
+    }
+    return Object.freeze({selectRequest,setAdminAllowed,selectDay});
   }
   /** 管理者用の2操作はHTMLでもdisabled。起動時の署名付き確認後だけ選択できる。保存側は毎回GASが認可。 */
   async function bootstrap(){
@@ -169,12 +175,12 @@
     status.setAttribute?.('aria-busy','true');
     try{
       await global.liff.init({liffId:config.liffId});login.hidden=global.liff.isLoggedIn();
-      login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname}));
+      login.addEventListener('click',()=>global.liff.login({redirectUri:global.location.origin+global.location.pathname+(global.location.hash==='#missing-punch'?'#missing-punch':'')}));
       status.textContent=login.hidden?'操作を選んで内容を確認してください。':'LINEログインが必要です。';
       const audience=document.body.dataset.audience==='admin'?'admin':'employee';
       const autoReads=global.TlhAutoRead.init();let adminAllowed=false;
-      let list=null,overview=null;const editor=init({liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();if(overview)overview.invalidateCount();if(list)autoReads.again('pending',()=>adminAllowed);}});
-      if(audience!=='admin')return; // 本人申請ページに管理一覧/起動確認を作らない。
+      let hints=null,list=null,overview=null;const editor=init({onRequested:day=>hints?.requested(day),liff:global.liff,gasUrl:config.gasUrl,audience,onApplied:()=>{if(list)list.invalidate();if(overview)overview.invalidateCount();if(list)autoReads.again('pending',()=>adminAllowed);}});
+      if(audience!=='admin'){if(login.hidden&&global.location.hash==='#missing-punch'&&global.TlhMissingPunchFlow)hints=global.TlhMissingPunchFlow.init({editor,liff:global.liff,gasUrl:config.gasUrl});return;} // 本人申請ページに管理一覧/起動確認を作らない。
       overview=global.TlhAdminOverview.init({liff:global.liff,gasUrl:config.gasUrl,select:document.getElementById('change-employee'),canRefresh:()=>!document.getElementById('change-employee').disabled&&document.getElementById('change-commit').disabled});
       list=global.TlhPendingApprovals.init({liff:global.liff,gasUrl:config.gasUrl,onSelect:(code,group,name)=>overview.selectEmployee(code,name)&&editor.selectRequest(code,group),onCount:overview.setCount});
       const gate=global.TlhAdminAccess.init({liff:global.liff,gasUrl:config.gasUrl,frame:document.getElementById('admin-access-frame'),status:document.getElementById('admin-access-status'),
