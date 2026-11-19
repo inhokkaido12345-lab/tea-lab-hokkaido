@@ -74,3 +74,13 @@ test('personal calendar details use only the matching verified employee, and mis
 test('employee controller exposes unsent edits and pending results so automatic role refresh can preserve them',async()=>{
  const h=scheduleUiHarness();assert.equal(h.api.hasUnsavedInput(),false);await h.api.read();assert.equal(h.api.hasUnsavedInput(),true);await h.reply(h.sent[0],h.snapshot());assert.equal(h.api.hasUnsavedInput(),false);h.n('reason').value='入力途中の希望';h.n('editor').events.input();assert.equal(h.api.hasUnsavedInput(),true);assert.equal(h.n('reason').value,'入力途中の希望');h.events.pagehide();assert.equal(h.n('reason').value,'');
 });
+
+// Existing PNG only: a management publication invalidates shared output without losing personal input.
+test('invalidated shared PNG cannot revive from old read or local edits; only later verified fresh read enables it',async()=>{
+ const h=scheduleUiHarness(),s={...h.snapshot(),phase:'PUBLISHED',publishedAt:'2026-11-19T05:00:00.000Z'};
+ await h.api.read();await h.reply(h.sent[0],s);assert.equal(h.n('png').disabled,false);
+ h.n('reason').value='未送信の本人希望';h.n('editor').events.input();h.api.invalidateSharedOutput();assert.equal(h.n('png').disabled,true);assert.equal(h.n('reason').value,'未送信の本人希望');assert.equal(h.api.hasUnsavedInput(),true);
+ h.n('kind').events.change();assert.equal(h.n('png').disabled,true);
+ await h.api.read();const old=h.sent.at(-1);h.api.invalidateSharedOutput();await h.reply(old,s);assert.equal(h.n('png').disabled,true);
+ await h.api.read();await h.reply(h.sent.at(-1),s);assert.equal(h.n('png').disabled,false);
+});

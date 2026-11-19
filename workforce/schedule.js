@@ -79,7 +79,9 @@
     // 同一タブの本人/管理者をIDと返信iframeごと分離。defaultは既存単独ページと互換。
     const byId=id=>document.getElementById(id.replace(/^schedule-/,options.idPrefix||'schedule-'));
     const n=Object.fromEntries(ids.map(k=>[k,byId('schedule-'+k)]));
-    const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
+    const admin=options.audience==='admin',reportUi=options.report===false?{clear(){},setShared(){},setEnabled(){}}:global.TlhScheduleReport.init();let monthSnapshots=null;const isRead=command=>['read','monthRead'].includes(command);let sharedInvalidated=false,sharedGeneration=0,snapshot=null,pending=null,uncertain=null,stopped=false,dirtyEditor=false;const periods=[],appointments=[];
+    // Navigation reads the live state, including unknown writes after request timeout.
+    global.TlhWorktimeNavigation?.register(admin?'schedule-admin':'schedule-employee',()=>!stopped&&!pending&&!uncertain&&!dirtyEditor);
     const login=createLoginRecovery({button:n.login,liff:options.liff,blocked:()=>stopped||!!pending||!!uncertain||!!options.loginBlocked?.(),changed:controls,failed:()=>{n.status.textContent='LINEログインを開始できませんでした。もう一度お試しください。';}});
     function el(tag,value,parent){const e=document.createElement(tag);if(value!==undefined)e.textContent=value;parent?.appendChild(e);return e;}
     // 閲覧は月全体。保存先の半月キー/期待版は対象日から求め、利用者へ選ばせない。
@@ -119,7 +121,7 @@
       const legacyPicker=byId('schedule-legacy-picker');if(legacyPicker)legacyPicker.hidden=!snapshot||!(snapshot.legacyAvailable||n.scope.value==='MONTH');
       n.month.disabled=stopped||login.locked()||!!pending||!!uncertain;n.refresh.disabled=stopped||login.locked()||!!pending;n.retry.hidden=!uncertain;n.retry.disabled=stopped||!!pending;
       login.update();n.status.setAttribute('aria-busy',String(!!pending));
-      reportUi.setEnabled(!locked&&(wholeMonth()?['FIRST','SECOND'].some(k=>monthSnapshots[k].phase==='PUBLISHED'):snapshot?.phase==='PUBLISHED'));requestNotice();
+      reportUi.setEnabled(!sharedInvalidated&&!locked&&(wholeMonth()?['FIRST','SECOND'].some(k=>monthSnapshots[k].phase==='PUBLISHED'):snapshot?.phase==='PUBLISHED'));requestNotice();
       options.onNavigationLock?.(stopped||!!pending||!!uncertain);
     }
     function clear(){dirtyEditor=false;snapshot=null;monthSnapshots=null;const banner=admin?null:byId('schedule-request-deadline');if(banner)banner.textContent='希望休の締切を確認しています。';reportUi.clear();n.calendar.replaceChildren();n.requests.replaceChildren();n.summary.textContent='';n['published-at'].textContent='';n.employee.replaceChildren();n.reason.value='';n['event-note'].value='';n['event-title'].value='';fill(null);controls();}
@@ -152,7 +154,7 @@
       // 出力担当へ渡すのは共有plans/eventsだけ。ownPlans/drafts/requestsは渡さない。
       if(monthSnapshots&&s.month===n.month.value&&Object.hasOwn(monthSnapshots,s.period))monthSnapshots[s.period]=s;
       dirtyEditor=false;snapshot=s;n.calendar.replaceChildren();n.requests.replaceChildren();
-      reportUi.setShared(wholeMonth()?sharedMonth():{phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
+      if(!sharedInvalidated)reportUi.setShared(wholeMonth()?sharedMonth():{phase:s.phase,month:s.month,publishedAt:s.publishedAt,plans:s.plans,events:s.events,period:s.period,rangeStart:s.rangeStart,rangeEnd:s.rangeEnd});
       // 全員が見ている公開版の更新日。下書き/希望の保存では更新せず、署名済みサーバー時刻をJST表示。
       n['published-at'].textContent=s.publishedAt?'確定シフト 最終更新：'+new Date(s.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（日本時間）':'この月のシフトはまだ確定公開されていません。';
       if(monthSnapshots&&s.period!=='MONTH')n['published-at'].textContent=['FIRST','SECOND'].map((part,i)=>{const current=monthSnapshots[part];return(i?'後半':'前半')+'：'+(current.publishedAt?'最終更新 '+new Date(current.publishedAt).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}):'未公開');}).join(' ｜ ');
@@ -239,7 +241,7 @@
       if(pending||stopped||login.locked())return;
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken();if(typeof proof!=='string'||!proof){if(isRead(request.command))login.require();clear();n.status.textContent='LINEログインが必要です。';return;}
-      const r={...request,nonce:random(16),key:random(32)};pending=r;if(isRead(r.command))clear();controls();n.status.textContent='通信中です。';
+      const r={...request,sharedGeneration,nonce:random(16),key:random(32)};pending=r;if(isRead(r.command))clear();controls();n.status.textContent='通信中です。';
       const unknown=()=>{if(pending!==r)return;if(!isRead(r.command))uncertain={command:r.command,input:r.input,operationId:r.operationId};n.status.textContent=isRead(r.command)?'取得できませんでした。更新してください。':'保存結果を確認できません。更新で状態を見るか、同じ操作で結果を再確認してください。';finish();};r.timer=setTimeout(unknown,30000);
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target=options.frameName||'tlhScheduleFrame';form.hidden=true;
       Object.entries({action:ACTION,command:r.command,input:r.input,operationId:r.operationId,idToken:proof,nonce:r.nonce,responseKey:r.key}).forEach(([name,value])=>{const i=document.createElement('input');i.type='hidden';i.name=name;i.value=value;form.appendChild(i);});document.body.appendChild(form);try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_e){unknown();}finally{form.remove();}
@@ -252,7 +254,7 @@
       if(d.code==='LINE_VERIFY_REJECTED'){if(!isRead(r.command)||d.data!=='')return;finish();clear();login.require();n.status.textContent=messages.LINE_VERIFY_REJECTED;return;}
       let value=null;if(d.data){try{value=JSON.parse(d.data);}catch(_e){return;}const expected=JSON.parse(r.input);if(r.command==='monthRead'){if(!validateMonth(value,expected.month,admin))return;monthSnapshots=value.halves;value=monthSnapshots[n.scope.value]||monthSnapshots.FIRST;}else if(!validate(value,expected.month,admin,expected.period))return;}
       if(['SCHEDULE_READY','SCHEDULE_SAVED','SCHEDULE_ALREADY_DONE','SCHEDULE_CONSENT_REQUIRED'].includes(d.code)&&!value)return;
-      if(value){if(!isRead(r.command))uncertain=null;finish();render(value);}else{
+      if(value){if(isRead(r.command)&&d.code==='SCHEDULE_READY'&&r.sharedGeneration===sharedGeneration)sharedInvalidated=false;if(!isRead(r.command))uncertain=null;finish();render(value);}else{
         if(!isRead(r.command))uncertain=['SCHEDULE_UNAVAILABLE','SCHEDULE_REVIEW_REQUIRED'].includes(d.code)?{command:r.command,input:r.input,operationId:r.operationId}:null;
         clear();finish();
       }
@@ -281,7 +283,7 @@
     global.addEventListener('pagehide',()=>{stopped=true;uncertain=null;finish();clear();n.reason.value='';n.note.value='';n.periods.replaceChildren();n.appointments.replaceChildren();periods.length=0;appointments.length=0;});
     if(options.lazyCalendar){const overview=byId('schedule-overview');overview?.addEventListener('toggle',()=>{if(overview.open&&snapshot)renderCalendar(snapshot);else n.calendar.replaceChildren();});}
     if(options.monthly&&!n.scope.value)n.scope.value='FIRST';
-    controls();return Object.freeze({read,hasUnsavedInput(){return dirtyEditor||!!pending||!!uncertain;}});
+    controls();return Object.freeze({read,invalidateSharedOutput(){sharedGeneration++;sharedInvalidated=true;reportUi.clear();controls();},hasUnsavedInput(){return dirtyEditor||!!pending||!!uncertain;}});
   }
   global.TlhSchedule=Object.freeze({init,validate,validateMonth,validatePlan:validPlan,createLoginRecovery});
   if(document.currentScript?.dataset.bootstrap==='true')global.addEventListener('DOMContentLoaded',async()=>{
