@@ -491,7 +491,7 @@ function renderStockCards(){
  if(stockCards.has(item.id)){$('cards').append(stockCards.get(item.id));continue;}
  const held=predictionHeld(item);const c=el('article','','card');c.append(el('p',categoryOf(item),'eyebrow'),el('h3',item.name));
  const hero=el('div','','stock-hero'),amount=el('div','','stock-amount'),level=renderStockReliability();
- amount.append(el('p',inventoryQuantityLabel(item),'qty'),el('small',held?'参考・要確認':'推定在庫'));
+ amount.append(el('p',inventoryQuantityLabel(item),'qty'),el('small','推定'));
  hero.append(amount,level);c.append(hero);renderItemAlert(c,item);
  if(!item.guidance&&item.forecast)renderConsumption(c,item);
  renderDailyTasks(c,item);
