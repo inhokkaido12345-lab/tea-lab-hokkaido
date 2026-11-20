@@ -16,7 +16,7 @@
 })();
 </script>
 <title>TLH Inventory｜在庫・発注管理</title>
-<link rel="stylesheet" href="style.css?v=bc10a84fd2c7"><script src="load-timing.js?v=bc10a84fd2c7" defer></script><script src="config.js?v=bc10a84fd2c7" defer></script><script src="employee-login.js?v=bc10a84fd2c7" defer></script><script src="operation-recovery.js?v=bc10a84fd2c7" defer></script><script src="employee-transport.js?v=bc10a84fd2c7" defer></script><script src="app.js?v=bc10a84fd2c7" defer></script>
+<link rel="stylesheet" href="style.css?v=e12afc4f5049"><script src="load-timing.js?v=e12afc4f5049" defer></script><script src="config.js?v=e12afc4f5049" defer></script><script src="employee-login.js?v=e12afc4f5049" defer></script><script src="operation-recovery.js?v=e12afc4f5049" defer></script><script src="employee-transport.js?v=e12afc4f5049" defer></script><script src="app.js?v=e12afc4f5049" defer></script>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
 <body>
 <header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p></header>
@@ -29,27 +29,23 @@
 <div class="help-tasks"><details><summary>ホーム画面への追加・元の画面へ戻る</summary><p>iPhoneはSafariの共有、AndroidはChromeのメニューからホーム画面に追加します。単独アプリとして起動したときは、戻る履歴がないことがあります。他の画面へは端末のアプリ切替・ホーム操作で戻れます。</p><p>アカウントを別画面で確認した後は、元の在庫画面へ切り替えてLINEでログインしてください。認証画面が閉じない場合も、元の在庫画面で結果を確認してください。</p></details>
 <details><summary>計算方法・日時の読み方</summary><p>星は確認済み条件数で、在庫の正確さの割合ではありません。未評価は点灯しません。記録が期限内でも、実在庫との一致を保証しません。</p><p>予測は実在庫の保証ではありません。実数は棚卸で更新します。棚卸の期限は登録日時を基準に経過24時間単位で判定し、設定が7日なら7日ちょうどで期限超過になります。消費は実測終了日時が基準です。期限内の記録と在庫数の信頼度は別です。</p><p>実績納期は発注と単一全量入荷の有効な対応から計算します。入荷日は日付のみです。同日登録では登録時刻を計算に使いますが、実到着の秒時刻ではありません。分納・合算・由来不足などで標本にならない場合は未計測です。</p></details>
 <details><summary>届いたものを入荷登録</summary><ol><li>「入荷」で届いた日・品目・袋やケースの単位・数量を入力。</li><li>注文の全量が届いたら「今回で受取完了」を選ぶ。分納なら未選択。</li><li>「入荷をまとめて保存」→ 保存完了を確認。</li></ol><p>発注しただけの物は登録せず、実際に届いた分だけ。</p><button type="button" data-help-task="receiving">入荷を開く</button></details>
-<details><summary>今ある在庫を数える（棚卸）</summary><ol><li>「在庫」→「在庫を数える」で品目を選ぶ。</li><li>未開封＋使いかけの総量を、欄に表示された単位（g・mL・本など）で入力。</li><li>「数えた量を保存」→ 保存完了を確認。</li></ol><p>追加量ではなく今ある総量。分からないときは0で埋めないでください。</p><button type="button" data-help-task="counting">在庫を数える</button></details>
+<details><summary>今ある在庫を数える（棚卸）</summary><ol><li>下の「棚卸」で品目を選ぶ。</li><li>棚卸単位が設定済みなら、満タンの数と使いかけの残りの有無を選ぶ。未設定なら実測した総量を入力。</li><li>「棚卸を保存」（総量を実測した場合は「数えた量を保存」）→ 保存完了を確認。使いかけが残る場合は満タンの数だけを保存し、基準量は補正しません。</li></ol><p>追加量ではなく今ある総量。分からないときは0で埋めないでください。</p><button type="button" data-help-task="counting">在庫を数える</button></details>
 <details><summary>発注したことを記録</summary><ol><li>仕入先への注文は、いつもの方法で別に行う。</li><li>「在庫・発注」で品目の「発注を記録」を押す。</li><li>数量・到着予定日（任意）を入れ「発注済みにする」→ 保存完了を確認。</li></ol><p>このアプリから仕入先へ注文は送信されません。未入荷の注文は在庫に加算しません。</p><button type="button" data-help-task="ordering">在庫・発注を開く</button></details>
-<details><summary>消費速度を測る</summary><ol><li>「消費を測る」で品目と未使用の1袋・1ケースを選ぶ。表示の内容量を実物と確認。</li><li>その包装を使い始めた時に「この1袋・1ケースの使用開始を記録」。日時は日本時間、空欄なら今。</li><li>全量を使い切ったら同じ品目で日時を確認し「全量を使い切った：計測を終了」。</li></ol><p>途中の残量入力・毎回の開封記録は不要。継ぎ足しや別包装との混用をせず、その包装から順に使います。</p><details><summary>間違えた・途中で混ぜた／予測の意味</summary><p>「この計測を取り消す」。完了分は「最近の計測結果」→「この計測結果を取り消す」。履歴は残り、速度計算から外れます。</p><p>普段の使い方が含まれる期間で測ります。予測は実在庫の保証ではなく、曜日・季節・営業時間を自動補正しません。在庫の実数は棚卸で確認してください。</p></details><button type="button" data-help-task="sampling">消費を測る</button></details>
-<details><summary>保存できたか分からない</summary><ol><li>連打・別の新規登録・店舗切替をせず、画面の案内を確認。</li><li>「同じ操作を再確認」が出たら、そのボタンで確認。本人確認を求められたら同じLINEでログイン。</li><li>保存結果が確定してから「履歴」で品目・数量・日時を確認。</li></ol><p>確認が終わらない場合は画面の確認コードを管理者へ。ログイン情報や招待コードは送らないでください。</p></details>
+<details><summary>消費速度を測る</summary><ol><li>下の「消費計測」で品目と未使用の1袋・1ケースを選ぶ。表示の内容量を実物と確認。</li><li>その包装を使い始めた時に「この1袋・1ケースの使用開始を記録」。日時は日本時間、空欄なら今。</li><li>全量を使い切ったら同じ品目で日時を確認し「全量を使い切った：計測を終了」。</li></ol><p>途中の残量入力・毎回の開封記録は不要。継ぎ足しや別包装との混用をせず、その包装から順に使います。</p><details><summary>間違えた・途中で混ぜた／予測の意味</summary><p>「この計測を取り消す」。完了分は「最近の計測結果」→「この計測結果を取り消す」。履歴は残り、速度計算から外れます。</p><p>普段の使い方が含まれる期間で測ります。予測は実在庫の保証ではなく、曜日・季節・営業時間を自動補正しません。在庫の実数は棚卸で確認してください。</p></details><button type="button" data-help-task="sampling">消費を測る</button></details>
+<details><summary>保存できたか分からない</summary><ol><li>連打・別の新規登録・店舗切替をせず、画面の案内を確認。</li><li>「同じ操作を再確認」が出たら、そのボタンで確認。本人確認を求められたら同じLINEでログイン。</li><li>保存結果が確定してから在庫の「記録履歴」で品目・数量・日時を確認。</li></ol><p>確認が終わらない場合は画面の確認コードを管理者へ。ログイン情報や招待コードは送らないでください。</p></details>
 <details><summary>初めて使う／品目・ボタンがない</summary><ol><li>自分のLINEでログインし、会社・店舗が正しいか確認。</li><li>会社利用は所属だけでは使えません。管理者に在庫の閲覧・担当作業の権限を確認。</li><li>品目や包装の容量がない・違う場合は「仕入品情報」を確認できる管理者へ。</li></ol><p>個人・家庭の在庫と会社の在庫は別です。試しの数量を本番へ保存しないでください。</p></details>
 </div></details>
 <div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
 <div id="status-detail" class="status-resolution" role="alert" hidden></div>
 <section id="stock">
-<div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
+<div id="stock-summary"><div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
 <div id="overview" class="overview" aria-label="在庫の概況"></div>
-<p id="as-of" class="muted" aria-live="polite"></p>
-<div class="stock-actions" aria-label="在庫管理の作業">
-<button data-stock-action="overview" aria-pressed="true" aria-controls="stock-overview">在庫・発注</button>
-<button data-stock-action="sampling" aria-pressed="false" aria-controls="stock-workspaces">消費を測る</button>
-<button data-stock-action="counting" aria-pressed="false" aria-controls="stock-workspaces">在庫を数える</button>
-</div>
+<p id="as-of" class="muted" aria-live="polite"></p></div>
 <div id="stock-overview">
 <details class="stock-search"><summary>品目を探す・絞り込む</summary><div id="stock-item-filters"></div></details>
 <div class="filters" aria-label="在庫の絞り込み"><button data-filter="all" aria-pressed="true">すべて</button><button data-filter="low" aria-pressed="false">要発注</button><button data-filter="ordered" aria-pressed="false">発注済み</button></div>
 <div id="cards"></div>
+<button type="button" id="open-history" class="history-link">記録履歴</button>
 </div>
 <div id="stock-workspaces" hidden></div>
 </section>
@@ -63,10 +59,10 @@
 <label id="receiving-association" hidden><input type="checkbox" id="receiving-association-confirm">この入荷が選択した注文の全量であることを伝票等で確認しました（分納・合算は未対応）</label>
 <button type="submit" class="primary wide">入荷をまとめて保存</button></form>
 </section>
-<section id="history" hidden><p class="eyebrow">03 / HISTORY</p><h2>記録の履歴</h2><div id="logs"></div></section>
+<section id="history" hidden><p class="eyebrow">03 / HISTORY</p><h2>記録履歴</h2><button type="button" id="back-from-history" class="history-link">在庫へ戻る</button><div id="logs"></div></section>
 <section id="catalog" hidden><p class="eyebrow">04 / CATALOG</p><h2>仕入品情報</h2><p class="muted">製造元・仕入先・保管方法と包装規格を登録します。価格情報は扱いません。</p><div id="catalog-content"></div></section>
 <div id="recovery" hidden><p>通信結果を確認できません。同じ操作IDで再確認します。新しい登録はしないでください。</p><button id="retry">同じ操作を再確認</button></div>
 <footer>TLH Inventory <span>数える日と、推定する日。</span></footer>
 </main>
-<nav aria-label="画面"><button data-tab="stock" aria-current="page">在庫</button><button data-tab="receiving">入荷</button><button data-tab="history">履歴</button><button data-tab="catalog">仕入品情報</button></nav>
+<nav aria-label="画面"><button data-tab="stock" aria-current="page">在庫</button><button data-tab="receiving">入荷</button><button data-tab="counting" aria-controls="stock-workspaces">棚卸</button><button data-tab="sampling" aria-controls="stock-workspaces">消費計測</button><button data-tab="catalog">仕入品情報</button></nav>
 </body></html>
