@@ -84,7 +84,7 @@ const stockCards=new Map();
 let itemsById = new Map();
 // Transport clears cached private data when access is lost or a context changes.
 // Keep an uncertain operation ID for explicit result checking, never as authority.
-globalThis.TlhInventoryView=Object.freeze({recoveryResolved(){
+globalThis.TlhInventoryView=Object.freeze({confirmPending(){if(!pending)return false;if(!busy)void send();return true;},recoveryResolved(){
  pending=null;view=null;$('recovery').hidden=true;lock(busy);
 },invalidate(){
  view=null;renderedStoreId=null;itemsById.clear();stockWorkspaces.clear();stockCards.clear();
@@ -169,9 +169,9 @@ function lock(value){busy=value;$('status').setAttribute('aria-busy',String(valu
 }}
 function tab(name){activeTab=name;if(name==='catalog'&&view)renderCatalog();for(const s of document.querySelectorAll('main section'))s.hidden=s.id!==name;for(const b of document.querySelectorAll('nav button')){if(b.dataset.tab===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}if(name==='history'&&view&&historyDirty)renderHistory();}
 /** 取得できるまで古い残量からの新規更新を禁止する。結果不明の操作IDは保持する。 */
-async function load(){
+async function load(_preferredStoreId){
  view=null;
- const result = await TlhInventory.readView();
+ const result = await TlhInventory.readView(_preferredStoreId);
  if (!result.ok) throw Error(result.code || 'UNAVAILABLE');view=result.value;render();
 }
 // 閉じた標本計測と、基準日からの在庫推定の状態を分けて表示する。
@@ -656,16 +656,25 @@ async function send(command){
  const receiptLeavesOrders=pending.type==='RECEIVE'&&!pending.completeCaseId&&view?.items?.some(i=>i.orders?.length&&pending.lines.some(l=>l.itemId===i.id))&&(view?.receivingEnabled===true||!canOperate('RECEIVE',{completeCaseId:'selection'}));
  const receiptCanLink=receiptLeavesOrders&&canOperate('LINK_RECEIPT_TO_ORDER');
  let saved=false;
+ // The recovery module clears pending before returning a confirmed status.
+ const retryContext=command?null:{type:pending.type,itemId:pending.itemId,storeId:pending.storeId,operationId:pending.operationId};
  try {
- const result = await TlhInventory.request('COMMAND', pending);
- const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code};
+ const result = command ? await TlhInventory.request('COMMAND', pending) : await TlhInventory.confirmPending();
+ const data = result.ok ? {result: result.value, view: result.value.view} : {code: result.code, recovered: result.recovered};
  const res = {ok: result.ok, status: ['UNAVAILABLE','SAVE_UNKNOWN','BUSY','AUTH_UNAVAILABLE','RECOVERY_UNKNOWN','RECOVERY_ACTOR_MISMATCH','RECOVERY_STORAGE_UNAVAILABLE','RECOVERY_LOCK_UNAVAILABLE','RECOVERY_IDENTITY_UNAVAILABLE','RECOVERY_UNAVAILABLE'].includes(data.code) ? 503 : 403};
  if(!res.ok){
   if(res.status>=500)throw Error('UNKNOWN');
   // Recovery transport confirms historical saving; it does not execute another COMMAND.
   if(data.code==='RECOVERY_SAVED'){
-   saved=true;pending=null;await load();
-   $('lines').replaceChildren();addLine();tab('stock');
+   const matched=retryContext&&data.recovered?.operationId===retryContext.operationId
+     &&data.recovered.storeId===retryContext.storeId;
+   saved=true;pending=null;await load(matched?retryContext.storeId:undefined);
+   const restored=matched&&view?.storeId===retryContext.storeId&&['SAVE_ITEM','SYNC_CATALOG'].includes(retryContext.type);
+   if(restored&&retryContext.type==='SAVE_ITEM'){
+    const item=view.items.find(item=>item.id===retryContext.itemId);
+    if(item){catalogSelection=item.id;catalogFilter=item.active===false?'RETIRED':'CURRENT';catalogDirty=true;}
+   }
+   $('lines').replaceChildren();addLine();tab(restored?'catalog':'stock');
    message('保存済みを確認しました。再送せず、最新の記録を表示しました。');return;
   }
   if(data.code==='CSRF_REJECTED'){message('サーバーが再起動しています。操作IDを保ったまま最新状態を取得して再確認してください。');await load();$('recovery').hidden=false;return;}
