@@ -42,9 +42,14 @@
    remove(r);g.TlhInventoryView?.recoveryResolved?.();g.TlhInventoryView?.invalidate?.();render('保存済みを確認しました。再送せず「最新の記録を読む」で内容を確認してください。');return {...result('RECOVERY_SAVED'),recovered:{operationId:r.operationId,storeId:r.storeId}};
   }
   async function check(){return exclusive(async()=>{busy=true;try{const r=read();return r?await status(r):result('RECOVERY_NOT_PENDING');}catch{render('保存結果を確認できません。再送せず、もう一度確認してください。');return result('RECOVERY_UNKNOWN');}finally{busy=false;render();}});}
-  async function execute(input){return exclusive(async()=>{
+  function blockedIntent(){render('未確認の保存があるため、今回の入力は送信していません。先に保存済みか確認してください。');return result('RECOVERY_NEW_ACTION_REQUIRED');}
+  async function execute(input){
+   // Capture admission before waiting for Web Locks; a receipt disappearing while queued is not permission to save.
+   if(stopped)return result('PAGE_CLOSED');
+   try{if(busy||read())return blockedIntent();}catch{render();return result('RECOVERY_STORAGE_UNAVAILABLE');}
+   return exclusive(async()=>{
    let r;try{r=read();}catch{render();return result('RECOVERY_STORAGE_UNAVAILABLE');}
-   if(r){try{return await status(r);}catch{render('保存結果は未確認です。新しい操作は送信していません。');return result('RECOVERY_UNKNOWN');}}
+   if(r)return blockedIntent();
    actor=currentActor();
    if(!id(actor)||!id(input.operationId)||!id(input.storeId)){render('保存先の本人確認用APIが未接続です。保存は送信していません。管理者に配布版を確認してください。ログイン・読取はできます。');return result('RECOVERY_IDENTITY_UNAVAILABLE');}
    const now=Date.now();r={version:1,operationId:input.operationId,storeId:input.storeId,expectedActorId:actor,createdAt:now,expiresAt:now+7*DAY};
