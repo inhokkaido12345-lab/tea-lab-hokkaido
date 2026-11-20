@@ -554,7 +554,13 @@ function renderDailyTasks(card,item){
  if((item.catalog?.suppliersSourceItemId||item.catalog?.manufacturerSourceItemId)&&!item.catalogResolved)handover.append(el('p','参照先の情報は未提供です。参照を確認してください。'));
  if(canOperate('SAVE_ITEM')){const b=el('button','この品目の仕入情報を編集');b.onclick=()=>{
   const reason=rating?.conditions.find(c=>c.id==='handover')?.reason;
-  catalogSelection=item.id;catalogDirty=true;tab('catalog');
+  const selected=itemsById.get(item.id);if(!selected||!canOperate('SAVE_ITEM'))return;
+  // 品目を指定する入口では、対象を隠す条件だけ解除する。通常のタブ切替には適用しない。
+  const scope=selected.active===false?'RETIRED':'CURRENT';
+  if(catalogFilter!=='ALL'&&catalogFilter!==scope)catalogFilter=scope;
+  if(!matchesItem(selected,catalogCategory,''))catalogCategory='all';
+  if(!matchesItem(selected,'all',catalogSearch))catalogSearch='';
+  catalogSelection=selected.id;catalogDirty=true;tab('catalog');
   const editor=document.querySelector('.catalog-edit-form:not([hidden])');
   const maker=editor?.querySelector('.catalog-manufacturer'),supplier=editor?.querySelector('.catalog-suppliers');
   const needMaker=reason==='MANUFACTURER_NOT_REGISTERED'||reason==='SUPPLIER_AND_MANUFACTURER_NOT_REGISTERED';
