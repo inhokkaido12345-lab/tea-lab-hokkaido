@@ -86,10 +86,17 @@ let itemsById = new Map();
 // Keep an uncertain operation ID for explicit result checking, never as authority.
 globalThis.TlhInventoryView=Object.freeze({recoveryResolved(){
  pending=null;view=null;$('recovery').hidden=true;lock(busy);
-},invalidate(){
+},invalidate({transient=false}={}){
  view=null;renderedStoreId=null;itemsById.clear();stockWorkspaces.clear();stockCards.clear();
  historyDirty=true;catalogDirty=true;catalogSelection='new';
  for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview','stock-item-filters'])$(id)?.replaceChildren();
+ if(!transient){
+  // A disabled select still shows its selected order label. Drop prior-store labels, not the entered date or recovery receipt.
+  const complete=$('complete');if(complete){complete.replaceChildren();complete.value='';}
+  const association=$('receiving-association');if(association)association.hidden=true;
+  const confirm=$('receiving-association-confirm');if(confirm)confirm.checked=false;
+  const asOf=$('as-of');if(asOf)asOf.textContent='';
+ }
  lock(busy);
 }});
 // Intlの設定解析を毎回繰り返さず、表示専用フォーマッターを再利用する。
@@ -833,7 +840,7 @@ const readErrors={STORE_SELECTION_REQUIRED:'店舗を選択するか、新しい
 const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('本人確認情報が受け付けられませんでした。LINEでログインし直してください。','AUTH_REQUIRED'):message('在庫を読み込めません。'+(readErrors[e?.message]||'通信状態を確認し、もう一度読み込んでください。'),Object.hasOwn(readErrors,e?.message)||Object.hasOwn(statusGuides,e?.message)?e.message:'UNAVAILABLE');
 /** 初回失敗からの復旧時も入力行を用意する。読取の度に入力中の行を増やさない。 */
 async function refresh(){
- if(busy)return;if(TlhInventory.requiresLogin()){view=null;message('LINEでログインして在庫を開いてください。');lock(false);return;}lock(true);message('在庫を読み込んでいます…');
+ if(busy)return;if(TlhInventory.requiresLogin()){globalThis.TlhInventoryView.invalidate();message('LINEでログインして在庫を開いてください。');lock(false);return;}lock(true);message('在庫を読み込んでいます…');
  try{await load();if(!$('lines').children.length)addLine();message('最新の記録を読みました。');}
  catch(e){view=null;for(const heading of document.querySelectorAll('.stock-hero .level-heading'))heading.replaceWith(renderStockReliability({state:'UNAVAILABLE'}));readFailure(e);}
  finally{lock(false);}
