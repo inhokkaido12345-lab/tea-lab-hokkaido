@@ -833,7 +833,17 @@ const readFailure=e=>e?.message==='AUTH_REQUIRED'?message('本人確認情報が
 async function refresh(){
  if(busy)return;if(TlhInventory.requiresLogin()){view=null;message('LINEでログインして在庫を開いてください。');lock(false);return;}lock(true);message('在庫を読み込んでいます…');
  try{await load();if(!$('lines').children.length)addLine();message('最新の記録を読みました。');}
- catch(e){view=null;for(const heading of document.querySelectorAll('.stock-hero .level-heading'))heading.replaceWith(renderStockReliability({state:'UNAVAILABLE'}));readFailure(e);}
+ catch(e){
+  view=null;
+  // Last-known quantities stay visible, but a failed refresh must not present the old LEVEL as current.
+  for(const card of stockCards.values()){
+   card.querySelector('.level-heading')?.replaceWith(renderStockReliability({state:'UNAVAILABLE'}));
+   const details=card.querySelector('.level-journey');if(details)details.hidden=true;
+   const change=card.querySelector('.reliability-feedback');if(change)change.hidden=true;
+  }
+  const asOf=$('as-of');if(asOf&&stockCards.size)asOf.textContent='前回取得時点の参考です。'+asOf.textContent.replace(/^前回取得時点の参考です。/,'');
+  readFailure(e);
+ }
  finally{lock(false);}
 }
 $('refresh').onclick=refresh;
