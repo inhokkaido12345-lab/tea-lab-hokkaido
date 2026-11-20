@@ -410,7 +410,7 @@ function informationSignal(category,days){
 const reliabilityConditionLabels=Object.freeze({specification:'規格と単位を実物で確認',stocktake:'棚卸',consumption:'消費速度',handover:'仕入れ情報の登録',delivery:'実績納期',agreement:'予測と実物の一致',replenishment:'欠品を防ぐ補充'});
 /** Validate a server assessment envelope, never infer MET from dates, counters or form fields. */
 function reliabilityReason(condition){
- const messages={EXACT_COMPARISON_UNVERIFIED:'直近の棚卸と、その補正前の予測の両方を確認できていません。',EXACT_PRECOUNT_DIFFERENCE:'補正前の予測と実数が完全には一致していません。',APP_NONZERO_HISTORY_CAPACITY:'記録が多く、過去半年すべての計算を完了できませんでした。',APP_NONZERO_HISTORY_UNVERIFIED:'過去半年を通して在庫の推定に使える記録が揃っていません。',APP_COUNT_ZERO:'評価期間内に、棚卸数量が0の記録があります。',APP_ESTIMATE_ZERO:'評価期間内に、アプリの推定在庫が0に達しました。',PHYSICAL_SPECIFICATION_ENTRY_REQUIRED:'現物を見て、仕入品情報と規格を登録してください。',POLICY_NOT_DEFINED:'評価期間・許容差などの基準が未確定です。',NO_RECORD:'棚卸が未登録です。この品目を実際に数えて保存してください。',NO_COMPLETED_MEASUREMENT:'完了した消費実測がありません。実際の使用量と期間を計測してください。',INTERVAL_NOT_SET:'更新間隔が未設定です。管理者がこの品目の間隔を設定してください。',INVALID_OBSERVATION_TIME:'実測日時を確認できません。記録を確認してください。',VERIFIED_RECORD_CURRENT:'正規の操作による記録と、更新期限内であることを確認しました。',EXPIRED:'更新期限を過ぎています。新しい実測を登録してください。',LEGACY_OR_DEPENDENCY_UNVERIFIED:'以前の記録または単位の由来を確認できません。現在の実測を登録してください。',INVALID_QUANTITY:'棚卸数量を評価できません。記録を確認してください。',INVALID_MEASUREMENT:'消費量または計測期間を評価できません。記録を確認してください。',VERIFIED_ORDER_RECEIPT_PAIR:'正規の発注と全量入荷の対応を確認しました。到着は日付単位の記録です。',PAIR_NOT_VERIFIED:'発注と全量入荷の対応または由来が未確認です。受取の対応を確認してください。',NO_ORDER_RECEIPT_PAIR:'対応する発注・全量入荷がありません。実際の発注と到着時に記録してください。',PHYSICAL_SPECIFICATION_NOT_VERIFIED:'実物との照合を証明する記録方式が未対応です。設定だけでは加点しません。',SUPPLIER_CATALOG_UNAVAILABLE:'保存済みの仕入先情報を確認できません。',SUPPLIER_NOT_REGISTERED:'この品目の仕入先名を登録してください。',OTHER_STAFF_REORDER_NOT_VERIFIED:'この評価は旧方式です。最新の評価が必要です。'};
+ const messages={EXACT_COMPARISON_UNVERIFIED:'直近の棚卸と、その補正前の予測の両方を確認できていません。',EXACT_PRECOUNT_DIFFERENCE:'棚卸の入力単位に揃えた予測と実数が一致していません。',APP_NONZERO_HISTORY_CAPACITY:'記録が多く、過去半年すべての計算を完了できませんでした。',APP_NONZERO_HISTORY_UNVERIFIED:'過去半年を通して在庫の推定に使える記録が揃っていません。',APP_COUNT_ZERO:'評価期間内に、棚卸数量が0の記録があります。',APP_ESTIMATE_ZERO:'評価期間内に、アプリの推定在庫が0に達しました。',PHYSICAL_SPECIFICATION_ENTRY_REQUIRED:'現物を見て、仕入品情報と規格を登録してください。',POLICY_NOT_DEFINED:'評価期間・許容差などの基準が未確定です。',NO_RECORD:'棚卸が未登録です。この品目を実際に数えて保存してください。',NO_COMPLETED_MEASUREMENT:'完了した消費実測がありません。実際の使用量と期間を計測してください。',INTERVAL_NOT_SET:'更新間隔が未設定です。管理者がこの品目の間隔を設定してください。',INVALID_OBSERVATION_TIME:'実測日時を確認できません。記録を確認してください。',VERIFIED_RECORD_CURRENT:'正規の操作による記録と、更新期限内であることを確認しました。',EXPIRED:'更新期限を過ぎています。新しい実測を登録してください。',LEGACY_OR_DEPENDENCY_UNVERIFIED:'以前の記録または単位の由来を確認できません。現在の実測を登録してください。',INVALID_QUANTITY:'棚卸数量を評価できません。記録を確認してください。',INVALID_MEASUREMENT:'消費量または計測期間を評価できません。記録を確認してください。',VERIFIED_ORDER_RECEIPT_PAIR:'正規の発注と全量入荷の対応を確認しました。到着は日付単位の記録です。',PAIR_NOT_VERIFIED:'発注と全量入荷の対応または由来が未確認です。受取の対応を確認してください。',NO_ORDER_RECEIPT_PAIR:'対応する発注・全量入荷がありません。実際の発注と到着時に記録してください。',PHYSICAL_SPECIFICATION_NOT_VERIFIED:'実物との照合を証明する記録方式が未対応です。設定だけでは加点しません。',SUPPLIER_CATALOG_UNAVAILABLE:'保存済みの仕入先情報を確認できません。',SUPPLIER_NOT_REGISTERED:'この品目の仕入先名を登録してください。',OTHER_STAFF_REORDER_NOT_VERIFIED:'この評価は旧方式です。最新の評価が必要です。'};
  return messages[condition?.reason]||'評価理由を確認できません。管理者に確認してください。';
 }
 function confirmedReliability(item){
@@ -450,6 +450,8 @@ function renderItemAlert(card,item){
  alert.append(el('span',predictionHeld(item)?'予測は要確認です。発注前に、詳細の棚卸と未入荷注文を確認':status==='OUT_OF_STOCK'?'在庫切れの予測です。未入荷注文と補充を確認':'発注目安に達しています。未入荷注文を確認して発注'));
  alerts.append(alert);
 }
+const conditionDateFormatter=new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric',day:'numeric'});
+function conditionDate(value){return typeof value==='string'&&Number.isFinite(Date.parse(value))?conditionDateFormatter.format(new Date(value)):'未提供';}
 /** Display only: use supplied DTO timestamps, never infer an actual execution time from registration. */
 function conditionTime(value){return typeof value==='string'&&Number.isFinite(Date.parse(value))?formatRecordedAt(value)+' JST':'未提供';}
 function layoutReliabilityRows(rows){
@@ -520,7 +522,7 @@ function renderDailyTasks(card,item){
  const hasOrder=(item.orders||(item.order?[item.order]:[])).some(o=>o.status==='ORDERED');
  if(hasOrder){const b=el('button','未入荷注文・受取の対応を確認');b.onclick=()=>{const d=card.querySelector('.pending-orders');if(d){d.open=true;d.querySelector('summary')?.focus();d.scrollIntoView?.({block:'nearest'});}};delivery.append(b);}else delivery.append(el('p','実際の注文時に上の「発注を記録」。到着時に「入荷を登録」で対象注文を選びます。'));
  rows.append(delivery);
- for(const [label,reason] of [['予測と実物の一致','棚卸で在庫を補正する直前の予測と、数えた実数を比べます。丸めず、差が0のときだけ達成です。'],['欠品を防ぐ補充','過去6暦月（日本時間）に、棚卸数量もアプリの推定在庫も0以下になっていないことを確認します。実際の店舗で欠品がなかったという保証ではありません。']]){const condition=el('div','','condition-box unknown');condition.append(el('h4',label),benefit(label),el('strong','未評価：判定条件の確定待ち','condition-state'),el('p',reason));rows.append(condition);}
+ for(const [label,reason] of [['予測と実物の一致','棚卸で在庫を補正する直前の予測と、数えた実数を比べます。予測だけを棚卸入力と同じ1基準単位に丸め、差が0のときだけ達成です。'],['欠品を防ぐ補充','過去6暦月（日本時間）に、棚卸数量もアプリの推定在庫も0以下になっていないことを確認します。実際の店舗で欠品がなかったという保証ではありません。']]){const condition=el('div','','condition-box unknown');condition.append(el('h4',label),benefit(label),el('strong','未評価：判定条件の確定待ち','condition-state'),el('p',reason));rows.append(condition);}
  if(rating){const byLabel=new Map([...rows.children].map(row=>[row.querySelector('h4')?.textContent,row]));rows.replaceChildren();for(const c of rating.conditions){const row=byLabel.get(reliabilityConditionLabels[c.id]);row.className='condition-box '+({MET:'met',UNMET:'unmet',UNKNOWN:'unknown'}[c.state]);const state=row.querySelector('.condition-state');state.textContent={MET:'✓ 達成：根拠確認済み',UNMET:'未達成',UNKNOWN:'未評価'}[c.state];const evidence=c.evidence;
  if(c.id==='handover'&&c.state==='MET'&&c.reason==='SUPPLIER_REGISTERED'&&Array.isArray(evidence?.supplierNames)){
   state.textContent='✓ 達成：仕入先を登録済み';
@@ -541,13 +543,13 @@ function renderDailyTasks(card,item){
   if(Number.isFinite(midnight)&&new Date(midnight).toISOString().slice(0,10)===day)row.append(el('p','評価に使用した入荷日：'+day+'（日付のみ）'));
   if(Number.isFinite(evidence.registeredLeadDays)&&evidence.registeredLeadDays>=0)row.append(el('p','確認済みの発注・入荷記録に基づく納期目安：'+evidence.registeredLeadDays.toFixed(1)+'日'));
  }
- if(c.id==='agreement'&&evidence?.kind==='EXACT_PRECOUNT'&&typeof evidence.baseUnit==='string'&&[evidence.predicted,evidence.actual,evidence.difference].every(Number.isFinite)){
+ if(c.id==='agreement'&&evidence?.kind==='EXACT_PRECOUNT'&&typeof evidence.baseUnit==='string'&&evidence.resolution===1&&[evidence.predicted,evidence.actual,evidence.difference].every(Number.isFinite)){
   const quantity=v=>String(v)+' '+evidence.baseUnit;
   row.append(el('p','比較日時：'+conditionTime(evidence.at)),
-   el('p','補正前の予測：'+quantity(evidence.predicted)+' ／ 実際の棚卸：'+quantity(evidence.actual)+' ／ 差（実数−予測）：'+quantity(evidence.difference)));
+   el('p','判定用の補正前予測（1 '+evidence.baseUnit+' 単位）：'+quantity(evidence.predicted)+' ／ 実際の棚卸：'+quantity(evidence.actual)+' ／ 差（実数−判定用予測）：'+quantity(evidence.difference)));
  }
  if(c.id==='replenishment'&&evidence?.kind==='APP_NONZERO_SIX_MONTHS'){
-  row.append(el('p','評価期間：'+conditionTime(evidence.start)+' 〜 '+conditionTime(evidence.end)));
+  row.append(el('p','対象期間：'+conditionDate(evidence.start)+'〜'+conditionDate(evidence.end)+'（直近6か月）'));
   if(evidence.at)row.append(el('p','0を確認した日時：'+conditionTime(evidence.at)));
  }
  if(c.reason&&c.state!=='MET')row.append(el('p','理由：'+reliabilityReason(c),'condition-reason'));rows.append(row);}}
