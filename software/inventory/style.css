@@ -269,3 +269,19 @@ main:has(#stock:not([hidden])){max-width:650px;padding-left:12px;padding-right:1
 nav button{min-height:44px}
 .history-link{min-height:44px;margin-top:12px}
 @media(max-width:420px){body>nav button{padding-inline:2px}body>nav [data-tab="sampling"],body>nav [data-tab="catalog"]{flex-grow:1.4}}
+
+.catalog-unit .catalog-count-unit-choice{display:flex;align-items:center;gap:.6rem;min-height:44px;margin:.4rem 0;cursor:pointer}
+.catalog-count-unit-choice input[type=checkbox]{flex:none;width:18px;height:18px;margin:0;accent-color:var(--teal)}
+.catalog-count-unit-choice:focus-within{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
+.catalog-count-unit-missing button{min-height:44px}
+
+/* Keep catalog editing legible without changing the other workspaces. */
+.catalog-edit-form{color:var(--ink)}
+.catalog-edit-form .catalog-edit-panel{margin:14px 0;padding:clamp(12px,3vw,20px);background:#edf3ef;border:1px solid #c1d0ca;border-radius:10px;min-width:0}
+.catalog-edit-form .catalog-edit-panel>h4{margin:0 0 12px;font-size:1.08rem;color:var(--teal)}
+.catalog-edit-form .catalog-edit-panel>summary{min-height:44px;font-size:1rem;font-weight:700;color:var(--teal);padding-block:8px}
+.catalog-edit-form .catalog-edit-panel label{font-size:.95rem;font-weight:650;color:var(--ink);line-height:1.45;overflow-wrap:anywhere}
+.catalog-edit-form .catalog-edit-panel p{font-size:.87rem;line-height:1.6;color:#43574e;margin:8px 0;overflow-wrap:anywhere}
+.catalog-edit-form .catalog-unit,.catalog-edit-form .catalog-party{background:#f7faf8;border-color:#c1d0ca;padding:clamp(10px,3vw,16px)}
+.catalog-edit-form .catalog-edit-panel :is(input:not([type=checkbox]),select,textarea){background:#fff;border-color:#80958a;font-size:1rem;min-height:44px}
+.catalog-edit-form .catalog-edit-panel :is(input:not([type=checkbox]),select,textarea):focus-visible{outline:2px solid var(--teal);outline-offset:2px}
