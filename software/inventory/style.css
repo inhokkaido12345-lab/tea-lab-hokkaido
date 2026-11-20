@@ -260,3 +260,9 @@ body:has(#line-login[hidden]):has(#operation-recovery:empty):has(#inventory-stor
 
 main:has(#stock:not([hidden])){max-width:650px;padding-left:12px;padding-right:12px}
 #cards{grid-template-columns:minmax(0,1fr)}
+
+/* The disabled-by-default physical observation form stays within narrow stock cards. */
+#cards .physical-spec-check{max-width:100%;margin-top:8px}
+#cards .physical-spec-check summary{min-height:44px;cursor:pointer}
+#cards .physical-spec-check fieldset{min-inline-size:0;max-width:100%;margin:8px 0;padding:8px}
+#cards .physical-spec-check :is(input,select){box-sizing:border-box;width:100%;min-width:0}

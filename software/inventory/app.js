@@ -3,7 +3,7 @@
  * This checks operations only: current identity/store/scope checks remain mandatory. */
 const inventoryOperationPermission = Object.freeze({
  READ:'inventory.read',RECEIVE:'inventory.receive-only',COUNT_STOCK:'inventory.stocktake',
- SAVE_ITEM:'inventory.catalog',SYNC_CATALOG:'inventory.catalog',SET_FORECAST:'inventory.forecast',
+ RECORD_SPEC_CHECK:'inventory.catalog',SAVE_ITEM:'inventory.catalog',SYNC_CATALOG:'inventory.catalog',SET_FORECAST:'inventory.forecast',
  OPEN_PACK:'inventory.consumption',FINISH_PACK:'inventory.consumption',NEXT_PACK:'inventory.consumption',
  START_SAMPLE:'inventory.consumption',FINISH_SAMPLE:'inventory.consumption',CANCEL_SAMPLE:'inventory.consumption',
  START_MEASUREMENT:'inventory.consumption',RECORD_MEASUREMENT:'inventory.consumption',UPDATE_MEASUREMENT:'inventory.consumption',CANCEL_MEASUREMENT:'inventory.consumption',
@@ -12,6 +12,7 @@ const inventoryOperationPermission = Object.freeze({
 const inventoryKnownPermissions=Object.freeze([...new Set([...Object.values(inventoryOperationPermission),'inventory.receive','inventory.manage'])]);
 function inventoryCanOperate(permissions,type,request={},access={}){
  if(!Array.isArray(permissions)||!Object.hasOwn(inventoryOperationPermission,type))return false;
+ if(type==='RECORD_SPEC_CHECK')return access.accessModel!=='PERSONAL_INVENTORY_V1'&&['inventory.read','inventory.catalog','inventory.manage'].every(p=>permissions.includes(p));
  const needed=inventoryOperationPermission[type];
  if(access.accessModel==='COMMON_AFFILIATION_V1'&&access.receivingEnabled===true&&permissions.includes('inventory.read')&&['RECEIVE','LINK_RECEIPT_TO_ORDER'].includes(type))return true;
  if(type==='LINK_RECEIPT_TO_ORDER'&&!permissions.includes('inventory.read'))return false;
@@ -410,7 +411,7 @@ function informationSignal(category,days){
 const reliabilityConditionLabels=Object.freeze({specification:'規格と単位を実物で確認',stocktake:'棚卸',consumption:'消費速度',handover:'仕入れの引き継ぎ',delivery:'実績納期',agreement:'予測と実物の一致',replenishment:'欠品を防ぐ補充'});
 /** Validate a server assessment envelope, never infer MET from dates, counters or form fields. */
 function reliabilityReason(condition){
- const messages={POLICY_NOT_DEFINED:'評価期間・許容差などの基準が未確定です。',NO_RECORD:'棚卸が未登録です。この品目を実際に数えて保存してください。',NO_COMPLETED_MEASUREMENT:'完了した消費実測がありません。実際の使用量と期間を計測してください。',INTERVAL_NOT_SET:'更新間隔が未設定です。管理者がこの品目の間隔を設定してください。',INVALID_OBSERVATION_TIME:'実測日時を確認できません。記録を確認してください。',VERIFIED_RECORD_CURRENT:'正規の操作による記録と、更新期限内であることを確認しました。',EXPIRED:'更新期限を過ぎています。新しい実測を登録してください。',LEGACY_OR_DEPENDENCY_UNVERIFIED:'以前の記録または単位の由来を確認できません。現在の実測を登録してください。',INVALID_QUANTITY:'棚卸数量を評価できません。記録を確認してください。',INVALID_MEASUREMENT:'消費量または計測期間を評価できません。記録を確認してください。',VERIFIED_ORDER_RECEIPT_PAIR:'正規の発注と全量入荷の対応を確認しました。到着は日付単位の記録です。',PAIR_NOT_VERIFIED:'発注と全量入荷の対応または由来が未確認です。受取の対応を確認してください。',NO_ORDER_RECEIPT_PAIR:'対応する発注・全量入荷がありません。実際の発注と到着時に記録してください。',PHYSICAL_SPECIFICATION_NOT_VERIFIED:'実物との照合を証明する記録方式が未対応です。設定だけでは加点しません。',OTHER_STAFF_REORDER_NOT_VERIFIED:'担当者以外が再手配できたことの確認方式が未対応です。情報の登録だけでは加点しません。'};
+ const messages={SPEC_CHECK_REQUIRED:'現物の包装を確認し、表示または実際に数えた内容を記録してください。',SPEC_CHECK_SECOND_OBSERVATION_REQUIRED:'一致する記録が1人分あります。この設定では、別の確認者の現物確認が必要です。',SPEC_CHECK_MISMATCH:'現物の観測と登録が一致しません。現物と登録を確認してください。',SPEC_CHECK_UNVERIFIED:'確認記録の根拠が確認できません。',POLICY_NOT_DEFINED:'評価期間・許容差などの基準が未確定です。',NO_RECORD:'棚卸が未登録です。この品目を実際に数えて保存してください。',NO_COMPLETED_MEASUREMENT:'完了した消費実測がありません。実際の使用量と期間を計測してください。',INTERVAL_NOT_SET:'更新間隔が未設定です。管理者がこの品目の間隔を設定してください。',INVALID_OBSERVATION_TIME:'実測日時を確認できません。記録を確認してください。',VERIFIED_RECORD_CURRENT:'正規の操作による記録と、更新期限内であることを確認しました。',EXPIRED:'更新期限を過ぎています。新しい実測を登録してください。',LEGACY_OR_DEPENDENCY_UNVERIFIED:'以前の記録または単位の由来を確認できません。現在の実測を登録してください。',INVALID_QUANTITY:'棚卸数量を評価できません。記録を確認してください。',INVALID_MEASUREMENT:'消費量または計測期間を評価できません。記録を確認してください。',VERIFIED_ORDER_RECEIPT_PAIR:'正規の発注と全量入荷の対応を確認しました。到着は日付単位の記録です。',PAIR_NOT_VERIFIED:'発注と全量入荷の対応または由来が未確認です。受取の対応を確認してください。',NO_ORDER_RECEIPT_PAIR:'対応する発注・全量入荷がありません。実際の発注と到着時に記録してください。',PHYSICAL_SPECIFICATION_NOT_VERIFIED:'実物との照合を証明する記録方式が未対応です。設定だけでは加点しません。',OTHER_STAFF_REORDER_NOT_VERIFIED:'担当者以外が再手配できたことの確認方式が未対応です。情報の登録だけでは加点しません。'};
  return messages[condition?.reason]||'評価理由を確認できません。管理者に確認してください。';
 }
 function confirmedReliability(item){
@@ -474,6 +475,29 @@ function layoutReliabilityRows(rows){
   row.replaceChildren(title,state,body,...buttons);
  }
 }
+/** Off unless the signed store response enables the draft feature. One normal COMMAND; no new READ. */
+function renderPhysicalSpecForm(item){
+ const box=el('details','','physical-spec-check');box.append(el('summary','現物を確認して記録'));
+ const form=el('form','');box.append(form);
+ form.append(el('p','この品目の実物を手元に用意し、包装の表示または実際に数えた内訳を入力してください。登録値は自動で入りません。'));
+ const select=(host,label,choices)=>{
+  const wrap=el('label',label),input=el('select','');input.required=true;input.setAttribute('aria-label',label);
+  input.append(new Option('選択してください',''));for(const [value,name] of choices)input.append(new Option(name,value));
+  wrap.append(input);host.append(wrap);return input;
+ };
+ const roots=['g','kg','mL','L','個','本','枚','杯'],base=select(form,'現物の基準単位',roots.filter(x=>!['kg','L'].includes(x)).map(x=>[x,x]));
+ const fields=item.units.map(u=>{
+  const group=el('fieldset','');group.append(el('legend','1'+u.label+'の現物'));form.append(group);
+  const wrap=el('label','現物に入っている量'),qty=el('input','');qty.type='number';qty.required=true;qty.min='0.000001';qty.max='1000000000';qty.step='any';qty.setAttribute('aria-label',u.label+'の現物に入っている量');wrap.append(qty);group.append(wrap);
+  return {u,qty,child:select(group,u.label+'の中身の単位',[...roots.map(x=>[x,x]),...item.units.filter(v=>v.id!==u.id).map(v=>[v.id,v.label])]),
+    basis:select(group,u.label+'を何で確認したか',[['PACKAGE_LABEL','包装の表示を読んだ'],['PACKAGE_COUNT','実際に入数を数えた']])};
+ });
+ const submit=el('button','この現物確認を保存');submit.type='submit';form.append(submit);
+ form.onsubmit=e=>{e.preventDefault();if(!fields.length||!form.reportValidity())return;
+  send({type:'RECORD_SPEC_CHECK',itemId:item.id,expectedRevision:item.catalogRevision,baseUnit:base.value,packages:fields.map(({u,qty,child,basis})=>({unitId:u.id,version:u.version,quantity:Number(qty.value),childUnitId:child.value,basis:basis.value}))});
+ };
+ return box;
+}
 function renderDailyTasks(card,item){
  const g=item.guidance||{},f=item.forecast||{},rating=confirmedReliability(item);
  const box=el('details','','daily-tasks level-journey');box.append(el('summary','レベルを上げるには？'));box.setAttribute('aria-label','レベルを上げるには？');
@@ -496,6 +520,7 @@ function renderDailyTasks(card,item){
  const specification=el('div','','condition-box unknown');specification.append(el('h4',reliabilityConditionLabels.specification),benefit(reliabilityConditionLabels.specification),el('strong','未評価：実物との照合根拠が必要','condition-state'));
  specification.append(el('p',(item.units||[]).map(u=>'1'+u.label+'＝'+(Number.isFinite(u.baseQuantity)&&item.baseUnit?measurementQuantity(u.baseQuantity,item.baseUnit):'換算未確認')).join(' ／ ')||'規格・単位換算が未提供です。'),el('p','設定が埋まっているだけでは達成と判定しません。実物の包装・内容量と照合してください。'));
  if(canOperate('SAVE_ITEM')){const b=el('button','この品目の規格を確認');b.onclick=()=>{catalogSelection=item.id;catalogDirty=true;tab('catalog');document.querySelector('[aria-label="在庫の基準単位"]')?.focus();};specification.append(b);}else specification.append(el('p','品目編集権限のある担当者に規格の確認を依頼してください。'));
+ if(view?.physicalSpecEnabled===true&&item.catalogRevision&&canOperate('RECORD_SPEC_CHECK'))specification.append(renderPhysicalSpecForm(item));
  rows.append(specification);
  const count=makeRow('棚卸',g.stocktake);
  count.append(el('p','実施日時：未提供（独立した実施時刻は保持されていません）'),el('p','登録日時：'+conditionTime(g.stocktake?.lastAt)));
@@ -696,20 +721,20 @@ async function send(command){
  if(pending.type==='SAVE_ITEM'){catalogSelection=pending.itemId;catalogFilter=pending.catalog.status==='RETIRED'?'RETIRED':'CURRENT';}
  const savedType=pending.type,savedItemId=pending.itemId,previousRating=pending.itemId?itemsById.get(pending.itemId):null;
  const savedTab=['SAVE_ITEM','SYNC_CATALOG'].includes(pending.type)?'catalog':'stock';
- if(['RECEIVE','MARK_ORDERED','COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','CANCEL_MEASUREMENT'].includes(pending.type))stockAction='overview';
+ if(['RECORD_SPEC_CHECK','RECEIVE','MARK_ORDERED','COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','CANCEL_MEASUREMENT'].includes(pending.type))stockAction='overview';
  pending=null;
  // 署名検証済みの保存応答に、原簿読戻し後の画面があれば再通信を省く。旧APIはREADへ戻る。
  if(data.view){view=data.view;render();}else await load();
  let inlineFeedback=null;
- if(['COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','SAVE_ITEM'].includes(savedType)){
+ if(['RECORD_SPEC_CHECK','COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT','SAVE_ITEM'].includes(savedType)){
  const feedbackItem=itemsById.get(savedItemId),feedbackNode=stockCards.get(savedItemId)?.querySelector('.quest-feedback');
  if(feedbackItem&&feedbackNode){
-  inlineFeedback=feedbackNode;feedbackNode.hidden=false;const savedMessage=savedType==='SAVE_ITEM'?'品目情報を更新しました':savedType==='COUNT_STOCK'?'棚卸を登録しました':savedType==='START_MEASUREMENT'?'計測を開始しました（実測は継続中）':'消費の計測を更新しました';feedbackNode.replaceChildren(el('div',savedMessage));
+  inlineFeedback=feedbackNode;feedbackNode.hidden=false;const savedMessage=savedType==='RECORD_SPEC_CHECK'?'現物確認を記録しました':savedType==='SAVE_ITEM'?'品目情報を更新しました':savedType==='COUNT_STOCK'?'棚卸を登録しました':savedType==='START_MEASUREMENT'?'計測を開始しました（実測は継続中）':'消費の計測を更新しました';feedbackNode.replaceChildren(el('div',savedMessage));
  const current=confirmedReliability(feedbackItem);if(current)feedbackNode.append(el('p',reliabilityChange(previousRating,feedbackItem),'reliability-feedback'));
  }}
  $('lines').replaceChildren();addLine();tab(savedTab);
  // A successful action can cause a filtered item to disappear. Announce success in exactly one place.
- const useInline=inlineFeedback?.isConnected&&!inlineFeedback.closest('[hidden]')&&['COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType);
+ const useInline=inlineFeedback?.isConnected&&!inlineFeedback.closest('[hidden]')&&['RECORD_SPEC_CHECK','COUNT_STOCK','START_MEASUREMENT','UPDATE_MEASUREMENT','RECORD_MEASUREMENT'].includes(savedType);
  if(useInline)message('');else message(data.result?.catalogSync?.ok===false?'アプリへの保存は完了しましたが、一覧シートの同期を確認できません。「一覧シートへ再同期」を押してください。':'保存しました。最新記録を確認しました。',data.result?.catalogSync?.ok===false?'CATALOG_SYNC_REQUIRED':'');
  if(receiptLeavesOrders)message(receiptCanLink?'入荷は保存しました。注文は未完了です。発注済み注文の「登録済みの入荷と照合」で確認してください。再入荷登録は不要です。':'入荷は保存しました。注文は未完了です。発注権限のある担当者に登録済み入荷との照合を依頼してください。再入荷登録は不要です。');
  }catch{
