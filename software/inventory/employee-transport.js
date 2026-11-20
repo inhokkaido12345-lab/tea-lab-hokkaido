@@ -73,6 +73,8 @@
   const validStoreId=storeId=>typeof storeId==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(storeId);
   const signedTransientCodes=new Set(['BUSY','UNAVAILABLE','AUTH_UNAVAILABLE']);
   const transportTransientCodes=new Set(['RPC_TIMEOUT','RPC_FAILED','OFFLINE']);
+  const storeDenialCodes=new Set(['FORBIDDEN','COMMON_MEMBERSHIP_REQUIRED','COMMON_SERVICE_PERMISSION_REQUIRED',
+    'COMMON_SERVICE_NOT_ENABLED','COMMON_STORE_BINDING_NOT_FOUND','COMMON_STORE_BINDING_CONFLICT','PERSONAL_SPACE_CONFLICT']);
   function readScopeHint(command,storeId,identity){
     // The store ID only directs the next fresh ACCOUNT request; neither view nor access is cached.
     return ['READ','ACCOUNT'].includes(command)&&validStoreId(storeId)&&identity?{storeId,identity}:null;
@@ -122,6 +124,7 @@
           const temporary=signedTransientCodes.has(data.code);
           const hint=temporary?readScopeHint(current.command,current.readStoreId,current.identitySession):null;
           const sameIdentity=current.identitySession===(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken());
+          if(sameIdentity&&current.readStoreId&&storeDenialCodes.has(data.code))explicitSelectionIdentity=current.identitySession;
           invalidateStoreContext(hint,temporary&&sameIdentity);
         }
         let rejection;
@@ -165,13 +168,13 @@
   }
 
   global.addEventListener('pagehide', () => {
-    stopped = true;finish('PAGE_CLOSED');login.hidden = true;storeContext=null;selectedStore=null;readRouteHint=null;contextIdentity=null;clearStoreView();contextHost()?.replaceChildren();
+    stopped = true;finish('PAGE_CLOSED');login.hidden = true;explicitSelectionIdentity=null;storeContext=null;selectedStore=null;readRouteHint=null;contextIdentity=null;clearStoreView();contextHost()?.replaceChildren();
     for (const id of ['cards','logs','lines']) document.getElementById(id).replaceChildren();
     document.getElementById('status').textContent = '';
   });
   global.addEventListener('pageshow', event => {if (event.persisted) global.location.reload();});
   // 店舗選択はページ内だけに保持。選択したID自体は権限の証拠にならない。
-  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false, readRouteHint=null,contextIdentity=null,interruptedReceivingStore=null;
+  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false, readRouteHint=null,contextIdentity=null,interruptedReceivingStore=null,explicitSelectionIdentity=null;
   const contextHost=()=>document.getElementById('inventory-stores');
   const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
   const status=(text,code='')=>{if(global.TlhInventoryStatus)global.TlhInventoryStatus.show(text,code);else document.getElementById('status').textContent=text;};
@@ -188,6 +191,7 @@
   }
   function readSelection(){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(explicitSelectionIdentity!==identity)explicitSelectionIdentity=null;
     if(readRouteHint&&readRouteHint.identity!==identity||contextIdentity&&contextIdentity!==identity)invalidateStoreContext();
     return selectedStore||readRouteHint?.storeId||null;
   }
@@ -200,7 +204,7 @@
     const host=contextHost();if(!host||!storeContext)return;host.replaceChildren();
     const label=node('label','利用する在庫'),select=node('select');select.appendChild(new Option('在庫を選択してください',''));
     for(const store of storeContext.stores)select.appendChild(new Option((store.spaceType==='PERSONAL'||store.role==='PERSONAL'?'個人用：':'店舗：')+store.name,store.id));select.value=selectedStore||'';label.appendChild(select);host.appendChild(label);
-    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('在庫を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;readRouteHint=null;storeContext=null;clearStoreView();host.replaceChildren();document.getElementById('refresh').click();};
+    select.onchange=()=>{if(contextBusy||pending||uncertainTenant){select.value=selectedStore||'';return;}if(selectedStore&&select.value!==selectedStore&&!global.confirm('在庫を切り替えると、保存していない入力は消えます。切り替えますか？')){select.value=selectedStore;return;}selectedStore=select.value||null;if(selectedStore)explicitSelectionIdentity=null;readRouteHint=null;storeContext=null;clearStoreView();host.replaceChildren();document.getElementById('refresh').click();};
     if(storeContext.canCreatePersonal===true){const personal=node('button','自分の在庫を始める');personal.onclick=()=>contextAction({action:'PERSONAL_CREATE'});host.appendChild(personal);host.appendChild(node('p','会社への所属がなくても、自分だけの在庫を使えます。'));}
     const selected=storeContext.stores.find(s=>s.id===selectedStore);
     if(selected&&(selected.spaceType==='PERSONAL'||selected.role==='PERSONAL')){host.appendChild(node('p','本人専用の在庫です。会社・店舗とは分かれており、他の人は利用できません。'));return;}
@@ -253,12 +257,14 @@
   }
   async function readViewOnce(requestedSelection,scoped){
     const readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
-    if(!storeContext||(scoped&&selectedStore!==requestedSelection)){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
+    // A verified denial of the prior store requires an explicit new choice, not fallback to a default store.
+    const chooseExplicitly=!scoped&&!requestedSelection&&readIdentity&&explicitSelectionIdentity===readIdentity;
+    if(!storeContext||(scoped&&selectedStore!==requestedSelection)){const reply=await request('ACCOUNT',{includeView:!chooseExplicitly,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
       if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
       // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
       const initialView=reply.value.view;
       const {view:_view,...context}=reply.value;storeContext=context;
-      selectedStore=requestedSelection?(storeContext.stores.some(s=>s.id===requestedSelection)?requestedSelection:null):storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;readRouteHint=null;contextIdentity=readIdentity;
+      selectedStore=requestedSelection?(storeContext.stores.some(s=>s.id===requestedSelection)?requestedSelection:null):chooseExplicitly?null:storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;readRouteHint=null;contextIdentity=readIdentity;
       if(interruptedReceivingStore&&selectedStore&&interruptedReceivingStore!==selectedStore)clearStoreView();
       renderStores();
       if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
