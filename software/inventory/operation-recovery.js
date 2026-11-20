@@ -24,7 +24,7 @@
    const info=document.createElement('p');
    if(!currentActor()||actor!==r.expectedActorId){info.textContent='未確認の保存があります。保存した本人のLINEでログインしてください。別の本人の情報は表示しません。';h.appendChild(info);return;}
    info.textContent='未確認の保存：店舗 '+r.storeId+' ／操作 '+r.operationId+'。この復旧は在庫の保存操作だけが対象です。所属・店舗操作は対象外です。'+(Date.now()>r.expiresAt?'。確認期限を過ぎていますが、未保存とは限りません。':'。新しく同じ操作をしないでください。');h.appendChild(info);
-   const button=document.createElement('button');button.type='button';button.dataset.recovery='command-status';button.textContent='保存済みか確認する（再送しない）';button.disabled=busy||stopped;button.onclick=()=>check();h.appendChild(button);
+   const button=document.createElement('button');button.type='button';button.dataset.recovery='command-status';button.textContent='保存済みか確認する（再送しない）';button.disabled=busy||stopped;button.onclick=()=>{if(!g.TlhInventoryView?.confirmPending?.())return check();};h.appendChild(button);
   }
   async function exclusive(fn){
    if(stopped)return result('PAGE_CLOSED');
@@ -39,7 +39,7 @@
    const reply=await send('STATUS',input,identitySession),v=reply.value;if(stopped)return result('PAGE_CLOSED');
    if(!reply.ok||!v||Object.keys(v).sort().join(',')!=='canCreateReplacement,expectedActorId,operationId,status,storeId,version'||Object.entries(input).some(([k,value])=>v[k]!==value)||v.canCreateReplacement!==false||!['SAVED','UNKNOWN'].includes(v.status)){render('保存結果を確認できません。操作は再送していません。');return result('RECOVERY_UNKNOWN');}
    if(v.status==='UNKNOWN'){render('保存済みか確定できません。未保存ではありません。新しい操作をせず、管理者に確認してください。');return result('RECOVERY_UNKNOWN');}
-   remove(r);g.TlhInventoryView?.recoveryResolved?.();g.TlhInventoryView?.invalidate?.();render('保存済みを確認しました。再送せず「最新の記録を読む」で内容を確認してください。');return result('RECOVERY_SAVED');
+   remove(r);g.TlhInventoryView?.recoveryResolved?.();g.TlhInventoryView?.invalidate?.();render('保存済みを確認しました。再送せず「最新の記録を読む」で内容を確認してください。');return {...result('RECOVERY_SAVED'),recovered:{operationId:r.operationId,storeId:r.storeId}};
   }
   async function check(){return exclusive(async()=>{busy=true;try{const r=read();return r?await status(r):result('RECOVERY_NOT_PENDING');}catch{render('保存結果を確認できません。再送せず、もう一度確認してください。');return result('RECOVERY_UNKNOWN');}finally{busy=false;render();}});}
   async function execute(input){return exclusive(async()=>{

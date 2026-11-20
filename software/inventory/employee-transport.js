@@ -77,7 +77,7 @@
     clearTimeout(current.timer);
     current.finishTiming?.();
     current.responseKey = '';
-    if(error)invalidateStoreContext();
+    if(error)invalidateStoreContext(null, ['RPC_TIMEOUT','RPC_FAILED'].includes(error));
     if (error) current.reject(Error(error)); else current.resolve(value);
   }
 
@@ -110,7 +110,7 @@
         if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN'){
           const sameIdentity=current.identitySession===(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken());
           const hint=data.code==='BUSY'&&['READ','ACCOUNT'].includes(current.command)&&sameIdentity&&current.readStoreId?{storeId:current.readStoreId,identity:current.identitySession}:null;
-          invalidateStoreContext(hint);
+          invalidateStoreContext(hint, sameIdentity&&['BUSY','UNAVAILABLE','AUTH_UNAVAILABLE'].includes(data.code));
         }
         let rejection;
         if(current.command==='COMMAND'&&data.data!==''){try{rejection=JSON.parse(data.data);}catch{}}
@@ -124,10 +124,10 @@
   async function wireRequest(command, input = {}, expectedSession = null) {
     await ready;
     if (stopped) throw Error('PAGE_CLOSED');
-    if (navigator.onLine === false) {invalidateStoreContext();throw Error('OFFLINE');}
+    if (navigator.onLine === false) {invalidateStoreContext(null,true);throw Error('OFFLINE');}
     if (!['ACCOUNT','TENANT','READ','COMMAND','STATUS'].includes(command) || pending) throw Error('BUSY');
     const idToken = global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff.getIDToken();
-    if(expectedSession!==null&&idToken!==expectedSession)throw Error('AUTH_REQUIRED');
+    if(expectedSession!==null&&idToken!==expectedSession){invalidateStoreContext();throw Error('AUTH_REQUIRED');}
     if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {invalidateStoreContext();showLogin(); throw Error('AUTH_REQUIRED');}
     return new Promise((resolve, reject) => {
       const current = {command, readStoreId:['READ','ACCOUNT'].includes(command)&&typeof input.storeId==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(input.storeId)?input.storeId:null, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
@@ -158,18 +158,28 @@
   });
   global.addEventListener('pageshow', event => {if (event.persisted) global.location.reload();});
   // 店舗選択はページ内だけに保持。選択したID自体は権限の証拠にならない。
-  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false, readRouteHint=null,contextIdentity=null;
+  let storeContext=null, selectedStore=null, contextBusy=false, uncertainTenant=false, readRouteHint=null,contextIdentity=null,interruptedReceivingStore=null;
   const contextHost=()=>document.getElementById('inventory-stores');
   const node=(tag,text='')=>{const n=document.createElement(tag);n.textContent=text;n.dataset.tenant='true';return n;};
   const status=(text,code='')=>{if(global.TlhInventoryStatus)global.TlhInventoryStatus.show(text,code);else document.getElementById('status').textContent=text;};
-  function invalidateStoreContext(hint=null){storeContext=null;selectedStore=null;contextIdentity=null;readRouteHint=hint;clearStoreView();contextHost()?.replaceChildren();}
+  function invalidateStoreContext(hint=null,temporaryFailure=false){
+    const token=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    // This preserves only the same session's inactive receiving draft on a transient failure, never the view or authority.
+    // Keep the identity witness even when selection is cleared so a later token change still scrubs that draft.
+    const previousStore=selectedStore||interruptedReceivingStore;
+    const transient=temporaryFailure&&Boolean(previousStore&&token&&contextIdentity===token);
+    if(transient)interruptedReceivingStore=previousStore;
+    storeContext=null;selectedStore=null;if(!transient)contextIdentity=null;
+    readRouteHint=hint;clearStoreView(transient);contextHost()?.replaceChildren();
+  }
   function readSelection(){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
     if(readRouteHint&&readRouteHint.identity!==identity||contextIdentity&&contextIdentity!==identity)invalidateStoreContext();
     return selectedStore||readRouteHint?.storeId||null;
   }
-  function clearStoreView(){
-    global.TlhInventoryView?.invalidate?.();
+  function clearStoreView(transient=false){
+    if(!transient)interruptedReceivingStore=null;
+    global.TlhInventoryView?.invalidate?.({transient});
     for(const id of ['cards','logs','lines','catalog-content','stock-workspaces','overview'])document.getElementById(id)?.replaceChildren();
   }
   function renderStores(){
@@ -227,36 +237,49 @@
       contextHost()?.appendChild(retry);
     }finally{contextBusy=false;}
   }
-  async function readViewOnce(){
-    const requestedSelection=readSelection(),readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
-    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
+  async function readViewOnce(requestedSelection,scoped){
+    const readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(!storeContext||(scoped&&selectedStore!==requestedSelection)){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
       if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
       // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
       const initialView=reply.value.view;
       const {view:_view,...context}=reply.value;storeContext=context;
-      selectedStore=requestedSelection?(storeContext.stores.some(s=>s.id===requestedSelection)?requestedSelection:null):storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;readRouteHint=null;contextIdentity=readIdentity;renderStores();
+      selectedStore=requestedSelection?(storeContext.stores.some(s=>s.id===requestedSelection)?requestedSelection:null):storeContext.stores.length===1?storeContext.stores[0].id:storeContext.stores.some(s=>s.id==='demo-shop')?'demo-shop':null;readRouteHint=null;contextIdentity=readIdentity;
+      if(interruptedReceivingStore&&selectedStore&&interruptedReceivingStore!==selectedStore)clearStoreView();
+      renderStores();
       if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
-    if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
+    if(!selectedStore){clearStoreView();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
     const result=await request('READ',{storeId:selectedStore});
     if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
+    if(scoped&&result.ok&&result.value?.storeId!==requestedSelection){invalidateStoreContext();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
     return result;
   }
 
   // Only equivalent read callers join. No writes, identity changes or cross-store reuse.
   let activeViewRead=null;
-  function readView(){
+  function readView(preferredStoreId){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
-    const selection=readSelection();
+    const current=readSelection(),scoped=preferredStoreId!==undefined;
+    if(scoped&&(typeof preferredStoreId!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(preferredStoreId)))return Promise.resolve({ok:false,code:'STORE_SELECTION_REQUIRED'});
+    const selection=scoped?preferredStoreId:current;
     if(activeViewRead){
-      if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection)return activeViewRead.promise;
+      if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection&&activeViewRead.scoped===scoped)return activeViewRead.promise;
       return Promise.reject(Error('BUSY'));
     }
-    const job={identity,selection,promise:null};
-    job.promise=readViewOnce().finally(()=>{if(activeViewRead===job)activeViewRead=null;});
+    const job={identity,selection,scoped,promise:null};
+    job.promise=readViewOnce(selection,scoped).finally(()=>{if(activeViewRead===job)activeViewRead=null;});
     activeViewRead=job;return job.promise;
   }
 
   // 未ログインは通常の開始状態。画面はこの時点ではACCOUNT/READを送らない。
   const requiresLogin=()=>Boolean(global.TlhInventoryLogin&&!global.TlhInventoryLogin.getToken());
-  global.TlhInventory = Object.freeze({request,readView,requiresLogin,hasPendingReceipt:()=>recovery?.hasPendingReceipt()===true});
+  async function confirmPending(){
+    if(!recovery)return {ok:false,code:'RECOVERY_UNAVAILABLE'};
+    const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    const result=await recovery.check();
+    const current=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(result.code==='RECOVERY_SAVED'&&identity!==current)return {ok:false,code:'AUTH_REQUIRED'};
+    return result;
+  }
+  global.TlhInventory = Object.freeze({request,readView,requiresLogin,confirmPending,hasPendingReceipt:()=>recovery?.hasPendingReceipt()===true});
 })(window);
