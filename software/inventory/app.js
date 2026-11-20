@@ -790,38 +790,35 @@ function renderCatalog(){
  function edit(){
   for(const [id,node]of drafts)node.hidden=id!==choice.value;
   if(drafts.has(choice.value))return;
-  const item=itemsById.get(choice.value),c=item?.catalogResolved||item?.catalog||{},node=el('div','');drafts.set(choice.value,node);editor.append(node);
+  const item=itemsById.get(choice.value),c=item?.catalogResolved||item?.catalog||{},node=el('div','','catalog-edit-form');drafts.set(choice.value,node);editor.append(node);
   if(!canOperate('SAVE_ITEM')){node.append(el('p','この情報を変更する権限がありません。'));return;}
   const field=(parent,label,value='',multiline=false)=>{
    const box=el('label',label),input=el(multiline?'textarea':'input','');input.value=value;input.setAttribute('aria-label',label);input.maxLength=multiline?2000:1500;if(!multiline)input.type='text';box.append(input);parent.append(box);return input;
   };
   node.append(el('h3',item?'仕入品の情報を編集':'新しい仕入品'));
   renderAttributeLevel(node,item);
-  const statusLabel=el('label','品目の状態'),status=el('select','');status.append(new Option('現行（在庫管理・アラートの対象）','CURRENT'),new Option('使用終了（履歴として保存）','RETIRED'));status.value=item?.active===false?'RETIRED':'CURRENT';statusLabel.append(status);node.append(statusLabel,el('p','使用終了の品目は在庫一覧・消費計測・発注アラートに出しません。在庫数と履歴は残ります。現行に戻して再開する時は、棚卸で残量を確認してください。','muted'));
-  const manage=view.permissions.includes('inventory.manage');let stocktakeDays,consumptionDays,stocktakeUnit,stocktakeUnitSelection=item?.stocktakeUnitId||'';const naChecks=[];
+  const statusGroup=el('div','','catalog-edit-panel catalog-status-panel');node.append(statusGroup);
+  const statusLabel=el('label','品目の状態'),status=el('select','');status.append(new Option('現行（在庫管理・アラートの対象）','CURRENT'),new Option('使用終了（履歴として保存）','RETIRED'));status.value=item?.active===false?'RETIRED':'CURRENT';statusLabel.append(status);statusGroup.append(statusLabel,el('p','使用終了の品目は在庫一覧・消費計測・発注アラートに出しません。在庫数と履歴は残ります。現行に戻して再開する時は、棚卸で残量を確認してください。','muted'));
+  const manage=view.permissions.includes('inventory.manage'),canSetStocktakeUnit=manage&&view.stocktakePackageCount===true;
+  let stocktakeDays,consumptionDays,stocktakeUnitSelection=item?.stocktakeUnitId||'';const naChecks=[];
   if(manage){
-   const settings=el('details','','review-settings');settings.append(el('summary','管理者：棚卸単位・実施間隔・適用項目'));node.append(settings);
+   const settings=el('details','','review-settings catalog-edit-panel');settings.append(el('summary','管理者：実施間隔・適用項目'));node.append(settings);
    settings.append(el('p','棚卸と消費速度の再確認だけを設定します。入荷・発注は発生時に記録します。空欄で棚卸は既定7日、消費の再確認は設定なし。','muted'));
-   if(view.stocktakePackageCount===true){
-    const countUnit=el('label','棚卸で数える単位');stocktakeUnit=el('select','');
-    stocktakeUnit.setAttribute('aria-label','棚卸で数える単位');
-    stocktakeUnit.onchange=()=>{stocktakeUnitSelection=stocktakeUnit.value;};
-    countUnit.append(stocktakeUnit);settings.append(countUnit,el('p','包装に登録した袋・本などから、満タンで数える単位を選びます。','muted'));
-   }
    stocktakeDays=appendNumberField(settings,'棚卸間隔（日・空欄は既定7日）',c.reviewPolicy?.stocktakeDays??'');
    consumptionDays=appendNumberField(settings,'消費速度の再確認間隔（日・空欄は設定なし）',c.reviewPolicy?.consumptionDays??'');
    for(const input of [stocktakeDays,consumptionDays]){input.min='1';input.max='365';input.step='1';}
    settings.append(el('p','実際に該当しない属性だけ非適用にしてください。不明・未入力を隠すためには使いません。','muted'));
    for(const [key,label] of [['productCode','商品コード'],['manufacturer','メーカー'],['suppliers','仕入先']]){const wrap=el('label',''),input=el('input','');input.type='checkbox';input.checked=(c.notApplicable||[]).includes(key);wrap.append(input,el('span',label+'は非適用'));settings.append(wrap);naChecks.push({key,input});}
   }
-  const name=field(node,'品名（必須）',item?.name||'');
+  const identity=el('div','','catalog-edit-panel');identity.append(el('h4','基本情報'));node.append(identity);
+  const name=field(identity,'品名（必須）',item?.name||'');
   const categoryLabel=el('label','カテゴリ'),category=el('select','');category.setAttribute('aria-label','カテゴリ');
   category.append(new Option('未分類（あとで設定）',''));for(const label of productCategories)category.append(new Option(label,label));
   const previousCategory=canonicalCategory(c.category||'');
   if(previousCategory&&!productCategories.includes(previousCategory))category.append(new Option(previousCategory+'（以前の分類）',previousCategory));
-  category.value=previousCategory;categoryLabel.append(category);node.append(categoryLabel,el('p','主な種類・用途を1つ選びます。冷凍・常温は「保管方法」に記入してください。','muted'));
-  const alias=field(node,'店内での呼び名',c.alias||''),code=field(node,'商品コード・型番',c.productCode||'');
-  const manufacturer=el('details','');manufacturer.append(el('summary','製造元・メーカー'));node.append(manufacturer);
+  category.value=previousCategory;categoryLabel.append(category);identity.append(categoryLabel,el('p','主な種類・用途を1つ選びます。冷凍・常温は「保管方法」に記入してください。','muted'));
+  const alias=field(identity,'店内での呼び名',c.alias||''),code=field(identity,'商品コード・型番',c.productCode||'');
+  const manufacturer=el('details','','catalog-edit-panel');manufacturer.append(el('summary','製造元・メーカー'));node.append(manufacturer);
   const m=c.manufacturer||{},mName=field(manufacturer,'メーカー名',m.name||''),mContact=field(manufacturer,'メーカー連絡先・担当',m.contact||''),mUrl=field(manufacturer,'メーカーURL',m.url||''),mNotes=field(manufacturer,'メーカー備考',m.notes||'',true);
   const partyReference=(parent,label,value,part)=>{
    const box=el("label",label),select=el("select","");select.setAttribute("aria-label",label);select.append(new Option("この商品で直接入力",""));
@@ -836,7 +833,7 @@ function renderCatalog(){
    for(const input of [mName,mContact,mUrl,mNotes])input.readOnly=Boolean(manufacturerSource.value);
   };
   manufacturerSource.onchange=updateManufacturer;updateManufacturer();
-  const supplierBox=el('details','','catalog-suppliers');supplierBox.append(el('summary','仕入先・注文先（複数登録可）'));node.append(supplierBox);const suppliers=[];
+  const supplierBox=el('details','','catalog-suppliers catalog-edit-panel');supplierBox.append(el('summary','仕入先・注文先（複数登録可）'));node.append(supplierBox);const suppliers=[];
   const addSupplier=p=>{
    if(suppliers.length>=5){message('仕入先は1品目につき5件までです。');return;}
    const row=el('div','','catalog-party');supplierBox.append(row);
@@ -853,20 +850,34 @@ function renderCatalog(){
    addParty.hidden=Boolean(supplierSource.value);
   };
   supplierSource.onchange=updateSuppliers;updateSuppliers();
-  node.append(el('h4','包装・内容量のつながり'));
+  const packaging=el('div','','catalog-edit-panel catalog-packaging');packaging.append(el('h4','包装・内容量のつながり'));node.append(packaging);
   const baseLabel=el('label','在庫の基準単位'),base=el('select','');base.setAttribute('aria-label','在庫の基準単位');
-  for(const u of ['g','mL','個','本','枚','杯'])base.append(new Option(u,u));base.value=item?.baseUnit||c.baseUnit||'g';baseLabel.append(base);node.append(baseLabel);
-  node.append(el('p','「1ケースには20袋」「1袋には20束」「1束には10g」のように登録します。小さい単位から追加すると選びやすくなります。この例の数字を実商品へ流用せず、規格表示を確認してください。','muted'));
-  node.append(el('p','重量はg、液体はmL、ストローなどは本数を基準に選びます。gとmLを同じものとして換算しません。在庫操作後は基準単位を変更できません。1包装の換算量は基準単位の正の整数になる設定が必要です。','muted'));
-  const rowsHost=el('div','','catalog-units');node.append(rowsHost);const unitRows=[];
+  for(const u of ['g','mL','個','本','枚','杯'])base.append(new Option(u,u));base.value=item?.baseUnit||c.baseUnit||'g';baseLabel.append(base);packaging.append(baseLabel);
+  packaging.append(el('p','「1ケースには20袋」「1袋には20束」「1束には10g」のように登録します。小さい単位から追加すると選びやすくなります。この例の数字を実商品へ流用せず、規格表示を確認してください。','muted'));
+  packaging.append(el('p','重量はg、液体はmL、ストローなどは本数を基準に選びます。gとmLを同じものとして換算しません。在庫操作後は基準単位を変更できません。1包装の換算量は基準単位の正の整数になる設定が必要です。','muted'));
+  const rowsHost=el('div','','catalog-units');packaging.append(rowsHost);const unitRows=[];
+  let missingUnit,clearMissing;
+  if(canSetStocktakeUnit){
+   const hint=el('p','棚卸に使う包装単位は1つ選べます。チェックを外すと、棚卸では実測の総量を入力します。','muted');
+   packaging.insertBefore(hint,rowsHost);
+   missingUnit=el('div','','catalog-count-unit-missing');missingUnit.hidden=true;
+   const warning=el('p','棚卸に使う単位が削除されています。別の単位を選ぶか、棚卸単位の指定を解除してください。','muted');warning.setAttribute('role','status');
+   clearMissing=el('button','棚卸単位の指定を解除');clearMissing.type='button';clearMissing.onclick=()=>{
+    stocktakeUnitSelection='';updateCountUnits();(unitRows[0]?.stocktake||add).focus();
+   };
+   missingUnit.append(warning,clearMissing);packaging.append(missingUnit);
+  }
   const roots=()=>base.value==='g'?[['g',1],['kg',1000]]:base.value==='mL'?[['mL',1],['L',1000]]:[[base.value,1]];
-  const updateChoices=()=>{
-   if(stocktakeUnit){
-    stocktakeUnit.replaceChildren(new Option('未設定（総量を実測して記録）',''));
-    for(const u of unitRows)stocktakeUnit.append(new Option(u.label.value||'名前未入力の単位',u.id));
-    if(stocktakeUnitSelection&&!unitRows.some(u=>u.id===stocktakeUnitSelection))stocktakeUnit.append(new Option('削除済みの単位（選び直してください）',stocktakeUnitSelection));
-    stocktakeUnit.value=stocktakeUnitSelection;
+  const updateCountUnits=()=>{
+   if(!canSetStocktakeUnit)return;
+   for(const r of unitRows){
+    r.stocktake.checked=r.id===stocktakeUnitSelection;
+    r.stocktake.setAttribute('aria-label','この単位を棚卸に使用する：'+(r.label.value.trim()||'単位名未入力'));
    }
+   missingUnit.hidden=!stocktakeUnitSelection||unitRows.some(r=>r.id===stocktakeUnitSelection);
+  };
+  const updateChoices=()=>{
+   updateCountUnits();
    for(const row of unitRows){
     const selected=row.child.value||row.childId;row.child.replaceChildren();for(const [id]of roots())row.child.append(new Option(id,id));
     for(const other of unitRows)if(other!==row)row.child.append(new Option(other.label.value||'名前未入力の単位',other.id));
@@ -885,14 +896,27 @@ function renderCatalog(){
    const row=el('div','','catalog-unit'),label=field(row,'単位名（袋・ケース・束など）',u?.label||''),quantity=field(row,'1単位に含む数量',u?.quantity??''),childLabel=el('label','その数量の単位'),child=el('select','');quantity.type='number';quantity.min='0';quantity.step='any';childLabel.append(child);row.append(childLabel);
    const entry={id:u?.id||'unit-'+crypto.randomUUID(),label,quantity,child,childId:u?.childUnitId||base.value};unitRows.push(entry);rowsHost.append(row);
    label.oninput=updateChoices;quantity.oninput=preview;child.onchange=()=>{entry.childId=child.value;preview();};
-   const remove=el('button','この単位を外す');remove.type='button';remove.onclick=()=>{unitRows.splice(unitRows.indexOf(entry),1);row.remove();updateChoices();};row.append(remove);updateChoices();
+   if(canSetStocktakeUnit){
+    const wrap=el('label','','catalog-count-unit-choice'),input=el('input','');
+    input.type='checkbox';entry.stocktake=input;wrap.append(input,el('span','この単位を棚卸に使用する'));row.append(wrap);
+    input.onchange=()=>{
+     if(input.checked)stocktakeUnitSelection=entry.id;
+     else if(stocktakeUnitSelection===entry.id)stocktakeUnitSelection='';
+     updateCountUnits();
+    };
+   }
+   const remove=el('button','この単位を外す');remove.type='button';remove.onclick=()=>{
+    const removedSelected=canSetStocktakeUnit&&stocktakeUnitSelection===entry.id;
+    unitRows.splice(unitRows.indexOf(entry),1);row.remove();updateChoices();
+    if(removedSelected)clearMissing.focus();
+   };row.append(remove);updateChoices();
   };
   base.onchange=()=>updateChoices();
   const original=c.units||item?.units?.map(u=>({id:u.id,label:u.label,quantity:u.quantity??u.baseQuantity,childUnitId:u.childUnitId||'g'}))||[];
   for(const u of original)addUnit(u);
   if(!original.length)addUnit();
-  const add=el('button','包装単位を追加');add.type='button';add.onclick=()=>{addUnit();lock(busy);};node.append(add,previewBox);
-  const info=el('details','');info.append(el('summary','保管・原材料の補足'));node.append(info);
+  const add=el('button','包装単位を追加');add.type='button';add.onclick=()=>{addUnit();lock(busy);};packaging.append(add,previewBox);
+  const info=el('details','','catalog-edit-panel');info.append(el('summary','保管・原材料の補足'));node.append(info);
   const storage=field(info,'保管方法・保管上の注意',c.storage||'',true),allergens=field(info,'アレルゲン表示（商品表示を確認）',c.allergens||''),specNotes=field(info,'規格の補足',c.specNotes||'',true),specUrl=field(info,'規格資料URL',c.specUrl||''),notes=field(info,'その他の備考',c.notes||'',true);
   node.append(el('p','規格を変更しても過去の入荷量・計測開始時の量は変えません。別端末で先に変更された場合は再読込が必要です。','muted'));
   let physicalEntry;
@@ -905,9 +929,9 @@ function renderCatalog(){
    if(item&&item.active!==false&&status.value==='RETIRED'&&!confirm('この品目を在庫一覧・消費計測・発注アラートの対象から外します。在庫数と履歴は残ります。使用終了にしますか？'))return;
    if(!name.value.trim()){message('品名を入力してください。');return;}
    for(const input of [stocktakeDays,consumptionDays].filter(Boolean))if(input.value!==''&&(!Number.isInteger(Number(input.value))||Number(input.value)<1||Number(input.value)>365)){message('間隔は1〜365の整数か空欄にしてください。');input.focus();return;}
-   if(stocktakeUnit?.value&&!unitRows.some(u=>u.id===stocktakeUnit.value)){message('棚卸で数える単位を選び直してください。');stocktakeUnit.focus();return;}
+   if(canSetStocktakeUnit&&stocktakeUnitSelection&&!unitRows.some(u=>u.id===stocktakeUnitSelection)){message('棚卸に使う単位を選び直すか、指定を解除してください。');clearMissing.focus();return;}
    const party=p=>({name:p.name.value,contact:p.contact.value,url:p.url.value,notes:p.notes.value});
-   send({type:'SAVE_ITEM',...(physicalEntry?.checked===true&&status.value!=='RETIRED'?{physicalSpecObserved:true}:{}),...(stocktakeUnit?{stocktakeUnitId:stocktakeUnit.value||null}:{}),itemId:item?.id||'item-'+crypto.randomUUID(),expectedRevision:item?.catalogRevision||null,catalog:{...(manage?{reviewPolicy:{stocktakeDays:stocktakeDays.value===''?null:Number(stocktakeDays.value),consumptionDays:consumptionDays.value===''?null:Number(consumptionDays.value)},notApplicable:naChecks.filter(x=>x.input.checked).map(x=>x.key)}:{}),status:status.value,baseUnit:base.value,name:name.value,category:category.value,alias:alias.value,productCode:code.value,
+   send({type:'SAVE_ITEM',...(physicalEntry?.checked===true&&status.value!=='RETIRED'?{physicalSpecObserved:true}:{}),...(canSetStocktakeUnit?{stocktakeUnitId:stocktakeUnitSelection||null}:{}),itemId:item?.id||'item-'+crypto.randomUUID(),expectedRevision:item?.catalogRevision||null,catalog:{...(manage?{reviewPolicy:{stocktakeDays:stocktakeDays.value===''?null:Number(stocktakeDays.value),consumptionDays:consumptionDays.value===''?null:Number(consumptionDays.value)},notApplicable:naChecks.filter(x=>x.input.checked).map(x=>x.key)}:{}),status:status.value,baseUnit:base.value,name:name.value,category:category.value,alias:alias.value,productCode:code.value,
     manufacturerSourceItemId:manufacturerSource.value||undefined,suppliersSourceItemId:supplierSource.value||undefined,manufacturer:{name:mName.value,contact:mContact.value,url:mUrl.value,notes:mNotes.value},suppliers:suppliers.map(party),storage:storage.value,allergens:allergens.value,specNotes:specNotes.value,specUrl:specUrl.value,notes:notes.value,
     units:unitRows.map(r=>({id:r.id,label:r.label.value,quantity:Number(r.quantity.value),childUnitId:r.child.value}))}});
   };node.append(save);
