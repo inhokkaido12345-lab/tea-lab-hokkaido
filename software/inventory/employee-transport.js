@@ -227,9 +227,9 @@
       contextHost()?.appendChild(retry);
     }finally{contextBusy=false;}
   }
-  async function readViewOnce(){
-    const requestedSelection=readSelection(),readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
-    if(!storeContext){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
+  async function readViewOnce(requestedSelection,scoped){
+    const readIdentity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(!storeContext||(scoped&&selectedStore!==requestedSelection)){const reply=await request('ACCOUNT',{includeView:true,...(requestedSelection?{storeId:requestedSelection}:{})});if(!reply.ok)return reply;
       if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
       // この応答の在庫だけを直ちに使う。後の再読込では必ずREADで認証と在庫を照会し直す。
       const initialView=reply.value.view;
@@ -239,24 +239,35 @@
     if(!selectedStore)return {ok:false,code:'STORE_SELECTION_REQUIRED'};
     const result=await request('READ',{storeId:selectedStore});
     if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
+    if(scoped&&result.ok&&result.value?.storeId!==requestedSelection){invalidateStoreContext();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
     return result;
   }
 
   // Only equivalent read callers join. No writes, identity changes or cross-store reuse.
   let activeViewRead=null;
-  function readView(){
+  function readView(preferredStoreId){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
-    const selection=readSelection();
+    const current=readSelection(),scoped=preferredStoreId!==undefined;
+    if(scoped&&(typeof preferredStoreId!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(preferredStoreId)))return Promise.resolve({ok:false,code:'STORE_SELECTION_REQUIRED'});
+    const selection=scoped?preferredStoreId:current;
     if(activeViewRead){
-      if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection)return activeViewRead.promise;
+      if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection&&activeViewRead.scoped===scoped)return activeViewRead.promise;
       return Promise.reject(Error('BUSY'));
     }
-    const job={identity,selection,promise:null};
-    job.promise=readViewOnce().finally(()=>{if(activeViewRead===job)activeViewRead=null;});
+    const job={identity,selection,scoped,promise:null};
+    job.promise=readViewOnce(selection,scoped).finally(()=>{if(activeViewRead===job)activeViewRead=null;});
     activeViewRead=job;return job.promise;
   }
 
   // 未ログインは通常の開始状態。画面はこの時点ではACCOUNT/READを送らない。
   const requiresLogin=()=>Boolean(global.TlhInventoryLogin&&!global.TlhInventoryLogin.getToken());
-  global.TlhInventory = Object.freeze({request,readView,requiresLogin,hasPendingReceipt:()=>recovery?.hasPendingReceipt()===true});
+  async function confirmPending(){
+    if(!recovery)return {ok:false,code:'RECOVERY_UNAVAILABLE'};
+    const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    const result=await recovery.check();
+    const current=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
+    if(result.code==='RECOVERY_SAVED'&&identity!==current)return {ok:false,code:'AUTH_REQUIRED'};
+    return result;
+  }
+  global.TlhInventory = Object.freeze({request,readView,requiresLogin,confirmPending,hasPendingReceipt:()=>recovery?.hasPendingReceipt()===true});
 })(window);
