@@ -285,3 +285,5 @@ nav button{min-height:44px}
 .catalog-edit-form .catalog-unit,.catalog-edit-form .catalog-party{background:#f7faf8;border-color:#c1d0ca;padding:clamp(10px,3vw,16px)}
 .catalog-edit-form .catalog-edit-panel :is(input:not([type=checkbox]),select,textarea){background:#fff;border-color:#80958a;font-size:1rem;min-height:44px}
 .catalog-edit-form .catalog-edit-panel :is(input:not([type=checkbox]),select,textarea):focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+.catalog-edit-form .catalog-unit .catalog-unit-equation{margin:12px 0;padding:8px 10px;border-left:3px solid var(--teal);background:#e9f1ec;color:var(--teal);font-size:1rem;font-weight:650;overflow-wrap:anywhere}
