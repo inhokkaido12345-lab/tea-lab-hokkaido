@@ -24,7 +24,7 @@
    const info=document.createElement('p');
    if(!currentActor()||actor!==r.expectedActorId){info.textContent='未確認の保存があります。保存した本人のLINEでログインしてください。別の本人の情報は表示しません。';h.appendChild(info);return;}
    info.textContent='未確認の保存：店舗 '+r.storeId+' ／操作 '+r.operationId+'。この復旧は在庫の保存操作だけが対象です。所属・店舗操作は対象外です。'+(Date.now()>r.expiresAt?'。確認期限を過ぎていますが、未保存とは限りません。':'。新しく同じ操作をしないでください。');h.appendChild(info);
-   const button=document.createElement('button');button.type='button';button.dataset.recovery='command-status';button.textContent='保存済みか確認する（再送しない）';button.disabled=busy||stopped;button.onclick=()=>check();h.appendChild(button);
+   const button=document.createElement('button');button.type='button';button.dataset.recovery='command-status';button.textContent='保存済みか確認する（再送しない）';button.disabled=busy||stopped;button.onclick=()=>{if(!g.TlhInventoryView?.confirmPending?.())return check();};h.appendChild(button);
   }
   async function exclusive(fn){
    if(stopped)return result('PAGE_CLOSED');
