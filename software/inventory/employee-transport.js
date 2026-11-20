@@ -70,6 +70,14 @@
     return false;
   }
 
+  const validStoreId=storeId=>typeof storeId==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(storeId);
+  const signedTransientCodes=new Set(['BUSY','UNAVAILABLE','AUTH_UNAVAILABLE']);
+  const transportTransientCodes=new Set(['RPC_TIMEOUT','RPC_FAILED','OFFLINE']);
+  function readScopeHint(command,storeId,identity){
+    // The store ID only directs the next fresh ACCOUNT request; neither view nor access is cached.
+    return ['READ','ACCOUNT'].includes(command)&&validStoreId(storeId)&&identity?{storeId,identity}:null;
+  }
+
   function finish(error, value) {
     const current = pending;
     if (!current) return;
@@ -77,7 +85,10 @@
     clearTimeout(current.timer);
     current.finishTiming?.();
     current.responseKey = '';
-    if(error)invalidateStoreContext(null, ['RPC_TIMEOUT','RPC_FAILED'].includes(error));
+    if(error){
+      const temporary=transportTransientCodes.has(error);
+      invalidateStoreContext(temporary?readScopeHint(current.command,current.readStoreId,current.identitySession):null,temporary);
+    }
     if (error) current.reject(Error(error)); else current.resolve(value);
   }
 
@@ -108,9 +119,10 @@
       }
       if (data.code !== 'OK') {
         if(current.command==='READ'||current.command==='ACCOUNT'||/^(COMMON_|AUTH_|ACCOUNT_|PERSONAL_SPACE_)/.test(data.code)||data.code==='FORBIDDEN'){
+          const temporary=signedTransientCodes.has(data.code);
+          const hint=temporary?readScopeHint(current.command,current.readStoreId,current.identitySession):null;
           const sameIdentity=current.identitySession===(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken());
-          const hint=data.code==='BUSY'&&['READ','ACCOUNT'].includes(current.command)&&sameIdentity&&current.readStoreId?{storeId:current.readStoreId,identity:current.identitySession}:null;
-          invalidateStoreContext(hint, sameIdentity&&['BUSY','UNAVAILABLE','AUTH_UNAVAILABLE'].includes(data.code));
+          invalidateStoreContext(hint,temporary&&sameIdentity);
         }
         let rejection;
         if(current.command==='COMMAND'&&data.data!==''){try{rejection=JSON.parse(data.data);}catch{}}
@@ -124,13 +136,14 @@
   async function wireRequest(command, input = {}, expectedSession = null) {
     await ready;
     if (stopped) throw Error('PAGE_CLOSED');
-    if (navigator.onLine === false) {invalidateStoreContext(null,true);throw Error('OFFLINE');}
     if (!['ACCOUNT','TENANT','READ','COMMAND','STATUS'].includes(command) || pending) throw Error('BUSY');
     const idToken = global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff.getIDToken();
     if(expectedSession!==null&&idToken!==expectedSession){invalidateStoreContext();throw Error('AUTH_REQUIRED');}
     if (!idToken || !global.TlhInventoryLogin&&!global.liff.isLoggedIn()) {invalidateStoreContext();showLogin(); throw Error('AUTH_REQUIRED');}
+    const hint=readScopeHint(command,input.storeId,idToken);
+    if(navigator.onLine===false){invalidateStoreContext(hint,true);throw Error('OFFLINE');}
     return new Promise((resolve, reject) => {
-      const current = {command, readStoreId:['READ','ACCOUNT'].includes(command)&&typeof input.storeId==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(input.storeId)?input.storeId:null, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
+      const current = {command, readStoreId:hint?.storeId??null, identitySession:idToken, nonce: random(16), responseKey: random(32), resolve, reject};
       pending = current;
       if(['ACCOUNT','READ'].includes(command))current.finishTiming=global.TlhInventoryTiming?.start(command==='ACCOUNT'?'initial-read':'refresh-read');
       current.timer = setTimeout(() => finish('RPC_TIMEOUT'), 45000);
@@ -167,10 +180,11 @@
     // This preserves only the same session's inactive receiving draft on a transient failure, never the view or authority.
     // Keep the identity witness even when selection is cleared so a later token change still scrubs that draft.
     const previousStore=selectedStore||interruptedReceivingStore;
-    const transient=temporaryFailure&&Boolean(previousStore&&token&&contextIdentity===token);
+    const sameIdentityHint=hint?.identity===token?hint:null;
+    const transient=temporaryFailure&&Boolean(previousStore&&token&&contextIdentity===token&&(!sameIdentityHint||sameIdentityHint.storeId===previousStore));
     if(transient)interruptedReceivingStore=previousStore;
     storeContext=null;selectedStore=null;if(!transient)contextIdentity=null;
-    readRouteHint=hint;clearStoreView(transient);contextHost()?.replaceChildren();
+    readRouteHint=sameIdentityHint;clearStoreView(transient);contextHost()?.replaceChildren();
   }
   function readSelection(){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
@@ -249,9 +263,10 @@
       renderStores();
       if(initialView&&initialView.storeId===selectedStore)return {ok:true,value:initialView};}
     if(!selectedStore){clearStoreView();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
-    const result=await request('READ',{storeId:selectedStore});
+    const readStoreId=selectedStore;
+    const result=await request('READ',{storeId:readStoreId});
     if(readIdentity!==(global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken())){invalidateStoreContext();return {ok:false,code:'AUTH_REQUIRED'};}
-    if(scoped&&result.ok&&result.value?.storeId!==requestedSelection){invalidateStoreContext();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
+    if(result.ok&&result.value?.storeId!==readStoreId){invalidateStoreContext();return {ok:false,code:'STORE_SELECTION_REQUIRED'};}
     return result;
   }
 
@@ -260,7 +275,7 @@
   function readView(preferredStoreId){
     const identity=global.TlhInventoryLogin?global.TlhInventoryLogin.getToken():global.liff?.getIDToken();
     const current=readSelection(),scoped=preferredStoreId!==undefined;
-    if(scoped&&(typeof preferredStoreId!=='string'||!/^[A-Za-z0-9_-]{1,80}$/.test(preferredStoreId)))return Promise.resolve({ok:false,code:'STORE_SELECTION_REQUIRED'});
+    if(scoped&&!validStoreId(preferredStoreId))return Promise.resolve({ok:false,code:'STORE_SELECTION_REQUIRED'});
     const selection=scoped?preferredStoreId:current;
     if(activeViewRead){
       if(!stopped&&activeViewRead.identity===identity&&activeViewRead.selection===selection&&activeViewRead.scoped===scoped)return activeViewRead.promise;

@@ -648,20 +648,25 @@ function renderStockCards(){
  }
  if(view.permissions.includes('inventory.order')){
  const b=el('button','発注を記録','primary');
+ let openOrderForm=null;
  b.onclick=()=>{
+  if(openOrderForm){openOrderForm.focus();return;}
   // 確認を先に済ませてから入力欄を作る。拒否した場合は画面も保存状態も変更しない。
   const notLow=!needsOrder(item);
+  const confirmedPendingOrdersVersion=pendingOrders.length?item.pendingOrdersVersion:null;
+  if(pendingOrders.length&&!confirmedPendingOrdersVersion){message('未入荷の発注を確認するため、最新の記録を読み直してください。');return;}
   if((notLow||pendingOrders.length)&&!confirm((pendingOrders.length?'未入荷の発注が'+pendingOrders.length+'件あります。同じ発注の重複登録でないことを確認してください。\n':'')+item.name+(predictionHeld(item)?'：予測は参考・要確認です。現物と未入荷注文を確認したうえで、実際の発注を記録しますか？':notLow?'：要発注ではありませんが、発注しますか？':'：別の発注を記録しますか？')))return;
   b.disabled=true;
   const box=el('div','','line'),row=addLine(item.id,box,true);
   const dateLabel=el('label','到着予定日（任意）'),date=el('input','');
+  openOrderForm=date;
   date.type='date';date.setAttribute('aria-label','到着予定日（任意）');dateLabel.append(date);box.append(dateLabel);
   const save=el('button','発注済みにする','primary');
   save.onclick=()=>{
    const line=row.requestLine();
    if(line&&(!Number.isSafeInteger(line.quantity)||line.quantity<1)){message('発注数量を確認してください。');return;}
    if(date.value&&!/^\d{4}-\d{2}-\d{2}$/.test(date.value)){message('到着予定日を確認してください。');return;}
-   send({type:'MARK_ORDERED',itemId:item.id,...(line?{line}:{}),...(date.value?{expectedOn:date.value}:{}),...(notLow?{confirmNotLow:true}:{})});
+   send({type:'MARK_ORDERED',itemId:item.id,...(line?{line}:{}),...(date.value?{expectedOn:date.value}:{}),...(notLow?{confirmNotLow:true}:{}),...(confirmedPendingOrdersVersion?{confirmedPendingOrdersVersion}:{})});
   };
   box.append(save);operations.append(box);
  };operations.append(b);}
@@ -704,7 +709,7 @@ function addLine(itemId,container=$('lines'),ordering=false){
  const remove=el('button','この行を削除');remove.type='button';remove.onclick=()=>row.remove();
  row.append(item,count,unit,hint,orderNotice);if(!ordering)row.append(remove);row.requestLine=()=>{if(ordering&&count.value.trim()==='')return null;const i=itemsById.get(item.value),u=i.units.find(x=>x.id===unit.value);return {itemId:i.id,quantity:Number(count.value),unitId:u.id,conversionVersion:u.version};};container.append(row);return row;
 }
-const errors={RECOVERY_NEW_ACTION_REQUIRED:'今回の入力は送信していません。前の保存結果を確認し、必要なら改めて操作してください。',LINK_QUANTITY_UNSUPPORTED:'分納・数量違い・予定量未記入の注文は、この照合では完了できません。入荷を重ねて登録しないでください。',RECEIPT_NOT_LINKABLE:'この入荷と注文の記録を照合できません。最新の記録を確認してください。',RECEIPT_ALREADY_LINKED:'この入荷は別の注文と照合済みです。再入荷登録しないでください。',INVALID_CATALOG_REFERENCE:'参照元は同じ店舗の商品を選んでください。自身への参照や循環参照は保存できません。',BASE_UNIT_CHANGED:'在庫の履歴がある品目の基準単位は変更できません。別品目として登録してください。',INVALID_CATALOG:'品名・URL・文字数など、仕入品情報の入力を確認してください。',INVALID_UNIT_GRAPH:'包装の数量・単位名・つながりを確認してください。循環や基準単位の整数に換算できない設定は保存できません。',CATALOG_CHANGED:'別の端末で規格が更新されました。最新の記録を読み直してください。',INVALID_MEASUREMENT:'量と単位を確認してください。袋数0では使いかけ分を計れません。',FUTURE_MEASUREMENT:'未来の日時は記録できません。',MEASUREMENT_OVERLAP:'同じ品目の計測期間が重複しています。現在の計測を更新するか、期間を確認してください。',MEASUREMENT_NOT_FOUND:'対象の計測が見つかりません。最新の記録を読んでください。',MEASUREMENT_CHANGED:'他の操作で計測が更新されています。最新の記録を読んでください。',MEASUREMENT_CLOSED:'この計測は既に終了・取消されています。',ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
+const errors={RECOVERY_NEW_ACTION_REQUIRED:'今回の入力は送信していません。前の保存結果を確認し、必要なら改めて操作してください。',LINK_QUANTITY_UNSUPPORTED:'分納・数量違い・予定量未記入の注文は、この照合では完了できません。入荷を重ねて登録しないでください。',RECEIPT_NOT_LINKABLE:'この入荷と注文の記録を照合できません。最新の記録を確認してください。',RECEIPT_ALREADY_LINKED:'この入荷は別の注文と照合済みです。再入荷登録しないでください。',INVALID_CATALOG_REFERENCE:'参照元は同じ店舗の商品を選んでください。自身への参照や循環参照は保存できません。',BASE_UNIT_CHANGED:'在庫の履歴がある品目の基準単位は変更できません。別品目として登録してください。',INVALID_CATALOG:'品名・URL・文字数など、仕入品情報の入力を確認してください。',INVALID_UNIT_GRAPH:'包装の数量・単位名・つながりを確認してください。循環や基準単位の整数に換算できない設定は保存できません。',CATALOG_CHANGED:'別の端末で規格が更新されました。最新の記録を読み直してください。',INVALID_MEASUREMENT:'量と単位を確認してください。袋数0では使いかけ分を計れません。',FUTURE_MEASUREMENT:'未来の日時は記録できません。',MEASUREMENT_OVERLAP:'同じ品目の計測期間が重複しています。現在の計測を更新するか、期間を確認してください。',MEASUREMENT_NOT_FOUND:'対象の計測が見つかりません。最新の記録を読んでください。',MEASUREMENT_CHANGED:'他の操作で計測が更新されています。最新の記録を読んでください。',MEASUREMENT_CLOSED:'この計測は既に終了・取消されています。',ACTION_REMOVED:'画面を再読み込みして新しい標本計測を使ってください。',PACK_ALREADY_OPEN:'この品目は既に計測中です。',PACK_CHANGED:'計測状態が変わりました。最新の画面を確認してください。',INVALID_DURATION:'開始と終了の時刻を確認してください。',ORDER_CONFIRMATION_REQUIRED:'在庫が更新され要発注ではなくなりました。再度確認して記録してください。',PENDING_ORDERS_CHANGED:'他の操作で未入荷の発注が変わりました。最新の一覧を確認し、別の注文を記録する場合だけ改めて入力してください。',ORDER_CHANGED:'発注内容が更新されました。最新の記録を確認してください。',NOT_ORDERED:'この記録は既に取り消されています。',CASE_CLOSED:'この発注は受取完了しています。',ALREADY_ORDERED:'他の発注済み記録があります。最新状態を確認してください。',CONVERSION_CHANGED:'単位換算が更新されています。再読取してください。',INVALID_COMPLETION:'受取完了の発注と入荷品目が一致しません。',FORBIDDEN:'操作権限を確認できません。',INVALID_LINE:'品目の重複や数量を確認してください。',FUTURE_RECEIPT:'届いた日には今日以前を指定してください。'};
 /** 通信失敗なら操作IDを保持。成功後は原簿読戻し済みDTOを使用し、旧APIだけ別READする。 */
 async function send(command){
  if(busy||(!view&&!pending))return;
