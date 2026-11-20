@@ -263,3 +263,9 @@ main:has(#stock:not([hidden])){max-width:650px;padding-left:12px;padding-right:1
 
 .physical-spec-entry{display:flex;align-items:center;gap:8px;min-height:44px}
 .physical-spec-entry input{width:20px;min-height:0;height:20px}
+
+
+/* Keep all five primary tasks legible at phone widths; history is secondary. */
+nav button{min-height:44px}
+.history-link{min-height:44px;margin-top:12px}
+@media(max-width:420px){body>nav button{padding-inline:2px}body>nav [data-tab="sampling"],body>nav [data-tab="catalog"]{flex-grow:1.4}}
