@@ -1,0 +1,8 @@
+/* Inactive draft, scoped only to notice. Never changes punch positions or controls. */
+.missing-punch-notice {margin-block:.5rem;padding:.45rem .65rem;border:1px solid #7C908E;border-radius:.5rem;background:#F3EFE7;color:#252829;font-size:.875rem;overflow-wrap:anywhere}
+.missing-punch-notice [hidden] {display:none!important}
+.missing-punch-notice button {font:inherit;max-width:100%;min-height:2.75rem;white-space:normal}
+.missing-punch-notice p {margin:.35rem 0;line-height:1.5}
+.missing-punch-notice fieldset {min-width:0;margin:.4rem 0;padding:.4rem}
+.missing-punch-notice label {display:inline-flex;align-items:center;gap:.35rem;min-height:2.75rem;margin-right:.8rem}
+.missing-punch-notice input {min-width:1.2rem;min-height:1.2rem}

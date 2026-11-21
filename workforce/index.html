@@ -36,6 +36,7 @@
 
   <link rel="stylesheet" href="fonts/ibm-plex-sans-jp.css?v=1"><link rel="stylesheet" href="app.css?v=20261111-status1">
 <link rel="stylesheet" href="schedule.css?v=20261111-color1">
+<link rel="stylesheet" href="missing-punch-notice.css?v=20261119-hints1">
 </head>
 <body class="home-page schedule-host-page"><div class="app">
 <header class="app-header"><a class="brand" href="./"><span class="brand-mark" aria-hidden="true">TLH</span><span>Work Time</span></a><span class="account-label">LINEログイン<span>勤怠・シフト管理</span></span></header>
@@ -44,7 +45,7 @@
 <button id="home-line-login" type="button" class="bridge-button" hidden disabled>LINEログイン</button>
 <!-- 打刻の画面: wrapperの表示はlayout、section/各ボタンの許可は既存controller。
      列の左右/順序はCSS Gridから調整し、ボタンのhidden/disabledをデザインで外さない。 -->
-<div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
+<div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><aside id="missing-punch-home" class="missing-punch-notice" hidden><a href="day-change.html#missing-punch" id="missing-punch-home-link"></a></aside><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
       <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a class="button secondary" href="employee-help.html#punch" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
 
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
@@ -455,6 +456,7 @@
   <script src="schedule-workspace.js?v=20261110-lazy-init1"></script>
   <script src="layout.js?v=20261110-management1"></script>
   <script src="admin-access.js?v=20261108-batch1"></script>
+  <script src="missing-punch-read.js?v=20261119-hints1"></script>
   <script src="status-guidance.js?v=20261111-status2"></script>
 <script>
     /**
@@ -550,9 +552,12 @@
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
+    // Optional read starts only after the initial punch response, never in its prerequisite queue.
+    let hintStarted=false;
+    const homeHints=TlhMissingPunchRead.init({gasUrl:GAS_URL,liff:window.liff,onDates:days=>{const box=document.getElementById('missing-punch-home');box.hidden=!days.length;document.getElementById('missing-punch-home-link').textContent=days.length?'打刻を確認する日が '+days.length+' 件あります。訂正申請へ':'';}});
     TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff,readTransport:homeReads,
       // 固定名と時間だけの診断。token/打刻ID/本人情報をログへ渡さず、業務の成否判定には使わない。
-      onTiming:sample=>{if(['read','write'].includes(sample.phase)&&['response','timeout','send_error','cancelled'].includes(sample.outcome)&&Number.isFinite(sample.elapsedMs))console.info(JSON.stringify({type:'TLH_UI_TIMING_V1',phase:sample.phase,outcome:sample.outcome,elapsedMs:Math.max(0,Math.round(sample.elapsedMs))}));},
+      onTiming:sample=>{if(!hintStarted&&sample.phase==='read'&&sample.outcome==='response'){hintStarted=true;setTimeout(()=>{if(homeReady&&homePane==='employee')homeHints.load();else hintStarted=false;},0);}if(['read','write'].includes(sample.phase)&&['response','timeout','send_error','cancelled'].includes(sample.outcome)&&Number.isFinite(sample.elapsedMs))console.info(JSON.stringify({type:'TLH_UI_TIMING_V1',phase:sample.phase,outcome:sample.outcome,elapsedMs:Math.max(0,Math.round(sample.elapsedMs))}));},
       onRecorded:()=>{
       homeJournal.invalidate();homeDaily.invalidate();homeMonthly.invalidate();autoReads.invalidate(['today','daily','monthly']);
       autoReads.together(['punch','today'],()=>homeReady&&homePane==='employee',true);
