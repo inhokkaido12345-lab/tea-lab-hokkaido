@@ -107,14 +107,21 @@
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       let idToken;try{idToken=options.liff&&options.liff.getIDToken();}catch(_error){}
       if(typeof idToken!=='string'||!idToken){requireLogin();return;}
-      const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now()};pending=r;controls();status.textContent='処理中です。';
+      // READだけ旧ログイン/日/店舗を再表示しない。保存receiptの照合・再送条件には混ぜない。
+      const workplace=global.TlhCurrentWorkplace,jstDay=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10),day=jstDay();
+      const stillCurrent=action===READ?()=>{try{return options.liff.getIDToken()===idToken&&jstDay()===day&&
+        global.TlhCurrentWorkplace===workplace&&(!workplace||workplace.locationMatches());}catch(_e){return false;}}:null;
+      const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now(),stillCurrent};pending=r;controls();status.textContent='処理中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish('timeout');},30000);
       if(action===READ&&options.readTransport){options.readTransport.request({action,nonce:r.nonce,responseKey:r.responseKey,idToken}).then(data=>receive(r,data)).catch(error=>{if(pending===r&&!stopped){if(error.code==='LINE_VERIFY_REJECTED')requireLogin();else status.textContent='応答を確認できません。打刻前の状態を確認し直してください。';finish('send_error');}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPunchFrame';form.hidden=true;
       Object.entries({...fields,action,nonce:r.nonce,responseKey:r.responseKey,idToken}).forEach(([name,value])=>{
         const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input);
       });document.body.appendChild(form);
-      if(action===WRITE)draftSubmitted=true; // 例外でも送信の成否を推測せず、以後は同じ固定IDで確認する。
+      if(action===WRITE){
+        draftSubmitted=true; // 例外でも送信の成否を推測せず、以後は同じ固定IDで確認する。
+        try{options.onWriteDispatched?.();}catch(_observerError){} // 読取表示は書込の手順/成否を妨げない。
+      }
       try{if(global.TlhCurrentWorkplace)global.TlhCurrentWorkplace.submit(form);else form.submit();}catch(_error){status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish('send_error');}finally{form.remove();}
     }
     function invoke(action,fields){send(action,fields).catch(()=>{status.textContent='送信結果を確認できません。同じ操作で再試行してください。';finish('send_error');});}
@@ -126,13 +133,18 @@
       if(stopped||pending!==r)return;
       try{
         const d=value,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
-        if(!await verifyResponse(data,r)||pending!==r)return;status.textContent=messages[data.code];
+        if(!await verifyResponse(data,r)||pending!==r)return;
+        if(r.stillCurrent&&!r.stillCurrent()){
+          ready=null;status.textContent='ログイン、日付、または店舗が変わりました。勤務状態を確認し直してください。';finish();return;
+        }
+        status.textContent=messages[data.code];
         if(data.code!=='LINE_VERIFY_REJECTED')loginRequired=false;
         if(data.code==='LINE_VERIFY_REJECTED'){requireLogin();}
         else if(Object.hasOwn(allowed,data.code)){ready={code:data.code,revision:data.revision};}
         else if(!['PUNCH_UNAVAILABLE','PUNCH_NOT_SAVED','PUNCH_BUSY','WORK_STATE_BUSY'].includes(data.code)){ready=null;draft=null;}
         if(['WRITE_REVIEW_REQUIRED','WORK_STATE_REVIEW_REQUIRED','WORK_STATE_STORAGE_NOT_READY','WORK_STATE_CORRECTIONS_PENDING'].includes(data.code))blocked=true;
         finish();
+        if(r.action===READ&&Object.hasOwn(allowed,data.code))try{options.onReadReady?.();}catch(_observerError){}
         if(r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED'))options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
       }catch(_error){/* 未検証の応答を表示しない。 */}
     }

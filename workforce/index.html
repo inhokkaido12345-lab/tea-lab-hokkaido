@@ -438,10 +438,10 @@
   <script src="admin-overview.js?v=20261105-timing1"></script>
   <script src="staff-maintenance.js?v=20261105-store1"></script>
   <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261108-batch1"></script>
-  <script src="daily-summary.js?v=20261108-batch1"></script>
-  <script src="monthly-work-summary.js?v=20261108-batch1"></script>
-  <script src="attendance-journal.js?v=20261108-batch1"></script>
+  <script src="punch.js?v=20261121-today1"></script>
+  <script src="daily-summary.js?v=20261121-today1"></script>
+  <script src="monthly-work-summary.js?v=20261121-today1"></script>
+  <script src="attendance-journal.js?v=20261121-today1"></script>
   <script src="shell.js?v=UI2-20261103"></script>
   <script src="auto-read.js?v=20261110-read-priority1"></script>
   <script src="common-affiliation-info.js"></script>
@@ -550,11 +550,20 @@
     TlhStaffEnrollment.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhStaffMaintenance.init({ gasUrl: GAS_URL, liff: window.liff });
     TlhWorkState.init({ gasUrl: GAS_URL, liff: window.liff });
+    let punchWriteUnsettled=false;
+    function setHomeAttendanceBlocked(value){
+      if(punchWriteUnsettled===value)return;
+      punchWriteUnsettled=value;
+      homeJournal.setPunchPending(value);homeDaily.setPunchPending(value);homeMonthly.setPunchPending(value);
+      autoReads.invalidate(['today','daily','monthly']);
+    }
     TlhPunch.init({ gasUrl: GAS_URL, liff: window.liff,readTransport:homeReads,
+      onWriteDispatched:()=>setHomeAttendanceBlocked(true),
+      onReadReady:()=>setHomeAttendanceBlocked(false), // 旧操作を拒否した後は、明示確認済みの新しい状態だけで解除する。
       // 固定名と時間だけの診断。token/打刻ID/本人情報をログへ渡さず、業務の成否判定には使わない。
       onTiming:sample=>{if(['read','write'].includes(sample.phase)&&['response','timeout','send_error','cancelled'].includes(sample.outcome)&&Number.isFinite(sample.elapsedMs))console.info(JSON.stringify({type:'TLH_UI_TIMING_V1',phase:sample.phase,outcome:sample.outcome,elapsedMs:Math.max(0,Math.round(sample.elapsedMs))}));},
       onRecorded:()=>{
-      homeJournal.invalidate();homeDaily.invalidate();homeMonthly.invalidate();autoReads.invalidate(['today','daily','monthly']);
+      setHomeAttendanceBlocked(false);
       autoReads.together(['punch','today'],()=>homeReady&&homePane==='employee',true);
       autoReads.together(['daily','monthly'],()=>homeReady&&homePane==='records',true);
     }});
