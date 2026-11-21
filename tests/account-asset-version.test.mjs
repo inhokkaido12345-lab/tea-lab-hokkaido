@@ -8,7 +8,7 @@ test('Account loads content-versioned scripts in unchanged dependency order',()=
  const html=fs.readFileSync(new URL('account/index.html',root),'utf8');
  const sources=[...html.matchAll(/<script\b[^>]*src="([^"]+)"/g)].map(m=>m[1]);
  assert.deepEqual(sources.map(s=>s.split('?')[0]),[
- '/software/inventory/employee-login.js','/workforce/current-workplace.js',
+ '/software/inventory/employee-login.js','line-login.js','/workforce/current-workplace.js',
  '/workforce/common-affiliation-info.js','/workforce/company-employment-info.js',
  '/workforce/account-info.js','/workforce/staff-enrollment.js',
  'management-picker.js','granular-readiness.js','activation-services.js','service-activation.js','common-affiliation.js','common-grants.js','access-overview.js','/workforce/operations.js','operations-panels.js','tabs.js','service-shell/signed-service-reader.js','service-shell/signed-workflow-discovery.js','service-shell/signed-workflow-reader.js','service-shell/signed-workflow-writer.js','service-shell/signed-workflow-status.js','service-shell/workflow-discovery-view.js','service-shell/workflow-records-view.js','service-shell/workflow-receipt.js','service-shell/workflow-confirmation.js','service-shell/workflow-panel.js','service-shell/verified-overview-scopes.js','service-shell/service-management.js','service-shell/compatibility-launchers.js','service-shell/account-service-category.js','account.js']);
@@ -24,3 +24,13 @@ test('Account version updater is clean in check mode',()=>{
 });
 
 test('Account CSS is content-versioned while existing font URL stays fixed',()=>{const html=fs.readFileSync(new URL('account/index.html',root),'utf8'),hash=createHash('sha256').update(fs.readFileSync(new URL('account/account.css',root))).digest('hex').slice(0,16);assert.ok(html.includes('href="account.css?v='+hash+'"'));assert.ok(html.includes('href="/workforce/fonts/ibm-plex-sans-jp.css"'));});
+
+test('Account callback is generated from current UI with absolute assets and only the same-tab broker',()=>{
+ execFileSync(process.execPath,['scripts/sync-account-line-return.mjs','--check'],{cwd:root});
+ const html=fs.readFileSync(new URL('software/worktime/inventory/auth/account-return/index.html',root),'utf8');
+ assert.match(html,/data-account-auth-return>/);assert.match(html,/id="account-auth-back" href="\/account\//);
+ assert.match(html,/https:\/\/static.line-scdn.net\/liff\/edge\/2\/sdk.js/);
+ assert.match(html,/src="\/account\/line-login.js\?v=[a-f0-9]{16}"/);
+ assert.match(html,/src="\/account\/account.js\?v=[a-f0-9]{16}"/);
+ assert.doesNotMatch(html,/employee-login\.js|src="(?:account|line-login)\.js|data-preview=/);
+});

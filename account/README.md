@@ -86,19 +86,16 @@ node --test tests/common-account.test.mjs tests/account-info.test.mjs tests/staf
 
 ### 明示ログインの再認証
 
-`/account/`の「LINEで本人確認」は、初回を含め、本人が押した時だけ認証brokerの
-`clearToken()` → `login()`で既存の`reauth=1`経路を使います。ブラウザー内に残った
-LINE証明をそのまま再利用せず、OAuthログインが再実行される場合があります。
-画面初期化・読取拒否・保存再送では自動ログインしません。結果不明の保存も自動再送しません。
-WorkTimeの画面・打刻・記録は変更しません。popupから証明を受領したことと、Coreが
-その証明を受理したことは区別し、画面も「本人確認情報を受け取りました」と表示します。
+通常のデスクトップブラウザーでは、`/account/`の明示クリックで同じタブのままLINE本人確認へ進みます。Account専用の既存LIFF Endpoint配下に復帰し、URLを元のAccountへ戻してから署名付きの本人確認を行います。初回を含め、以前のSDK証明を再利用せず明示的に再認証する方針は維持します。未確認のスマートフォン、単独表示、LINE内などは既存popupを使います。
+
+OAuthをまたぐ一時情報は乱数・開始時刻・段階・既知の表示目的だけです。ID token、招待コード、保存内容、復帰URLを保存しません。復帰時はアプリ内の既知の店舗用・個人用表示を復元しますが、登録・招待・権限の保存を自動実行しません。Coreで本人確認できることと、SDKから証明を受領することは区別します。画面初期化・読取拒否・保存再送で自動ログインしません。TimeとInventoryの画面・認証窓口は変更しません。
 
 ### JS更新の反映
 
 入口HTMLの自前JSは内容SHA-256の先頭16桁を`?v=`へ付けます。依存JS変更後は
 `node scripts/sync-account-assets.mjs`、確認は同コマンドの`--check`を実行してください。
 `tests/account-asset-version.test.mjs`が更新漏れ・順序変更を検知します。
-HTML自体が古い場合まで解消を保証するものではありません。公開後は新HTMLの`src`と
+Account同一タブ認証の復帰HTMLも、通常入口の変更後に `node scripts/sync-account-line-return.mjs` で同期し、`--check` で検証してください。HTML自体が古い場合まで解消を保証するものではありません。公開後は新HTMLの`src`と
 実画面の更新文言を確認してから、明示ログインによる再認証を検証します。
 
 ### 新規本人の受入確認区分
