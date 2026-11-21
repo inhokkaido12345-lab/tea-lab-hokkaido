@@ -2,6 +2,7 @@
  * No login click, no live API, no production data; viewport emulation is not a phone.
  */
 import fs from 'node:fs/promises';import path from 'node:path';import http from 'node:http';import assert from 'node:assert/strict';import {createRequire} from 'node:module';
+import {checkInventoryLineRouting} from './inventory-line-router-visual.mjs';
 const root=path.resolve(new URL('..',import.meta.url).pathname),out=path.join(root,'qa-artifacts/inventory-entry'),require=createRequire(import.meta.url);
 const {chromium}=require(path.join(root,'.qa-tools/node_modules/playwright'));
 await fs.mkdir(out,{recursive:true});
@@ -75,5 +76,5 @@ try{for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   assert.deepEqual(blocked,[],'PROJECTED_STATE_ATTEMPTED_EXTERNAL_REQUEST');assert.deepEqual(errors,[],'PROJECTED_STATE_BROWSER_ERROR');
   await page.screenshot({path:path.join(out,viewport.width+'-viewport.png')});await page.screenshot({path:path.join(out,viewport.width+'-full.png'),fullPage:true});report.passed=true;
  }catch(e){failed=true;report.error=e.message;await page.screenshot({path:path.join(out,viewport.width+'-FAIL.png'),fullPage:true}).catch(()=>{});}finally{report.blockedExternalRequestCount=blocked.length;report.blockedExternalRequests=blocked;report.errors=errors;reports.push(report);await context.close();}
-}}finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(out,'report.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||'local',syntheticEnvironment:true,reports},null,2));}
+}await checkInventoryLineRouting({browser,root,mime});}finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(out,'report.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||'local',syntheticEnvironment:true,reports},null,2));}
 console.log(JSON.stringify({cases:reports.length,passed:reports.filter(r=>r.passed).length}));if(failed)process.exitCode=1;
