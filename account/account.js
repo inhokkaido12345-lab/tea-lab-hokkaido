@@ -3,18 +3,21 @@
  * account/index.htmlから呼ぶ。打刻・シフト・在庫の業務controllerは初期化しない。
  * 削除影響: この入口だけ停止。既存アプリ・ID・原簿には変更しない。
  * 概念: composition root（既存機能を組み合わせる起点）とidentity/authorizationの分離。
- * 改造: 認証はInventoryの固定popup broker、本人情報・招待はworkforceのcontrollerと契約を共有。
+ * 改造: 認証はAccount専用の固定復帰。未検証環境では既存broker、本人情報・招待の契約は従来通り。
  * 秘密はページメモリとPOST bodyだけ。一般登録の受付・権限はサーバーが判断する。
  * 検証: tests/common-account.test.mjs、既存account-info/staff-enrollment試験。実登録は模擬試験に使わない。
  */
 (function(global){
  'use strict';
+ const broker=global.location.origin==='https://tealabhokkaido.com'
+   ?global.TlhAccountLogin||global.TlhInventoryLogin:global.TlhInventoryLogin;
+ function start(arrived){
  const $=id=>document.getElementById(id),login=$('account-login'),status=$('account-status');
  const create=$('account-create'),createStatus=$('account-create-status'),enrollment=$('account-enrollment-lock');
  let verifiedActor=null;
  let common=null,grants=null,access=null,staff=null,operations=null,activation=null;
  const endpoint=global.TlhAccountInfo.config.gasUrl;
- const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>global.TlhInventoryLogin.getToken(),launchers:global.TlhAccountServiceLaunchers||[],canLeave:()=>global.TlhAccountNavigation?.canLeave()===true,blocked:()=>stopped||!ready||!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy()||!!activation?.busy(),onState:()=>controls()});
+ const services=global.TlhAccountServiceCategory?.init({endpoint,getProof:()=>broker.getToken(),launchers:global.TlhAccountServiceLaunchers||[],canLeave:()=>global.TlhAccountNavigation?.canLeave()===true,blocked:()=>stopped||!ready||!!request||!!common?.busy()||!!grants?.busy()||!!staff?.busy()||!!operations?.busy()||!!activation?.busy(),onState:()=>controls()});
  // A fixed presentation hint only: never authorization or a redirect destination.
  // Compatibility catalog only, not the general service registry. Query is display-only.
  const purposeMatch=/^\?purpose=personal(?:&service=([A-Z][A-Z0-9_]{0,79}))?$/.exec(global.location.search||'');
@@ -73,16 +76,9 @@
  $('account-request-entry').addEventListener('click',()=>{if(registrationConfirmed&&global.TlhAccountNavigation.canLeave()){if(serviceHint)services?.openService(serviceHint);$('account-tab-services').click();}});
  $('account-read-retry').addEventListener('click',()=>{if(selfReadState==='error'&&ready&&global.TlhAccountNavigation.canLeave())access?.refresh();});
  $('account-details').addEventListener('toggle',()=>{if($('account-details').open&&ready&&!global.TlhAccountNavigation.canLeave())return;if($('account-details').open&&ready)viewer?.load();});
- login.addEventListener('click',async()=>{
-  if(services?.busy()||stopped||loggingIn||ready||global!==global.top)return;
-  loggingIn=true;controls();status.textContent='LINEで本人確認しています…';
-  try{
-   // Explicit user login must use the broker's reauthentication path, not replay LIFF's
-   // possibly rejected cached proof after a page reload. Never run this on a save retry.
-   global.TlhInventoryLogin.clearToken();
-   await global.TlhInventoryLogin.login();if(stopped)return;
-   if(!global.TlhInventoryLogin.getToken())throw Error('AUTH_REQUIRED');
-   const proof=Object.freeze({getIDToken:()=>stopped?null:global.TlhInventoryLogin.getToken()});
+ function completeLogin(){
+   if(!broker?.getToken())throw Error('AUTH_REQUIRED');
+   const proof=Object.freeze({getIDToken:()=>stopped?null:broker.getToken()});
    viewer=global.TlhAccountInfo.init({gasUrl:endpoint,liff:proof,loadRelated:false});
    staff=global.TlhStaffEnrollment.init({gasUrl:endpoint,liff:proof,onState:controls});
    common=global.TlhCommonAffiliation?.init({gasUrl:endpoint,liff:proof,blocked:()=>!!services?.busy()||!!activation?.busy()||!!operations?.busy()||!!request||!!grants?.busy()||$('staff-status').getAttribute('aria-busy')==='true',onState:controls,onSuccess:refreshSelf,onManagement:state=>tabs?.management(state,'common')});
@@ -92,14 +88,23 @@
    access=global.TlhAccountAccessOverview?.init({gasUrl:endpoint,liff:proof,serviceSummaryOnly:true,onVerified:(d,state)=>{verifiedActor=d?.accountId||null;services?.verified(d);selfReadState=d?'registered':state==='not_registered'?'unregistered':state==='error'?'error':'checking';unregistered=!d&&state==='not_registered';registrationConfirmed=!!d;activation?.syncRegistration?.();if(!d){managementChecked=false;tabs?.management(state==='error'?'error':'checking','overview');}if(unregistered)tabs?.management('denied','overview');if(d)status.textContent='登録済みのアカウントを確認しました。'+(personalPurpose&&!destination?' 利用先を確認できません。元のアプリから開き直してください。':'');else if(unregistered)status.textContent='このLINEのアカウントは未登録です。';else if(state==='error')status.textContent='登録状態を確認できませんでした。再読込してください。';else status.textContent='登録状態を確認しています…';controls();if(d&&!managementChecked){managementChecked=true;const managed=d.operatingRoles.some(r=>r.effective&&(r.role==='ORGANIZATION_OPERATOR'||r.role==='STORE_SERVICE_ADMIN'&&r.serviceId==='INVENTORY'));if(managed)checkManagement();else tabs?.management('denied','overview');}if(!d)operations?.invalidate();tabs?.roles(d||(unregistered?{operatingRoles:[]}:null),state);const root=d?.operatingRoles.some(r=>r.role==='PLATFORM_OPERATOR'&&r.effective);$('account-platform-link').hidden=!root;$('account-platform-reason').textContent=root?'Platform運営ロールを確認しました。個々の操作には追加の会社権限確認があります。':d?'Platform全体の運営権限はありません。会社・店舗管理とは別です。':'Platform運営権限は未確認です。利用条件を更新して確認してください。';}});
    ready=true;tabs?.ready();$('account-tools').hidden=false;login.hidden=true;$('account-reload').hidden=false;
    status.textContent='LINEから本人確認情報を受け取りました。登録状態を確認しています。';access?.load();
+ }
+ login.addEventListener('click',async()=>{
+  if(services?.busy()||stopped||loggingIn||ready||global!==global.top)return;
+  loggingIn=true;controls();status.textContent='LINEで本人確認しています…';let stays=false;
+  try{
+   // Only an explicit click starts reauthentication. Resuming that click does not clear its proof.
+   broker.clearToken();
+   stays=await broker.login()==='redirecting';if(stopped||stays)return;
+   completeLogin();
   }catch{
-   if(!stopped)status.textContent='本人確認を開始できませんでした。ポップアップの許可と通信状態を確認し、もう一度お試しください。';
-  }finally{loggingIn=false;controls();}
+   if(!stopped)status.textContent=broker?.usePopup===false?'LINE本人確認を開始できませんでした。通信状態を確認して開き直してください。':'本人確認を開始できませんでした。ポップアップの許可と通信状態を確認し、もう一度お試しください。';
+  }finally{if(!stays){loggingIn=false;controls();}}
  });
  /** 一般登録だけを明示POST。結果不明時は同じnonceと本人で照会し、他の保存を開始させない。 */
  function submitRegistration(){
   if(services?.busy()||activation?.busy()||(!unregistered&&!request)||stopped||!ready||operations?.busy()||common?.busy()||grants?.busy()||request?.timer||$('staff-status').getAttribute('aria-busy')==='true'||global!==global.top)return;
-  const proof=global.TlhInventoryLogin.getToken();if(!proof)return;
+  const proof=broker.getToken();if(!proof)return;
   if(!request){
    if(!global.confirm('このLINEにTLHアカウントを作成します。従業員・管理者の権限は付きません。続けますか？'))return;
    request={nonce:random(),timer:null};
@@ -140,4 +145,20 @@
  // 戻るキャッシュに以前の本人・招待情報を復活させない。保存の自動再送はしない。
  global.addEventListener('pageshow',event=>{if(event.persisted){if(services?.busy()){status.textContent='保存結果が未確定です。同じ操作の結果を確認してください。';controls();}else global.location.reload();}});
  controls();
+ if(arrived)completeLogin();
+ }
+ const returning=document.body?.hasAttribute?.('data-account-auth-return')===true;
+ if(!returning){start(false);return;}
+ // The callback keeps all workflow UI hidden until the known query and canonical URL are restored.
+ const notice=document.getElementById('account-auth-status'),back=document.getElementById('account-auth-back');
+ if(broker?.version!==1||!broker.isReturning?.()||typeof broker.resume!=='function'){
+  if(notice)notice.textContent='本人確認を再開できません。アカウントへ戻ってください。';return;
+ }
+ broker.resume().then(result=>{
+  if(back)back.href=broker.retryPath();
+  if(result==='ready'&&broker.getToken()&&global.location.pathname==='/account/'){
+   start(true);document.body.removeAttribute('data-account-auth-return');return;
+  }
+  if(notice)notice.textContent=result==='redirecting'?'LINEで本人確認を続けてください。':'本人確認を完了できませんでした。アカウントへ戻ってもう一度お試しください。';
+ }).catch(()=>{if(notice)notice.textContent='本人確認を完了できませんでした。アカウントへ戻ってください。';});
 })(window);

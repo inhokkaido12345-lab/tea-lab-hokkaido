@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {webcrypto} from 'node:crypto';
 const source=fs.readFileSync(new URL('../account/account.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../account/index.html',import.meta.url),'utf8');
-export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false,overviewState='not_registered',overviewData=null,scopeStarted=true,activationBusy=false,search='',serviceCategory=null,launchers=[],catalog=[{serviceId:'INVENTORY',label:'在庫',path:'/software/inventory/'}]}={}){
+export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=false,returnBroker=null,overviewState='not_registered',overviewData=null,scopeStarted=true,activationBusy=false,search='',serviceCategory=null,launchers=[],catalog=[{serviceId:'INVENTORY',label:'在庫',path:'/software/inventory/'}]}={}){
  const nodes=new Map(),handlers={},sent=[],timers=new Map();let timerId=0,reads=0,refreshes=0,scopeReads=0,overviewReads=0,managementStates=[],enrollmentInits=0,loginCalls=0,clearCalls=0,release,verified;const order=[],opened=[],popup={closed:false,close(){this.closed=true;},postMessage(){}};
  function element(){return {hidden:false,disabled:false,textContent:'',attributes:{},children:[],events:{},contentWindow:{},
   setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},getAttributeNames(){return Object.keys(this.attributes);},
@@ -13,8 +13,10 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=f
   submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
  const n=id=>{if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);};
  const document={getElementById:n,createElement:element,body:element()};
+ let returning=!!returnBroker;document.body.hasAttribute=k=>k==='data-account-auth-return'&&returning;document.body.removeAttribute=k=>{assert.equal(k,'data-account-auth-return');returning=false;};
  n('account-tools').hidden=true;n('account-reload').hidden=true;
- const window={TlhAccountServiceCategory:serviceCategory,TlhAccountServiceLaunchers:launchers,TlhActivationServices:catalog,confirm:()=>true,location:{search,reload(){window.reloaded=true;}},addEventListener(k,v){const old=handlers[k];handlers[k]=old?e=>{old(e);v(e);}:v;},
+ const window={TlhAccountServiceCategory:serviceCategory,TlhAccountServiceLaunchers:launchers,TlhActivationServices:catalog,confirm:()=>true,location:{origin:'https://tealabhokkaido.com',search,reload(){window.reloaded=true;}},addEventListener(k,v){const old=handlers[k];handlers[k]=old?e=>{old(e);v(e);}:v;},
+  TlhAccountLogin:returnBroker,
   TlhInventoryLogin:{clearToken(){clearCalls++;order.push('clear');},async login(){loginCalls++;order.push('login');if(deferLogin)await new Promise(r=>{release=r;});},getToken:()=> proof},
   TlhAccountInfo:{config:{gasUrl:'https://script.google.com/macros/s/fixture/exec'},init(options){assert.equal(options.liff.getIDToken(),proof);return {load(){reads++;}};}},
   TlhAccountAccessOverview:{init(o){verified=o.onVerified;return {load(){overviewReads++;verified(overviewData,overviewState);},refresh(){refreshes++;}};}},
@@ -26,7 +28,7 @@ export function harness({deferLogin=false,proof='fixture.jwt.proof',realBroker=f
  const context={window,document,crypto:webcrypto,Uint8Array,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);}};
  if(realBroker){window.open=url=>{opened.push(url);return popup;};vm.runInNewContext(fs.readFileSync(new URL('../software/inventory/employee-login.js',import.meta.url),'utf8'),context);}
  vm.runInNewContext(source,context);
- return {verify:(d,state)=>verified(d,state),n,handlers,sent,timers,window,order,opened,popup,get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
+ return {verify:(d,state)=>verified(d,state),n,handlers,sent,timers,window,order,opened,popup,get returning(){return returning;},get clearCalls(){return clearCalls;},login:()=>n('account-login').events.click(),create:()=>n('account-create').events.click(),
   releaseLogin:()=>release(),get reads(){return reads;},get refreshes(){return refreshes;},get scopeReads(){return scopeReads;},get managementStates(){return managementStates;},get overviewReads(){return overviewReads;},get enrollmentInits(){return enrollmentInits;},get loginCalls(){return loginCalls;},
   reply(code,overrides={},event={}){handlers.message({origin:'https://script.google.com',source:n('account-create-frame').contentWindow,
    data:{type:'TLH_BRIDGE_ACCOUNT_CREATED',nonce:sent.at(-1).nonce,code,...overrides},...event});}};
@@ -138,4 +140,24 @@ test('entry wording distinguishes inventory, personal and general intent without
  }
  const h=harness({search:'?purpose=personal&service=INVENTORY'});assert.match(h.n('account-login-intro').textContent,/コードは不要/);assert.equal(h.n('account-request-entry').hidden,true);
  assert.match(html,/コードの内容を確認/);assert.match(html,/発行するコードの内容を確認/);assert.match(html,/まだ利用は確定しません/);
+});
+
+test('same-tab arrival restores personal or invited flow without second login, account creation or claim',async()=>{
+ for(const [search,state] of [['?purpose=personal&service=INVENTORY','not_registered'],['?service=inventory','registered']]){
+  let finish;
+  const driver={version:1,isReturning:()=>true,resume:()=>new Promise(r=>finish=r),login:()=>assert.fail('unexpected second login'),clearToken:()=>assert.fail('unexpected token reset'),getToken:()=> 'fixture.jwt.proof',retryPath:()=>'/account/'+search};
+  const h=harness({returnBroker:driver,overviewState:state,overviewData:state==='registered'?{accountId:'fixture',operatingRoles:[]}:null,launchers:[{serviceId:'inventory',path:'/software/inventory/'}]});
+  assert.equal(h.overviewReads,0);assert.equal(h.returning,true);assert.equal(h.sent.length,0);
+  h.window.location.pathname='/account/';h.window.location.search=search;finish('ready');await new Promise(r=>setImmediate(r));
+  assert.equal(h.returning,false);assert.equal(h.overviewReads,1);assert.equal(h.sent.length,0);
+  if(state==='not_registered'){assert.equal(h.n('account-create').hidden,false);assert.match(h.n('account-login-intro').textContent,/コードは不要/);}
+  else{assert.equal(h.n('activation-lock').disabled,false);assert.match(h.n('activation-heading').textContent,/店舗の在庫管理/);}
+ }
+});
+test('cancelled callback cannot initialize Account or write a signup/invite',async()=>{
+ const driver={version:1,isReturning:()=>true,resume:async()=> 'failed',getToken:()=>null,retryPath:()=>'/account/?service=inventory'};
+ const h=harness({returnBroker:driver});await new Promise(r=>setImmediate(r));
+ assert.equal(h.returning,true);assert.equal(h.overviewReads,0);assert.equal(h.sent.length,0);
+ assert.match(h.n('account-auth-status').textContent,/完了できません/);
+ assert.equal(h.n('account-auth-back').href,'/account/?service=inventory');
 });

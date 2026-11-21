@@ -6,6 +6,7 @@ await fs.mkdir(out,{recursive:true});
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript','.css':'text/css','.woff2':'font/woff2','.png':'image/png','.svg':'image/svg+xml','.webmanifest':'application/manifest+json'};
 const server=http.createServer(async(req,res)=>{try{let p=decodeURIComponent(new URL(req.url,'http://localhost').pathname);if(p.endsWith('/'))p+='index.html';const file=path.resolve(root,'.'+p);if(!file.startsWith(root+path.sep))throw Error('PATH');const body=await fs.readFile(file);res.writeHead(200,{'Content-Type':mime[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});res.end(body);}catch{res.statusCode=404;res.end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
+import {checkAccountLineReturn} from './account-line-return-ci.mjs';
 import {createJourneyCore} from './account-journey-fixture.mjs';
 import {replyHTML} from './account-visual-fixtures.mjs';
 const browser=await chromium.launch({headless:true}),reports=[];let failed=false;
@@ -38,5 +39,5 @@ try{for(const recover of [false,true]){
   await page.locator('#activation-open').click();await page.waitForURL(origin+'/software/inventory/');await page.locator('#line-login').waitFor({state:'visible'});await snap(page,'09-returned-inventory');
   assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);report.fixture=core.summary();report.passed=true;
  }catch(e){failed=true;report.error=e.message;if(page)await page.screenshot({path:path.join(out,name+'-FAIL.png'),fullPage:true}).catch(()=>{});}finally{report.errors=errors;report.blockedExternalRequests=blocked;report.stages=stages;reports.push(report);await context.close();}
-}}finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(out,'report.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||'local',reports},null,2));}
+}await checkAccountLineReturn({browser,root,mime});}finally{await browser.close();await new Promise(r=>server.close(r));await fs.writeFile(path.join(out,'report.json'),JSON.stringify({sourceSha:process.env.GITHUB_SHA||'local',reports},null,2));}
 console.log(JSON.stringify({journeys:reports.length,passed:reports.filter(r=>r.passed).length}));if(failed)process.exitCode=1;
