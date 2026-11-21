@@ -1,15 +1,68 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<meta name="referrer" content="no-referrer"><title>在庫のLINEログイン試験</title>
-<style>body{margin:auto;max-width:28rem;padding:1.5rem;font:1rem/1.65 system-ui,sans-serif;color:#163e3a;background:#f3efe7}button{padding:.75rem 1rem;font:inherit;font-weight:700;background:#2f5452;color:#fff;border:0;border-radius:.4rem}a{color:#15464a}body[data-inventory-auth-return] > :not(#inventory-auth-return),body:not([data-inventory-auth-return]) #inventory-auth-return{display:none!important}</style>
-<script src="/software/inventory/config.js" defer></script>
-<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script>
-<script src="/software/inventory/line-preview/driver.js?v=dc34c127276d" defer></script>
-<script src="/software/inventory/line-preview/transport.js?v=dc34c127276d" defer></script>
-<script src="/software/inventory/line-preview/screen.js?v=dc34c127276d" defer></script>
-</head><body data-inventory-auth-return>
-<section id="inventory-auth-return"><h1>在庫のLINEログイン試験</h1><p id="inventory-auth-status" role="status">LINEで本人確認しています…</p><a href="/software/inventory/line-preview/">ログイン試験へ戻る</a><p><a href="/software/inventory/">通常の在庫画面へ戻る</a></p></section>
-<main><h1>在庫のLINEログイン試験</h1><p>別ウィンドウを開かずにログインし、読み取りだけを確認します。在庫・店舗の情報は表示・保存しません。</p><p id="status" role="status" aria-live="polite">まだログインしていません。</p>
-<button id="line-login" type="button" hidden>LINEで試験ログイン</button><button id="refresh" type="button" hidden>読み取りを確認</button><p><a href="/software/inventory/">通常の在庫画面へ戻る</a></p></main>
-<div hidden><div id="cards"></div><div id="logs"></div><div id="lines"></div><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="読み取り確認" hidden></iframe></div>
+<!doctype html>
+<html lang="ja">
+<head><meta name="referrer" content="no-referrer"><style>body[data-inventory-auth-return] > :not(#inventory-auth-return){display:none!important;}#inventory-auth-return[hidden],body:not([data-inventory-auth-return]) #inventory-auth-return{display:none!important;}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<script>
+// 本体が起動しない場合も、例外全文を公開せず固定コードだけを表示する。
+(function(){
+ function report(code){var n=document.getElementById('status');if(!n)return;
+  if(window.TlhInventoryStatus)window.TlhInventoryStatus.show('画面処理を続けられません。',code);
+  else{n.className='status-needs-action';n.textContent='画面処理を開始できません。確認コード：'+code+'。画面を開き直してください。';}
+ }
+ window.addEventListener('error',function(e){if(!e.error)return;var codes={SyntaxError:'JS_SYNTAX',ReferenceError:'JS_REFERENCE',TypeError:'JS_TYPE'};report(codes[e.error.name]||'JS_START_FAILED');});
+ window.addEventListener('unhandledrejection',function(){report('JS_START_FAILED');});
+})();
+</script>
+<title>TLH Inventory｜在庫・発注管理</title>
+<link rel="stylesheet" href="/software/inventory/style.css?v=6ea0c201dd1b"><script src="/software/inventory/load-timing.js?v=6ea0c201dd1b" defer></script><script src="/software/inventory/config.js?v=6ea0c201dd1b" defer></script><script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script><script src="/software/inventory/employee-login-same-tab.js?v=6ea0c201dd1b" defer></script><script src="/software/inventory/operation-recovery.js?v=6ea0c201dd1b" defer></script><script src="/software/inventory/employee-transport-same-tab.js?v=6ea0c201dd1b" defer></script><script src="/software/inventory/app-same-tab.js?v=6ea0c201dd1b" defer></script>
+<script>(()=>{document.addEventListener("DOMContentLoaded",()=>{if(window.TlhInventoryEntryMode?.sameTab===false)return;if(window.TlhInventoryLogin?.sameTabVersion===1&&window.TlhInventory?.sameTabVersion===1)return;const login=document.getElementById("line-login");if(login){login.hidden=true;login.disabled=true;login.onclick=null;}const notice=document.getElementById("inventory-auth-status")||document.getElementById("status");if(notice)notice.textContent="在庫画面を開き直してください。LINE本人確認の準備ができていません。";},{once:true});})();</script><link rel="manifest" href="/software/inventory/manifest.webmanifest"><meta name="theme-color" content="#2F5452"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="TLH Inventory"><link rel="apple-touch-icon" href="/workforce/icons/app-192.png"></head>
+<body data-inventory-auth-return><section id="inventory-auth-return"><h1>在庫・LINE本人確認</h1><p id="inventory-auth-status" role="status">LINEで本人確認しています…</p><a href="/software/inventory/">在庫画面に戻る</a></section>
+<header><small>TEA LABORATORY HOKKAIDO</small><h1>TLH Inventory</h1><p>在庫・仕入品情報の管理</p></header>
+<main>
+<button id="line-login" class="entry-login wide" hidden>LINEでログインして在庫を開く</button><aside class="inventory-entry" aria-label="初回利用"><details id="inventory-start"><summary>初めて使う</summary><a class="entry-primary" href="/account/?service=inventory" target="_blank" rel="noopener">店舗で利用を始める（別画面）</a><p>同じLINEでアカウントを確認・必要なら作成します。利用開始コードがあれば受取り、なければ店舗への利用を申請します。受取・承認後、この在庫へ戻ります。勤怠登録は不要です。</p><a class="entry-personal" href="/account/?purpose=personal&service=INVENTORY" target="_blank" rel="noopener">個人利用のアカウント作成・確認（別画面）</a><p>会社への所属や利用開始コードは不要です。アカウント確認後、この在庫で同じLINEでログインし「自分の在庫を始める」を選びます。</p></details></aside><div id="inventory-stores" class="store-context"></div><section id="operation-recovery" aria-live="polite"></section><iframe id="inventory-api-frame" name="tlhInventoryFrame" title="在庫API通信" hidden></iframe>
+<!-- Read-only task help. No login, permission, data mutation or external transmission. -->
+<details id="inventory-help" class="inventory-help">
+<summary>使い方・困ったとき</summary>
+<p class="help-intro">やりたいことを選ぶ → 手順を確認 → 操作画面へ。開いても入力は消えません。</p>
+<div class="help-tasks"><details><summary>ホーム画面への追加・元の画面へ戻る</summary><p>iPhoneはSafariの共有、AndroidはChromeのメニューからホーム画面に追加します。単独アプリとして起動したときは、戻る履歴がないことがあります。他の画面へは端末のアプリ切替・ホーム操作で戻れます。</p><p>アカウントを別画面で確認した後は、元の在庫画面へ切り替えてLINEでログインしてください。在庫のLINEログインは同じ画面で進みます。本人確認が止まったときは在庫へ戻り、もう一度お試しください。</p></details>
+<details><summary>計算方法・日時の読み方</summary><p>星は確認済み条件数で、在庫の正確さの割合ではありません。未評価は点灯しません。記録が期限内でも、実在庫との一致を保証しません。</p><p>予測は実在庫の保証ではありません。実数は棚卸で更新します。棚卸の期限は登録日時を基準に経過24時間単位で判定し、設定が7日なら7日ちょうどで期限超過になります。消費は実測終了日時が基準です。期限内の記録と在庫数の信頼度は別です。</p><p>実績納期は発注と単一全量入荷の有効な対応から計算します。入荷日は日付のみです。同日登録では登録時刻を計算に使いますが、実到着の秒時刻ではありません。分納・合算・由来不足などで標本にならない場合は未計測です。</p></details>
+<details><summary>届いたものを入荷登録</summary><ol><li>「入荷」で届いた日・品目・袋やケースの単位・数量を入力。</li><li>注文の全量が届いたら「今回で受取完了」を選ぶ。分納なら未選択。</li><li>「入荷をまとめて保存」→ 保存完了を確認。</li></ol><p>発注しただけの物は登録せず、実際に届いた分だけ。</p><button type="button" data-help-task="receiving">入荷を開く</button></details>
+<details><summary>今ある在庫を数える（棚卸）</summary><ol><li>下の「棚卸」で品目を選ぶ。</li><li>棚卸単位が設定済みなら、満タンの数と使いかけの残りの有無を選ぶ。未設定なら実測した総量を入力。管理者は「仕入品情報」の包装単位行で「棚卸では『袋』で数える」などのチェックを選べます。</li><li>「棚卸を保存」（総量を実測した場合は「数えた量を保存」）→ 保存完了を確認。使いかけが残る場合は満タンの数だけを保存し、基準量は補正しません。</li></ol><p>追加量ではなく今ある総量。分からないときは0で埋めないでください。</p><button type="button" data-help-task="counting">在庫を数える</button></details>
+<details><summary>発注したことを記録</summary><ol><li>仕入先への注文は、いつもの方法で別に行う。</li><li>「在庫・発注」で品目の「発注を記録」を押す。</li><li>数量・到着予定日（任意）を入れ「発注済みにする」→ 保存完了を確認。</li></ol><p>このアプリから仕入先へ注文は送信されません。未入荷の注文は在庫に加算しません。</p><button type="button" data-help-task="ordering">在庫・発注を開く</button></details>
+<details><summary>消費速度を測る</summary><ol><li>下の「消費計測」で品目と未使用の1袋・1ケースを選ぶ。表示の内容量を実物と確認。</li><li>その包装を使い始めた時に「この1袋・1ケースの使用開始を記録」。日時は日本時間、空欄なら今。</li><li>全量を使い切ったら同じ品目で日時を確認し「全量を使い切った：計測を終了」。</li></ol><p>途中の残量入力・毎回の開封記録は不要。継ぎ足しや別包装との混用をせず、その包装から順に使います。</p><details><summary>間違えた・途中で混ぜた／予測の意味</summary><p>「この計測を取り消す」。完了分は「最近の計測結果」→「この計測結果を取り消す」。履歴は残り、速度計算から外れます。</p><p>普段の使い方が含まれる期間で測ります。予測は実在庫の保証ではなく、曜日・季節・営業時間を自動補正しません。在庫の実数は棚卸で確認してください。</p></details><button type="button" data-help-task="sampling">消費を測る</button></details>
+<details><summary>保存できたか分からない</summary><ol><li>連打・別の新規登録・店舗切替をせず、画面の案内を確認。</li><li>「同じ操作を再確認」が出たら、そのボタンで確認。本人確認を求められたら同じLINEでログイン。</li><li>保存結果が確定してから在庫の「記録履歴」で品目・数量・日時を確認。</li></ol><p>確認が終わらない場合は画面の確認コードを管理者へ。ログイン情報や招待コードは送らないでください。</p></details>
+<details><summary>初めて使う／品目・ボタンがない</summary><ol><li>自分のLINEでログインし、会社・店舗が正しいか確認。</li><li>会社利用は所属だけでは使えません。管理者に在庫の閲覧・担当作業の権限を確認。</li><li>品目や包装の容量がない・違う場合は「仕入品情報」を確認できる管理者へ。</li></ol><p>個人・家庭の在庫と会社の在庫は別です。試しの数量を本番へ保存しないでください。</p></details>
+</div></details>
+<div class="sync-row"><p id="status" role="status" aria-live="polite"></p><button id="refresh">最新の記録を読む</button></div>
+<div id="status-detail" class="status-resolution" role="alert" hidden></div>
+<section id="stock">
+<div id="stock-summary"><div class="section-heading"><div><p class="eyebrow">01 / STOCK</p><h2>在庫と発注の見通し</h2></div><span class="muted">推定値は棚卸で補正</span></div>
+<div id="overview" class="overview" aria-label="在庫の概況"></div>
+<p id="as-of" class="muted" aria-live="polite"></p></div>
+<div id="stock-overview">
+<details class="stock-search"><summary>品目を探す・絞り込む</summary><div id="stock-item-filters"></div></details>
+<div class="filters" aria-label="在庫の絞り込み"><button data-filter="all" aria-pressed="true">すべて</button><button data-filter="low" aria-pressed="false">要発注</button><button data-filter="ordered" aria-pressed="false">発注済み</button></div>
+<div id="cards"></div>
+<button type="button" id="open-history" class="history-link">記録履歴</button>
+</div>
+<div id="stock-workspaces" hidden></div>
+</section>
+<section id="receiving" hidden>
+<p class="eyebrow">02 / RECEIVING</p><h2>届いたものを登録</h2>
+<p class="muted">発注と紐づけて受取完了にすると、実際の到着日数も記録されます。</p>
+<form id="receipt"><label for="day">届いた日</label><input type="date" id="day" required>
+<div id="lines"></div><button type="button" id="add">品目を追加</button>
+<label for="complete">今回で受取完了（分納なら未選択）</label>
+<select id="complete"><option value="">選択しない</option></select>
+<label id="receiving-association" hidden><input type="checkbox" id="receiving-association-confirm">この入荷が選択した注文の全量であることを伝票等で確認しました（分納・合算は未対応）</label>
+<button type="submit" class="primary wide">入荷をまとめて保存</button></form>
+</section>
+<section id="history" hidden><p class="eyebrow">03 / HISTORY</p><h2>記録履歴</h2><button type="button" id="back-from-history" class="history-link">在庫へ戻る</button><div id="logs"></div></section>
+<section id="catalog" hidden><p class="eyebrow">04 / CATALOG</p><h2>仕入品情報</h2><p class="muted">製造元・仕入先・保管方法と包装規格を登録します。価格情報は扱いません。</p><div id="catalog-content"></div></section>
+<div id="recovery" hidden><p>通信結果を確認できません。同じ操作IDで再確認します。新しい登録はしないでください。</p><button id="retry">同じ操作を再確認</button></div>
+<footer>TLH Inventory <span>数える日と、推定する日。</span></footer>
+</main>
+<nav aria-label="画面"><button data-tab="stock" aria-current="page">在庫</button><button data-tab="receiving">入荷</button><button data-tab="counting" aria-controls="stock-workspaces">棚卸</button><button data-tab="sampling" aria-controls="stock-workspaces">消費計測</button><button data-tab="catalog">仕入品情報</button></nav>
 </body></html>
