@@ -38,6 +38,13 @@
     return clockFormatter.format(new Date(iso));
   }
   const random=n=>Array.from(crypto.getRandomValues(new Uint8Array(n)),b=>b.toString(16).padStart(2,'0')).join('');
+  let dayFormatter=null;
+  function japanDay(){
+    if(!dayFormatter)dayFormatter=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'});
+    const parts=dayFormatter.formatToParts(new Date());
+    const get=k=>parts.find(p=>p.type===k).value;
+    return get('year')+'-'+get('month')+'-'+get('day');
+  }
   /** 署名確認後もDTOの型・日付・集計整合を検証。不正データを部分表示しない。 */
   function parseJournal(text,month){
     if(typeof text!=='string'||text.length>250000)return null;
@@ -140,22 +147,29 @@
   function init(options){
     // 専用HTMLから役割を固定。管理画面で自分へ切り替えず、本人記録は従業員側から読む。
     const adminPage=options.audience==='admin',employeePage=options.audience==='employee';
+    // ホームの月テーブルは常に非表示。署名/全DTOを検査したあと、本人の本日カードだけを描画。
+    // 履歴・提出は既存の専用画面。別POSTを足して共有ScriptLockを打刻と競合させない。
+    const todayCardOnly=options.today===true&&!!options.cards&&!adminPage;
     const modes=adminPage?['admin']:employeePage?['self']:['self','admin'];let adminAllowed=!adminPage;
     const n=Object.fromEntries(['month','mode','employee','target','check','status','table','caption','rows','frame'].map(k=>[k,document.getElementById('journal-'+k)]));
-    let pending=null,stopped=false;const action=options.report&&adminPage?REPORT_ACTION:ACTION;
+    let pending=null,stopped=false,suspended=false;const action=options.report&&adminPage?REPORT_ACTION:ACTION;
     const clear=()=>{options.exporter?.clear();n.table.hidden=true;n.rows.replaceChildren();n.caption.textContent='';if(options.cards)options.cards.replaceChildren();};
-    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||!adminAllowed;};
+    const controls=()=>{n.status.setAttribute?.('aria-busy',String(!!pending));for(const k of ['month','mode','employee','check'])n[k].disabled=!!pending||stopped||suspended||!adminAllowed;};
     function finish(){if(pending)clearTimeout(pending.timer);pending=null;controls();}
     for(const key of ['month','mode','employee'])n[key].addEventListener('input',()=>{clear();n.target.hidden=n.mode.value!=='admin';});
     n.check.addEventListener('click',()=>{
-      if(pending||stopped||!adminAllowed)return;clear();
+      if(pending||stopped||suspended||!adminAllowed)return;clear();
       // ホームの本日は操作時点で選ぶ。日跨ぎ後も起動時の月へ固定しない。保存時刻には使わない。
-      let day='';if(options.today){const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(p=>p.type===k).value;day=get('year')+'-'+get('month')+'-'+get('day');n.month.value=day.slice(0,7);}
+      let day='';if(options.today){day=japanDay();n.month.value=day.slice(0,7);}
       if(global!==global.top||!crypto.subtle){n.status.textContent='安全な通信を開始できません。';return;}
       const proof=options.liff.getIDToken(),month=n.month.value,mode=n.mode.value,employeeCode=mode==='admin'?n.employee.value.trim():'';
       if(!proof){n.status.textContent='LINEログインが必要です。';return;}
       if(!/^(20\d{2})-(0[1-9]|1[0-2])$/.test(month)||!modes.includes(mode)||(mode==='admin'&&!/^[A-Z0-9][A-Z0-9_-]{2,31}$/.test(employeeCode))){n.status.textContent=messages.INVALID_REQUEST;return;}
-      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day,action,employeeCode};pending=r;controls();n.status.textContent='読み込み中です。';
+      const workplace=global.TlhCurrentWorkplace;
+      // 保留中にログイン・日付・店舗が変わったら旧カードを塗り直さない。情報は要求内メモリだけ。
+      const stillCurrent=todayCardOnly?()=>{try{return options.liff.getIDToken()===proof&&japanDay()===day&&
+        global.TlhCurrentWorkplace===workplace&&(!workplace||workplace.locationMatches());}catch(_error){return false;}}:null;
+      const r={nonce:random(16),responseKey:random(32),month:month,mode:mode,day:day,action,employeeCode,stillCurrent};pending=r;controls();n.status.textContent='読み込み中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();},30000);
       if(options.readTransport&&mode==='self'){options.readTransport.request({action,idToken:proof,nonce:r.nonce,responseKey:r.responseKey,month,mode,employeeCode}).then(data=>receive(r,data)).catch(()=>{if(pending===r&&!stopped){n.status.textContent='応答を確認できません。記録の変更は行っていません。';finish();}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhJournalFrame';form.hidden=true;
@@ -170,24 +184,30 @@
       if(stopped||pending!==r||!adminAllowed)return;
       let valid=false;try{valid=await verifyResponse(value,r);}catch(_e){}if(!valid||pending!==r||stopped||!adminAllowed)return;
       if(n.month.value!==r.month||n.mode.value!==r.mode||r.mode==='admin'&&n.employee.value.trim()!==r.employeeCode){clear();finish();return;}
+      if(r.stillCurrent&&!r.stillCurrent()){clear();n.status.textContent='ログイン、日付、または店舗が変わりました。記録を更新してください。';finish();return;}
       const d=value;
       if(d.code==='JOURNAL_READY'){
         const j=r.action===REPORT_ACTION?parseReport(d.journal,r.month,r.employeeCode):parseJournal(d.journal,r.month);if(!j)return;
-        if(r.action===REPORT_ACTION)options.exporter?.setReport(j);
-        for(const row of j.days){
-          const tr=document.createElement('tr');
-          const values=[row.day,stateLabels[row.state],clock(row.clockIn),clock(row.clockOut),duration(row.breakMs),duration(row.workedMs),
-            clock(row.plannedStart),clock(row.plannedEnd),row.plannedBreakMinutes===null?'予定なし':row.plannedBreakMinutes+'分',duration(row.excessMs)];
-          for(const value of values){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}n.rows.appendChild(tr);
+        if(todayCardOnly){renderCards(options.cards,j,r.day);}
+        else{
+          if(r.action===REPORT_ACTION)options.exporter?.setReport(j);
+          for(const row of j.days){
+            const tr=document.createElement('tr');
+            const values=[row.day,stateLabels[row.state],clock(row.clockIn),clock(row.clockOut),duration(row.breakMs),duration(row.workedMs),
+              clock(row.plannedStart),clock(row.plannedEnd),row.plannedBreakMinutes===null?'予定なし':row.plannedBreakMinutes+'分',duration(row.excessMs)];
+            for(const value of values){const td=document.createElement('td');td.textContent=value;tr.appendChild(td);}n.rows.appendChild(tr);
+          }
+          n.caption.textContent=j.month+' / '+(r.mode==='admin'?'指定した従業員':'自分')+' / 日本時間';n.table.hidden=false;
+          if(r.action===REPORT_ACTION)n.table.hidden=true; // 提出用の区間別表を表示し、旧日別表を二重に見せない。
+          else if(options.cards)renderCards(options.cards,j,r.day);
         }
-        n.caption.textContent=j.month+' / '+(r.mode==='admin'?'指定した従業員':'自分')+' / 日本時間';n.table.hidden=false;
-        if(r.action===REPORT_ACTION)n.table.hidden=true; // 提出用の区間別表を表示し、旧日別表を二重に見せない。
-        else if(options.cards)renderCards(options.cards,j,r.day);
       }
       n.status.textContent=messages[d.code];finish();
     }
     global.addEventListener('pagehide',()=>{stopped=true;clear();n.employee.value='';finish();});controls();
-    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();},setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
+    function invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}
+    return Object.freeze({invalidate,setPunchPending(value){if(!todayCardOnly)return;suspended=value===true;
+      invalidate();n.status.textContent=suspended?'打刻の結果を確認中です。記録は確定後に表示します。':'最新の記録を更新してください。';},setAdminAllowed(allowed){if(!adminPage)return;adminAllowed=allowed===true;if(!adminAllowed){clear();finish();}controls();}});
   }
   async function bootstrap(){
     const status=document.getElementById('journal-status'),login=document.getElementById('journal-login');

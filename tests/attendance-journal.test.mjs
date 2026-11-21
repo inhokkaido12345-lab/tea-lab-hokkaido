@@ -3,23 +3,26 @@ import test from 'node:test';import assert from 'node:assert/strict';import vm f
 import {webcrypto,createHmac} from 'node:crypto';
 const source=fs.readFileSync(new URL('../workforce/attendance-journal.js',import.meta.url),'utf8');
 function journal(){return {month:'2026-11',days:Array.from({length:30},(_,i)=>({day:'2026-11-'+String(i+1).padStart(2,'0'),clockIn:'',clockOut:'',breakMs:0,workedMs:null,state:'NO_RECORD',plannedStart:'',plannedEnd:'',plannedBreakMinutes:null,plannedWorkedMs:null,excessMs:null}))};}
-function harness({cards=false,today=false,audience,intl=Intl}={}){
-  const nodes=new Map(),handlers={},sent=[],timers=new Map();let id=0;
+function harness({cards=false,today=false,audience,intl=Intl,initialTime,initialWorkplace}={}){
+  const nodes=new Map(),handlers={},sent=[],timers=new Map();
+  let id=0,now=initialTime,proof='fake.jwt.proof',created=0;
+  function Clock(...args){return new Date(...(args.length?args:now===undefined?[]:[now]));}
+  Object.assign(Clock,{now:()=>now??Date.now(),parse:Date.parse,UTC:Date.UTC});Clock.prototype=Date.prototype;
   function el(){return {value:'',textContent:'',hidden:false,disabled:false,children:[],events:{},contentWindow:{},
     appendChild(n){this.children.push(n);},replaceChildren(){this.children=[];},addEventListener(k,fn){this.events[k]=fn;},remove(){},
     submit(){sent.push(Object.fromEntries(this.children.map(n=>[n.name,n.value])));}};}
   const n=k=>{if(!nodes.has(k))nodes.set(k,el());return nodes.get(k);};
-  const window={addEventListener(k,fn){handlers[k]=fn;}};window.top=window;
-  vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl:intl,Date,
-    document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement:el,body:el()},
+  const window={addEventListener(k,fn){handlers[k]=fn;},TlhCurrentWorkplace:initialWorkplace};window.top=window;
+  vm.runInNewContext(source,{window,crypto:webcrypto,Uint8Array,TextEncoder,Intl:intl,Date:Clock,
+    document:{currentScript:null,getElementById:key=>n(key.replace('journal-','')),createElement(){created++;return el();},body:el()},
     setTimeout(fn){timers.set(++id,fn);return id;},clearTimeout(k){timers.delete(k);}});
-  n('month').value='2026-11';n('mode').value=audience==='admin'?'admin':'self';const viewer=window.TlhAttendanceJournal.init({liff:{getIDToken:()=> 'fake.jwt.proof'},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today,audience});
+  n('month').value='2026-11';n('mode').value=audience==='admin'?'admin':'self';const viewer=window.TlhAttendanceJournal.init({liff:{getIDToken:()=>proof},gasUrl:window.TlhAttendanceJournal.config.gasUrl,cards:cards?n('cards'):null,today,audience});
   async function reply(r,code='JOURNAL_READY',j=journal(),patch={},eventPatch={}){
     const data={type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',nonce:r.nonce,action:r.action,code,journal:code==='JOURNAL_READY'?JSON.stringify(j):''};
     data.mac=createHmac('sha256',r.responseKey).update([data.type,data.nonce,data.action,data.code,data.journal].join('\n')).digest('hex');Object.assign(data,patch);
     await handlers.message({source:{parent:n('frame').contentWindow},origin:'null',data,...eventPatch});
   }
-  return {n,sent,timers,handlers,window,viewer,reply,click:()=>n('check').events.click()};
+  return {n,sent,timers,handlers,window,viewer,reply,click:()=>n('check').events.click(),setTime:t=>now=t,setProof:t=>proof=t,created:()=>created};
 }
 
 test('role-specific journal rejects cross-role mode and locks admin reads until verified',()=>{
@@ -101,6 +104,8 @@ test('home selects today at explicit read time and filters cards to the requeste
   await h.reply(r,'JOURNAL_READY',j);assert.equal(h.n('cards').children.length,1);assert.equal(h.sent.length,1);
   const expected=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   assert.equal(h.n('cards').children[0].children[0].children[0].textContent,expected);
+  assert.equal(h.n('rows').children.length,0,'never construct the hidden monthly table on the Today card');
+  assert.equal(h.n('table').hidden,true);
 });
 test('detailed cards display both shifts and their breaks without presenting the middle gap as work',async()=>{
  const h=harness({cards:true}),j=journal(),sessions=[
@@ -110,4 +115,36 @@ test('detailed cards display both shifts and their breaks without presenting the
  h.click();await h.reply(h.sent[0],'JOURNAL_READY',j);const card=h.n('cards').children[2];assert.match(card.children[1].textContent,/2回の勤務/);assert.match(card.children[2].textContent,/6時間15分/);assert.equal(card.children.at(-1).children.length,2);assert.match(card.children.at(-1).children[1].children[1].textContent,/15:00/);
  const bad=structuredClone(j);bad.days[0].sessions[1].clockIn='2026-11-01T02:00:00.000Z';assert.equal(h.window.TlhAttendanceJournal.parseJournal(JSON.stringify(bad),'2026-11'),null);
  const other=structuredClone(j);other.days[0].sessions[0].workedMs++;assert.equal(h.window.TlhAttendanceJournal.parseJournal(JSON.stringify(other),'2026-11'),null);
+});
+
+test('today prioritizes the signed current-day card, exact plan and session, while retaining full reply validation',async()=>{
+ const h=harness({today:true,cards:true,audience:'employee',initialTime:Date.parse('2026-11-02T08:00:00Z')});
+ const dto=journal(),start='2026-11-02T01:00:00.000Z',end='2026-11-02T05:00:00.000Z';
+ Object.assign(dto.days[1],{state:'COMPLETED',clockIn:start,clockOut:end,workedMs:4*3600000,
+   plannedStart:start,plannedEnd:end,plannedBreakMinutes:0,plannedWorkedMs:4*3600000,excessMs:0,
+   sessions:[{clockIn:start,clockOut:end,workedMs:4*3600000,breakMs:0,breaks:[]}]});
+ h.click();const r=h.sent[0],bad=structuredClone(dto);bad.days[6].workedMs=-1;
+ await h.reply(r,'JOURNAL_READY',bad);assert.equal(h.n('cards').children.length,0);
+ await h.reply(r,'JOURNAL_READY',dto);
+ const card=h.n('cards').children[0];assert.equal(card.children[0].children[0].textContent,'2026-11-02');assert.match(card.children[3].textContent,/予定.+10:00/);
+ assert.equal(card.children.at(-1).children.length,1);
+ assert.equal(h.n('rows').children.length,0);assert.equal(h.n('table').hidden,true);assert.equal(h.sent.length,1);
+});
+
+test('during today read, auth/day/workplace changes suppress a correctly signed late result rather than reporting no records',async()=>{
+ const time=Date.parse('2026-11-02T14:59:59.000Z');
+ for(const change of [h=>h.setProof('fake.jwt.new'),h=>h.setTime(time+2000),h=>{h.window.TlhCurrentWorkplace={locationMatches:()=>true};},(h,w)=>w.matches=false]) {
+  const w={matches:true,locationMatches(){return this.matches;},submit(form){form.submit();}};
+  const h=harness({cards:true,today:true,initialTime:time,initialWorkplace:w});h.click();change(h,w);
+  await h.reply(h.sent[0]);assert.equal(h.n('cards').children.length,0);assert.match(h.n('status').textContent,/更新してください/);
+  assert.doesNotMatch(h.n('status').textContent,/ありません|未打刻/);assert.equal(h.sent.length,1);assert.equal(h.timers.size,0);
+ }
+});
+
+test('after verified punch triggers invalidate, older signed today cannot overwrite refresh; failed new read is not current-day absence',async()=>{
+ const h=harness({today:true,cards:true,initialTime:Date.parse('2026-11-02T00:00:00.000Z')});
+ h.click();const old=h.sent[0];h.viewer.invalidate();h.click();
+ await h.reply(old);assert.equal(h.n('cards').children.length,0);assert.match(h.n('status').textContent,/読み込み中/);
+ await h.reply(h.sent[1],'JOURNAL_UNAVAILABLE');assert.match(h.n('status').textContent,/取得できません/);
+ assert.equal(h.n('cards').children.length,0);assert.equal(h.sent.length,2);
 });

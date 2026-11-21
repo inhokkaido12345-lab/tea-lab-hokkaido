@@ -74,11 +74,11 @@
    */
   function init(options){
     const button=document.getElementById('monthly-work-check'),status=document.getElementById('monthly-work-status'),result=document.getElementById('monthly-work-result');
-    let pending=null,blocked=false,stopped=false;
+    let pending=null,blocked=false,stopped=false,suspended=false;
     function clear(){result.hidden=true;for(const id of ['month','days','count','gross','break','worked','open'])document.getElementById('monthly-work-'+id).textContent='';}
-    function finish(){if(pending)clearTimeout(pending.timer);pending=null;status.setAttribute?.('aria-busy','false');button.disabled=blocked;}
+    function finish(){if(pending)clearTimeout(pending.timer);pending=null;status.setAttribute?.('aria-busy','false');button.disabled=blocked||suspended;}
     async function check(){
-      if(pending||blocked||stopped)return;
+      if(pending||blocked||stopped||suspended)return;
       clear();
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       const proof=options.liff&&options.liff.getIDToken();
@@ -118,7 +118,9 @@
       }catch(_error){/* 未検証の集計や内部例外を表示しない。 */}
     }
     global.addEventListener('pagehide',()=>{stopped=true;clear();finish();});
-    return Object.freeze({invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}});
+    function invalidate(){if(pending)options.readTransport?.cancel?.(pending.nonce);clear();finish();}
+    return Object.freeze({invalidate,setPunchPending(value){suspended=value===true;invalidate();
+      status.textContent=suspended?'打刻の結果を確認中です。記録は確定後に表示します。':'最新の記録を更新してください。';}});
   }
   global.TlhMonthlyWorkSummary=Object.freeze({init,verifyResponse,parseSummary});
 })(window);
