@@ -1,0 +1,12 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>TLHアカウントのLINEログイン試験</title>
+<style>body{max-width:28rem;padding:1.5rem;margin:auto;font:1rem/1.65 system-ui,sans-serif;background:#f3efe7;color:#163e3a}button{padding:.75rem 1rem;color:#fff;font:inherit;background:#2f5452;border:0;border-radius:.4rem}a{color:#15464a}</style><style>body[data-account-auth-return] > :not(#account-auth-shell),body:not([data-account-auth-return]) #account-auth-shell{display:none!important}</style>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js" defer></script><script src="/account/line-login.js?v=d9c824c267b2cd40" data-preview="true" defer></script>
+<script src="/workforce/account-info.js?v=0b094cbdbe8398ad" defer></script>
+<script src="/account/access-overview.js?v=e5f0695e05f8e2b1" defer></script>
+<script src="/account/line-preview/check.js?v=a4b0bfd10ad08a54" defer></script></head>
+<body data-account-auth-return><section id="account-auth-shell"><h1>TLHアカウントのLINE本人確認</h1><p id="account-auth-status"  role="status">LINEで本人確認しています…</p><a id="account-auth-back" href="/account/line-preview/">元の画面へ戻る</a></section>
+<main><h1>TLHアカウントのLINEログイン試験</h1><p>別ウィンドウを開かずログインし、アカウントの読み取りだけを確認します。情報は表示・保存しません。</p><p>試験する入口：<strong id="preview-intent">アカウントの基本画面</strong></p>
+<p><a href="/account/line-preview/?service=inventory">店舗利用を試す</a>　<a href="/account/line-preview/?purpose=personal&service=INVENTORY">個人利用を試す</a></p>
+<button id="preview-login" type="button" hidden>LINEで試験ログイン</button><p id="preview-status" role="status" aria-live="polite"></p>
+<p><a href="/account/">通常のアカウント画面へ戻る</a></p><iframe id="preview-frame" name="tlhAccountAccessOverviewFrame" title="本人確認応答" hidden></iframe></main></body></html>
