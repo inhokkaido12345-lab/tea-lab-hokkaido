@@ -12,3 +12,12 @@ test('home renders its body before loading scripts while retaining LIFF/controll
   assert.ok(html.indexOf('src="auto-read.js')<html.indexOf('src="layout.js'));
   assert.ok(html.indexOf('src="schedule-view.js')<html.indexOf('src="schedule.js'));
 });
+
+test('only LINE SDK init overlaps Home assets; user proof and post happen in regular bootstrap',()=>{
+ const html=fs.readFileSync(new URL('../software/worktime/index.html',import.meta.url),'utf8');
+ const early=html.match(/<script data-time-liff-init>([\s\S]*?)<\/script>/);
+ assert.ok(early&&early.index>html.indexOf('liff/edge/2/sdk.js')&&early.index<html.indexOf('current-workplace.js'));
+ assert.equal((early[1].match(/sdk\.init\(/g)||[]).length,1);
+ assert.doesNotMatch(early[1],/getIDToken|startHomeReads|\.submit\(|\.login\(|readTransport|Storage/);
+ assert.match(html,/const initDurationMs = await tlhHomeLiffInit.result;[\s\S]*?getIDToken/);
+});

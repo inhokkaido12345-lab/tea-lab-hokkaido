@@ -431,6 +431,27 @@
     魔改造：script追加/移動は起動テスト・固定UI参照・READMEを同期。認可や保存を自動化しない。
   -->
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script data-time-liff-init>
+    // Start the one existing SDK init while same-origin controllers load; do not start
+    // any authentication UI, token access, POST, or workplace action before the final bootstrap.
+    const tlhHomeLiffInit=(()=>{
+      const startedAt=Date.now(),sdk=window.liff;
+      if(!sdk||typeof sdk.init!=='function')return null;
+      let timer;
+      const timeout=new Promise((_resolve,reject)=>{
+        timer=window.setTimeout(()=>{
+          const error=new Error('liff.init() が15秒以内に完了しませんでした。');
+          error.code='LIFF_INIT_TIMEOUT';reject(error);
+        },15000);
+      });
+      const result=Promise.race([Promise.resolve().then(()=>sdk.init({liffId:'2011940133-JXUDzLnG'})),timeout])
+        .then(()=>Date.now()-startedAt).finally(()=>window.clearTimeout(timer));
+      // The regular bootstrap still observes rejection; do not create an unhandled rejection
+      // if slow controller assets delay attaching its handler.
+      result.catch(()=>{});
+      return Object.freeze({sdk,result});
+    })();
+  </script>
   <script src="current-workplace.js?v=20261105-store2"></script>
   <script src="home-read.js?v=20261108-batch1"></script>
   <script src="demo-invitation.js?v=20261105-store1"></script>
@@ -470,10 +491,7 @@
      * ID token、URLのquery/hash、LINE userIdをログ/画面へ出さない。
      */
 
-    // LIFF IDは公開識別子。Channel Secretとは別物。
-    const LIFF_ID = '2011940133-JXUDzLnG';
     const DIAGNOSTIC_VERSION = 'Work Time 公開URL移行版 (2026-11-10)';
-    const INIT_TIMEOUT_MS = 15000;
 
     /**
      * GAS公開Web Appのエンドポイント（公開URL、秘密情報ではない）。
@@ -612,7 +630,6 @@
 
     const titleElement = document.getElementById('status-title');
     const detailElement = document.getElementById('status-detail');
-    const startedAt = Date.now();
 
     /**
      * UI状態の更新はtextContentを使い、外部から得た文字列を
@@ -642,37 +659,6 @@
         '$1[hidden]'
       );
       return '[' + code + '] ' + sanitized.slice(0, 300);
-    }
-
-    /**
-     * Promise.race:
-     * 「LIFF初期化の成功/失敗」と「15秒経過」のうち先に
-     * 完了した方を採用する。
-     *
-     * 注意: Promise.raceはLIFF SDKの内部通信を中断する機能ではない。
-     * 応答待ちのまま永久に表示が止まることを防ぐ診断用の監視である。
-     */
-    async function initializeLiffWithTimeout() {
-      let timerId;
-
-      const timeout = new Promise(function(_resolve, reject) {
-        timerId = window.setTimeout(function() {
-          const error = new Error(
-            'liff.init() が15秒以内に完了しませんでした。'
-          );
-          error.code = 'LIFF_INIT_TIMEOUT';
-          reject(error);
-        }, INIT_TIMEOUT_MS);
-      });
-
-      try {
-        await Promise.race([
-          liff.init({ liffId: LIFF_ID }),
-          timeout,
-        ]);
-      } finally {
-        window.clearTimeout(timerId);
-      }
     }
 
     /**
@@ -1283,7 +1269,7 @@
       );
 
       try {
-        if (!window.liff || typeof window.liff.init !== 'function') {
+        if (!tlhHomeLiffInit || tlhHomeLiffInit.sdk!==window.liff) {
           const error = new Error('LIFF SDKを読み込めませんでした。');
           error.code = 'LIFF_SDK_MISSING';
           throw error;
@@ -1297,9 +1283,8 @@
           false, true
         );
 
-        await initializeLiffWithTimeout();
-
-        const initDurationMs = Date.now() - startedAt;
+        const initDurationMs = await tlhHomeLiffInit.result;
+        if (homeLoginStopped) return;
 
         setStatus(
           '診断 3/4 — LIFF初期化に成功しました',
