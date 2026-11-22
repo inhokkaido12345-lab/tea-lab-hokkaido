@@ -12,8 +12,8 @@ import { webcrypto, createHmac } from 'node:crypto';
 
 const html = fs.readFileSync(new URL('../software/worktime/index.html', import.meta.url), 'utf8');
 const layout = fs.readFileSync(new URL('../workforce/layout.js', import.meta.url), 'utf8');
-async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = true, initFailure = false, loginFailure = false } = {}) {
-  const loginCalls=[];let reloads=0;
+async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = true, initFailure = false, loginFailure = false, initGate = null } = {}) {
+  const loginCalls=[];let reloads=0, initCalls=0;
   const nodes = new Map(), panes = [], handlers = {}, sent = [], wire = [], timers = new Map(); let timer = 0, focused = '';
   const observers=new Set();class Observer{constructor(fn){this.fn=fn;}observe(n){this.node=n;observers.add(this);}disconnect(){observers.delete(this);}}
   // 既知の二重引用ID属性をfixtureにするだけ。HTML構文/親子関係/描画の検証ではない。
@@ -32,7 +32,7 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
   const context = { crypto: webcrypto, Uint8Array, TextEncoder, URL,MutationObserver:Observer,
     location: { href:'https://tealabhokkaido.com/software/worktime/',origin: 'https://tealabhokkaido.com', pathname: '/software/worktime/',reload(){reloads++;} },
     confirm: () => false,
-    liff: { init: async () => {if(initFailure)throw Error('fixture init failure');}, isLoggedIn: () => loggedIn, isInClient: () => inClient, getIDToken: () => proof,
+    liff: { init: async () => {initCalls++;if(initFailure)throw Error('fixture init failure');if(initGate)await initGate;}, isLoggedIn: () => loggedIn, isInClient: () => inClient, getIDToken: () => proof,
       login(options){loginCalls.push(JSON.parse(JSON.stringify(options)));if(loginFailure)throw Error('fixture login failure');} },
     setTimeout(fn) { const id = ++timer; timers.set(id, fn); return id; }, clearTimeout(id) { timers.delete(id); },
     addEventListener(type, fn) { (handlers[type] ||= []).push(fn); },
@@ -45,15 +45,17 @@ async function harness({ loggedIn = true, proof = 'fake.jwt.proof', inClient = t
     fetch() { throw Error('unexpected network'); },
   };
   context.window = context; context.top = context;
-  for (const match of html.matchAll(/<script\b[^>]*\bsrc="([^"?]+)(?:\?[^"]*)?"[^>]*><\/script>/g)) {
-    if (match[1].startsWith('https:')) continue;
-    const localPath=match[1].startsWith('/')?'..'+match[1]:'../workforce/'+match[1];
-    vm.runInNewContext(fs.readFileSync(new URL(localPath, import.meta.url), 'utf8'), context);
+  // Evaluate the actual classic-script document order, including early LIFF kickoff.
+  for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)){
+    const src=match[1].match(/\bsrc="([^"?]+)(?:\?[^"]*)?"/)?.[1];
+    if(src?.startsWith('https:'))continue;
+    if(src){const localPath=src.startsWith('/')?'..'+src:'../workforce/'+src;
+      vm.runInNewContext(fs.readFileSync(new URL(localPath, import.meta.url), 'utf8'), context);}
+    else vm.runInNewContext(match[2],context);
+    await Promise.resolve();
   }
-  const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]; assert.equal(inline.length, 1);
-  vm.runInNewContext(inline[0][1], context);
   await new Promise(resolve => setImmediate(resolve));
-  return { node, panes, context, diagnostics, sent, wire, timers,loginCalls,reloads:()=>reloads, focused: () => focused,
+  return { node, panes, context, diagnostics, sent, wire, timers,loginCalls,reloads:()=>reloads,initCalls:()=>initCalls, focused: () => focused,
     depart(){for(const fn of handlers.pagehide||[])fn();},
     click(id) { node(id).events.click(); },
     key(id, key) { let prevented = false; node(id).events.keydown({ key, preventDefault() { prevented = true; } }); return prevented; },
@@ -240,3 +242,16 @@ test('management choices stay closed for employees; labor review has a separate 
 });
 
 test('employee shift activation cannot reveal or request administrator controls',async()=>{const h=await harness();await h.replyAccess('TLH_ADMIN_REQUIRED');h.click('schedule-tab');await new Promise(resolve=>setImmediate(resolve));assert.equal(h.node('schedule-admin-entry').hidden,true);assert.ok(!h.wire.some(r=>r.action==='bridgeScheduleV1'&&JSON.parse(r.input).audience==='admin'));});
+
+test('early SDK starts once; until ready there is no POST or enabled punch, even if the pane is changed',async()=>{
+ let release;const initGate=new Promise(r=>release=r),h=await harness({initGate});
+ assert.equal(h.initCalls(),1);assert.equal(h.wire.length,0);assert.equal(h.node('punch-section').hidden,true);
+ h.click('records-tab');h.click('employee-tab');assert.equal(h.wire.length,0);
+ release();await new Promise(r=>setImmediate(r));assert.equal(h.initCalls(),1);assert.equal(h.wire.length,1);
+ assert.deepEqual(h.sent.map(r=>r.action),['bridgeCheckStaffEnrollment','bridgeGetPunchReadiness','bridgeGetAttendanceJournalV2']);
+});
+test('late SDK completion after pagehide never revives punch or initiates a request',async()=>{
+ let release;const initGate=new Promise(r=>release=r),h=await harness({initGate});
+ assert.equal(h.initCalls(),1);h.depart();release();await new Promise(r=>setImmediate(r));
+ assert.equal(h.wire.length,0);assert.equal(h.node('punch-section').hidden,true);
+});
