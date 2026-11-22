@@ -20,13 +20,17 @@ function harness(){
   submit(){posted.push(Object.fromEntries(this.children.map(c=>[c.name,c.value])));}});
  const byId=id=>{if(!nodes.has(id))nodes.set(id,el(id));return nodes.get(id);};
  const click=(id,force=false)=>{const b=byId(id);if(force||!b.disabled)b.events.get('click')?.();};
- const window={confirm:()=>true,liff:{getIDToken:()=>proof},addEventListener(k,f){if(!handlers.has(k))handlers.set(k,[]);handlers.get(k).push(f);}};window.top=window;
+ const observers=new Set(),documentEvents=new Map(),timerDelays=new Map();
+ const repaint=()=>{for(const observer of observers)observer.notify();};
+ class Observe{constructor(notify){this.notify=notify;}observe(){observers.add(this);}disconnect(){observers.delete(this);}}
+ const window={MutationObserver:Observe,confirm:()=>true,liff:{getIDToken:()=>proof},addEventListener(k,f){if(!handlers.has(k))handlers.set(k,[]);handlers.get(k).push(f);}};window.top=window;
  function Clock(...args){return args.length?new Date(...args):new Date(now);}Object.assign(Clock,{now:()=>now,parse:Date.parse,UTC:Date.UTC});Clock.prototype=Date.prototype;
- const homeReads={request(q){return new Promise(resolve=>pending.push({q,resolve,cancelled:false}));},cancel(nonce){const r=pending.find(r=>r.q.nonce===nonce);if(r)r.cancelled=true;}};
- const context={window,crypto:webcrypto,Uint8Array,TextEncoder,Date:Clock,Intl,document:{getElementById:byId,currentScript:null,createElement:el,body:el('body')},
+ const homeReads={request(q){return new Promise((resolve,reject)=>pending.push({q,resolve,reject,cancelled:false}));},cancel(nonce){const r=pending.find(r=>r.q.nonce===nonce);if(r)r.cancelled=true;}};
+ const context={window,crypto:webcrypto,Uint8Array,TextEncoder,Date:Clock,Intl,document:{getElementById:byId,currentScript:null,createElement:el,body:el('body'),hidden:false,
+    addEventListener(k,f){documentEvents.set(k,f);}},
   GAS_URL:'https://script.google.com/fixture',homeReady:true,homePane:'employee',homeReads,console:{info(){}},
   autoReads:{invalidate(){},together(keys,allowed){if(allowed())for(const k of keys)click(({punch:'punch-check',today:'journal-check',daily:'daily-summary-check',monthly:'monthly-work-check'})[k]);}},
-  setTimeout(f){timers.set(++seq,f);return seq;},clearTimeout(i){timers.delete(i);}};
+  setTimeout(f,delay){timers.set(++seq,f);timerDelays.set(seq,delay);return seq;},clearTimeout(i){timers.delete(i);timerDelays.delete(i);}};
  const load=code=>vm.runInNewContext(code,context);
  for(const file of ['punch.js','attendance-journal.js','daily-summary.js','monthly-work-summary.js'])load(read(file));
  for(const k of ['TlhPunch','TlhAttendanceJournal','TlhDailySummary','TlhMonthlyWorkSummary'])context[k]=window[k];
@@ -36,13 +40,17 @@ function harness(){
  const send=(r,data,fields)=>r.resolve({...data,mac:mac(data,r.q,fields)});
  function ready(r,state='OFF'){send(r,{type:'TLH_BRIDGE_PUNCH',action:r.q.action,nonce:r.q.nonce,code:'PUNCH_READY_'+state,revision:'1'.repeat(64)},['type','nonce','action','code','revision']);}
  function dayReply(r,fresh=false){send(r,{type:'TLH_BRIDGE_ATTENDANCE_JOURNAL',action:r.q.action,nonce:r.q.nonce,code:'JOURNAL_READY',journal:JSON.stringify(journal(fresh))},['type','nonce','action','code','journal']);}
- async function saveReply(q,code='PUNCH_CLOCK_IN_DONE'){const d={type:'TLH_BRIDGE_PUNCH',action:q.action,nonce:q.nonce,code,revision:''};d.mac=mac(d,q,['type','nonce','action','code','revision']);for(const cb of handlers.get('message'))await cb({origin:'null',data:d});}
+ async function saveReply(q,code='PUNCH_CLOCK_IN_DONE',signatureValid=true){const d={type:'TLH_BRIDGE_PUNCH',action:q.action,nonce:q.nonce,code,revision:''};d.mac=signatureValid?mac(d,q,['type','nonce','action','code','revision']):'0'.repeat(64);for(const cb of handlers.get('message'))await cb({origin:'null',data:d});}
  function summaryReply(r){
    const monthly=r.q.action==='bridgeGetMonthlyWorkSummary',name=monthly?'MONTHLY_WORK_SUMMARY':'DAILY_SUMMARY';
    const summary={...(monthly?{workMonth:month,completedDays:0}:{workDate:day}),completedShifts:0,grossMs:0,breakMs:0,workedMs:0,openState:'OFF'};
    send(r,{type:'TLH_BRIDGE_'+name,action:r.q.action,nonce:r.q.nonce,code:name+'_READY',summary:JSON.stringify(summary)},['type','nonce','action','code','summary']);
  }
- return {byId,click,pending,posted,timers,ready,dayReply,saveReply,summaryReply,setProof:v=>proof=v,dayLater:()=>now+=86400000,changeWorkplace:()=>{window.TlhCurrentWorkplace={locationMatches:()=>true,submit(f){f.submit();}};}};
+ return {byId,click,pending,posted,timers,ready,dayReply,saveReply,summaryReply,repaint,observers,
+  fireDelay(ms){for(const [id,delay] of [...timerDelays])if(delay===ms)timers.get(id)?.();},
+  advanceMs:ms=>now+=ms,atUtc:iso=>now=Date.parse(iso),delayList:()=>[...timerDelays.values()],
+  hidden(value){context.document.hidden=value;documentEvents.get('visibilitychange')?.();},
+  navigate(){for(const cb of handlers.get('popstate')||[])cb();},depart:()=>{for(const cb of handlers.get('pagehide'))cb();},setProof:v=>proof=v,dayLater:()=>now+=86400000,changeWorkplace:()=>{window.TlhCurrentWorkplace={locationMatches:()=>true,submit(f){f.submit();}};}};
 }
 for(const unknown of [false,true])test('deliberately late pre-punch reads do not overwrite '+(unknown?'unknown fixed retry':'pending and verified success'),async()=>{
  const h=harness(),n=h.byId;
@@ -99,4 +107,93 @@ test('delayed Today from both normal startup and first post-punch refresh cannot
  h.ready(postOutState);h.dayReply(postOutDay,'DONE');
  await again(()=>n('journal-cards').children.length===1&&n('punch-out').hidden===true);
  assert.match(n('journal-cards').children[0].children[0].children[1].textContent,/退勤済み/);
+});
+
+test('Home keeps signed punch confirmation visible while refreshed attendance proves the next state',async()=>{
+ const h=harness(),n=h.byId,receipt=n('punch-receipt');assert.equal(receipt.hidden,true);
+ h.click('punch-check');h.click('journal-check');h.ready(h.pending[0]);
+ await again(()=>!n('punch-in').hidden);h.click('punch-in');assert.equal(h.posted.length,1);
+ assert.equal(receipt.hidden,true,'an in-flight write is not success');
+ await h.saveReply(h.posted[0],'PUNCH_CLOCK_IN_DONE',false);
+ assert.equal(receipt.hidden,true,'a forged receipt never renders');
+ assert.equal(h.pending.length,2,'a forged reply starts no refresh');
+ await h.saveReply(h.posted[0]);assert.match(n('punch-status').textContent,/処理中/);
+ assert.equal(receipt.hidden,false);assert.match(receipt.textContent,/出勤を記録しました/);
+ assert.equal(n('punch-out').hidden,true);assert.equal(n('punch-out').disabled,true);
+ const [freshState,freshDay]=h.pending.slice(2);h.ready(freshState,'WORKING');h.dayReply(freshDay,true);
+ await again(()=>!n('punch-out').hidden);
+ assert.match(n('punch-status').textContent,/勤務中/);assert.match(receipt.textContent,/出勤を記録しました/);
+ h.click('punch-out');assert.equal(h.posted.length,2);assert.equal(receipt.hidden,true);
+ const timeout=[...h.timers.values()].at(-1);timeout();assert.match(n('punch-status').textContent,/結果を確認できません/);
+ assert.equal(receipt.hidden,true);
+});
+
+test('Home clears prior punch confirmation on changed day, proof, or workplace when read revalidates',async()=>{
+ for(const change of [h=>h.setProof('fake.jwt.two'),h=>h.dayLater(),h=>h.changeWorkplace()]){
+  const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+  h.click('punch-in');await h.saveReply(h.posted[0]);assert.equal(receipt.hidden,false);
+  const refreshed=h.pending[1];change(h);h.ready(refreshed,'WORKING');
+  await again(()=>receipt.hidden);
+  assert.equal(n('punch-out').hidden,true);assert.equal(h.posted.length,1);
+ }
+});
+
+test('validated receipt survives refresh failure but cannot survive departure or late responses',async()=>{
+ const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+ h.click('punch-in');await h.saveReply(h.posted[0]);assert.equal(receipt.hidden,false);
+ const refresh=h.pending[1];refresh.reject(Error('fixture read failed'));await new Promise(r=>setImmediate(r));
+ assert.match(n('punch-status').textContent,/応答を確認できません/);
+ assert.match(receipt.textContent,/出勤を記録しました/);assert.equal(n('punch-out').hidden,true);
+ h.depart();assert.equal(receipt.hidden,true);h.ready(refresh,'WORKING');
+ await new Promise(r=>setImmediate(r));assert.equal(receipt.hidden,true);assert.equal(n('punch-out').hidden,true);
+});
+
+test('a delayed signed write for another context cannot paint an old success message on current Home',async()=>{
+ const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+ h.click('punch-in');const old=h.posted[0];h.setProof('fake.jwt.two');await h.saveReply(old);
+ assert.equal(receipt.hidden,true);assert.doesNotMatch(n('punch-status').textContent,/出勤を記録しました/);
+ assert.equal(n('punch-out').hidden,true);assert.equal(h.posted.length,1);
+});
+
+test('successful receipt expires without traffic and passive clock or navigation invalidates changed context',async()=>{
+ for(const outcome of ['ttl','day','identity','workplace','background']){
+  const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+  h.click('punch-in');await h.saveReply(h.posted[0]);h.ready(h.pending[1],'WORKING');
+  await again(()=>!n('punch-out').hidden);assert.equal(receipt.hidden,false);
+  assert.equal(h.observers.size,1);assert.ok(h.delayList().includes(5000));
+  switch(outcome){
+   case 'ttl':h.advanceMs(5000);h.fireDelay(5000);break;
+   case 'day':h.dayLater();h.repaint();break;
+   case 'identity':h.setProof('other-account-token');h.repaint();break;
+   case 'workplace':h.changeWorkplace();h.navigate();break;
+   default:h.hidden(true);h.hidden(false);
+  }
+  assert.equal(receipt.hidden,true,outcome);assert.equal(receipt.textContent,'');assert.equal(h.observers.size,0);
+  assert.equal(h.posted.length,1);assert.equal(h.pending.length,3,'no extra reads on passive invalidation');
+ }
+});
+
+test('receipt uses JST midnight as an earlier expiry than five seconds',async()=>{
+ const h=harness(),n=h.byId,receipt=n('punch-receipt');h.atUtc('2026-11-02T14:59:58.000Z');h.click('punch-check');
+ h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);h.click('punch-in');
+ await h.saveReply(h.posted[0]);assert.equal(receipt.hidden,false);assert.ok(h.delayList().includes(2000));
+ h.advanceMs(2000);h.fireDelay(2000);assert.equal(receipt.hidden,true);assert.equal(h.posted.length,1);
+});
+
+test('expired context during failed refresh clears stale receipt without another successful reply',async()=>{
+ for(const failure of ['timeout','transport']){
+  const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+  h.click('punch-in');await h.saveReply(h.posted[0]);assert.equal(receipt.hidden,false);h.dayLater();
+  if(failure==='timeout')h.fireDelay(30000);else h.pending[1].reject(Error('fixture transport failed'));
+  await again(()=>receipt.hidden);assert.match(n('punch-status').textContent,/応答を確認できません/);
+  assert.equal(n('punch-out').hidden,true);assert.equal(h.posted.length,1);
+ }
+});
+
+test('verified duplicate says no additional record and uses original operation id',async()=>{
+ const h=harness(),n=h.byId,receipt=n('punch-receipt');h.click('punch-check');h.ready(h.pending[0]);await again(()=>!n('punch-in').hidden);
+ h.click('punch-in');h.fireDelay(30000);assert.equal(receipt.hidden,true);assert.match(n('punch-status').textContent,/結果を確認できません/);
+ h.click('punch-retry');assert.equal(h.posted[1].eventId,h.posted[0].eventId);assert.notEqual(h.posted[1].nonce,h.posted[0].nonce);
+ await h.saveReply(h.posted[1],'PUNCH_ALREADY_RECORDED');assert.match(receipt.textContent,/追加の記録はしていません/);
+ assert.doesNotMatch(receipt.textContent,/出勤を記録しました/);
 });
