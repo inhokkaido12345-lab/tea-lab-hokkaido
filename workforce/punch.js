@@ -65,7 +65,35 @@
    */
   function init(options){
     const check=document.getElementById('punch-check'),retry=document.getElementById('punch-retry'),status=document.getElementById('punch-status');
-    const login=document.getElementById('punch-login');
+    const login=document.getElementById('punch-login'),receipt=document.getElementById('punch-receipt');
+    // 保存成功と勤務状態の再照会は別の情報。READのaria-busyで、確定した打刻結果を隠さない。
+    let receiptContext=null,receiptTimer=null,receiptClockObserver=null;
+    const dayMs=86400000,jstOffsetMs=9*3600000;
+    function clearReceipt(){
+      if(receiptTimer!==null)clearTimeout(receiptTimer);receiptTimer=null;
+      if(receiptClockObserver)receiptClockObserver.disconnect();receiptClockObserver=null;
+      receiptContext=null;if(receipt){receipt.hidden=true;receipt.textContent='';}
+    }
+    function currentReceipt(){if(receiptContext&&!receiptContext())clearReceipt();}
+    function showReceipt(message,matches){
+      const clock=document.getElementById('display-date');
+      const now=Date.now(),expiry=Math.min(now+5000,(Math.floor((now+jstOffsetMs)/dayMs)+1)*dayMs-jstOffsetMs);
+      if(expiry-now<250||document.hidden)return; // A rollover/hide should not flash an effectively expired result.
+      receiptContext=()=>Date.now()<expiry&&matches();
+      receipt.hidden=false;receipt.textContent=message;
+      receiptTimer=setTimeout(clearReceipt,expiry-now);
+      // No extra polling. Re-check identity/scope while the existing clock repaints, only for these brief seconds.
+      if(clock&&typeof global.MutationObserver==='function'){
+        try{
+          receiptClockObserver=new global.MutationObserver(currentReceipt);
+          receiptClockObserver.observe(clock,{childList:true});
+        }catch(_observerError){receiptClockObserver=null;} // The one-shot expiry still applies.
+      }
+    }
+    if(receipt){
+      document.addEventListener?.('visibilitychange',()=>{if(document.hidden)clearReceipt();else currentReceipt();});
+      for(const event of ['focus','pageshow','popstate','hashchange'])global.addEventListener(event,currentReceipt);
+    }
     const buttons=Object.fromEntries(Object.entries(commands).map(([type,c])=>[type,document.getElementById(c.id)]));
     let pending=null,ready=null,draft=null,draftSubmitted=false,blocked=false,loginRequired=false,loginPending=false,stopped=false;
     function controls(){status.setAttribute?.('aria-busy',String(!!pending||loginPending));
@@ -77,7 +105,7 @@
       }
     }
     function finish(outcome='response'){
-      const request=pending;if(request)clearTimeout(request.timer);pending=null;controls();
+      currentReceipt();const request=pending;if(request)clearTimeout(request.timer);pending=null;controls();
       // 保存応答と、その後の読取更新を別々に測る。診断callbackが失敗しても打刻結果を変えない。
       if(request)try{options.onTiming?.({phase:request.action===WRITE?'write':'read',outcome,elapsedMs:Math.max(0,Date.now()-request.started)});}catch(_timingError){}
     }
@@ -85,7 +113,7 @@
     function requireLogin(){
       // 送信前に証明がなくなっただけなら保存は開始していない。初回loginを妨げない。
       if(draft&&!draftSubmitted)draft=null;
-      ready=null;loginRequired=true;
+      clearReceipt();ready=null;loginRequired=true;
       status.textContent=draft?'LINE本人確認が必要です。打刻の保存結果は未確認です。この画面を閉じず、同じ打刻を再送して確認してください。再送できない場合は管理者に記録の確認を依頼してください。':'LINEでログインし直してください。下のボタンから進めます。';
       controls();
     }
@@ -107,11 +135,12 @@
       if(global!==global.top||!crypto.subtle){status.textContent='安全な通信を開始できません。LINEから開き直してください。';return;}
       let idToken;try{idToken=options.liff&&options.liff.getIDToken();}catch(_error){}
       if(typeof idToken!=='string'||!idToken){requireLogin();return;}
-      // READだけ旧ログイン/日/店舗を再表示しない。保存receiptの照合・再送条件には混ぜない。
+      // READと確定表示は同じ本人/日/店舗だけ。保存の照合・再送条件には混ぜない。
       const workplace=global.TlhCurrentWorkplace,jstDay=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10),day=jstDay();
-      const stillCurrent=action===READ?()=>{try{return options.liff.getIDToken()===idToken&&jstDay()===day&&
-        global.TlhCurrentWorkplace===workplace&&(!workplace||workplace.locationMatches());}catch(_e){return false;}}:null;
-      const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now(),stillCurrent};pending=r;controls();status.textContent='処理中です。';
+      const contextMatches=()=>{try{return options.liff.getIDToken()===idToken&&jstDay()===day&&
+        global.TlhCurrentWorkplace===workplace&&(!workplace||workplace.locationMatches());}catch(_e){return false;}};
+      if(action===WRITE)clearReceipt();else currentReceipt();
+      const r={action,fields,nonce:random(16),responseKey:random(32),started:Date.now(),contextMatches};pending=r;controls();status.textContent='処理中です。';
       r.timer=setTimeout(()=>{if(pending!==r)return;status.textContent=draft?'結果を確認できません。同じ打刻を再送してください。':'応答を確認できません。打刻前の状態を確認し直してください。';finish('timeout');},30000);
       if(action===READ&&options.readTransport){options.readTransport.request({action,nonce:r.nonce,responseKey:r.responseKey,idToken}).then(data=>receive(r,data)).catch(error=>{if(pending===r&&!stopped){if(error.code==='LINE_VERIFY_REJECTED')requireLogin();else status.textContent='応答を確認できません。打刻前の状態を確認し直してください。';finish('send_error');}});return;}
       const form=document.createElement('form');form.method='POST';form.action=options.gasUrl;form.target='tlhPunchFrame';form.hidden=true;
@@ -134,10 +163,17 @@
       try{
         const d=value,data={type:d&&d.type,nonce:d&&d.nonce,action:d&&d.action,code:d&&d.code,revision:d&&d.revision,mac:d&&d.mac};
         if(!await verifyResponse(data,r)||pending!==r)return;
-        if(r.stillCurrent&&!r.stillCurrent()){
+        currentReceipt();
+        if(r.action===READ&&!r.contextMatches()){
           ready=null;status.textContent='ログイン、日付、または店舗が変わりました。勤務状態を確認し直してください。';finish();return;
         }
-        status.textContent=messages[data.code];
+        const recorded=r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED');
+        if(recorded&&receipt){
+          if(r.contextMatches()){
+            showReceipt(messages[data.code],r.contextMatches);
+            status.textContent='打刻後の勤務状態を確認します。';
+          }else status.textContent='ログイン、日付、または店舗が変わりました。勤務状態を確認し直してください。';
+        }else status.textContent=messages[data.code];
         if(data.code!=='LINE_VERIFY_REJECTED')loginRequired=false;
         if(data.code==='LINE_VERIFY_REJECTED'){requireLogin();}
         else if(Object.hasOwn(allowed,data.code)){ready={code:data.code,revision:data.revision};}
@@ -145,7 +181,7 @@
         if(['WRITE_REVIEW_REQUIRED','WORK_STATE_REVIEW_REQUIRED','WORK_STATE_STORAGE_NOT_READY','WORK_STATE_CORRECTIONS_PENDING'].includes(data.code))blocked=true;
         finish();
         if(r.action===READ&&Object.hasOwn(allowed,data.code))try{options.onReadReady?.();}catch(_observerError){}
-        if(r.action===WRITE&&(/_DONE$/.test(data.code)||data.code==='PUNCH_ALREADY_RECORDED'))options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
+        if(recorded)options.onRecorded?.(); // 確定した保存だけで読取表示を更新。不明結果では再送しない。
       }catch(_error){/* 未検証の応答を表示しない。 */}
     }
     check.addEventListener('click',()=>{if(pending||draft||blocked||loginRequired||loginPending||stopped)return;ready=null;controls();invoke(READ);});
@@ -156,7 +192,7 @@
     }));
     retry.addEventListener('click',()=>{if(draft&&!pending&&!blocked)invoke(WRITE,draft);});
     // bfcacheからの復帰はauto-read.jsが新しいGETへ戻す。退場後の遅延返信で打刻可能にしない。
-    global.addEventListener('pagehide',()=>{stopped=true;ready=null;draft=null;draftSubmitted=false;loginPending=false;finish('cancelled');});
+    global.addEventListener('pagehide',()=>{stopped=true;ready=null;draft=null;draftSubmitted=false;loginPending=false;clearReceipt();finish('cancelled');});
     controls();
   }
   global.TlhPunch=Object.freeze({init,verifyResponse});

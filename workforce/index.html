@@ -47,6 +47,7 @@
 <div id="employee-work-panel" data-workforce-pane="employee" role="tabpanel" aria-labelledby="employee-tab"><div class="punch-grid"><section id="punch-section" class="punch-card" hidden>
       <div class="status-row"><span class="status-chip">本人の打刻</span><span id="display-date" class="subtle"></span></div><h1>出退勤を記録</h1><p id="display-clock" class="clock">--:--</p><p class="clock-caption">現在時刻・日本時間（表示用）</p><p class="footnote">中抜けは退勤し、戻ったら勤務状態を確認して再び出勤してください。1日に複数回記録できます。<a class="button secondary" href="employee-help.html#punch" target="_blank" rel="noopener">打刻の使い方（別画面）</a></p>
 
+      <p id="punch-receipt" class="detail" role="status" aria-live="polite" hidden></p>
       <div id="punch-status" class="detail" role="status" aria-live="polite">未確認</div>
       <button id="punch-check" class="bridge-button" type="button">勤務状態を更新 ↻</button>
       <button id="punch-login" class="bridge-button" type="button" hidden disabled>LINEでログインし直す</button>
@@ -459,7 +460,7 @@
   <script src="admin-overview.js?v=20261105-timing1"></script>
   <script src="staff-maintenance.js?v=20261105-store1"></script>
   <script src="work-state.js?v=20261105-store1"></script>
-  <script src="punch.js?v=20261121-today1"></script>
+  <script src="punch.js?v=20261122-receipt2"></script>
   <script src="daily-summary.js?v=20261121-today1"></script>
   <script src="monthly-work-summary.js?v=20261121-today1"></script>
   <script src="attendance-journal.js?v=20261121-today1"></script>
